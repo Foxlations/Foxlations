@@ -13,6 +13,13 @@ back up and restore your library, and read behind Cloudflare‑protected sites.
 
 ## Please note that i do school and work full time, i do see your messages and issues! it just might take me a bit to get to them!
 
+## Reporting an issue
+
+To help me fix things faster, please include **two things** when you open an issue:
+
+1. **Your app version** — shown in **Settings → About** (or the version of the build you downloaded).
+2. **A log from the in-app error log** — open **Settings → Advanced**, reproduce the problem, then copy or share the error log. That log usually shows exactly what went wrong, so it's the single most helpful thing you can attach.
+
 ## Download
 
 From the [**Releases**](../../releases) page, or
