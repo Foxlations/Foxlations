@@ -116,6 +116,7 @@ class AppRoutes {
             chapters: (args['chapters'] as List?)?.cast<Map<String, dynamic>>(),
             currentIndex: args['currentIndex'] as int? ?? 0,
             startOffset: args['startOffset'] as int? ?? 0,
+            startFraction: (args['startFraction'] as num?)?.toDouble() ?? 0.0,
           ),
           settings,
         );

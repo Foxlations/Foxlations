@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 
+import '../discovery/discovery_models.dart';
+import '../discovery/metadata_discovery.dart';
 import 'tracker.dart';
 import 'tracker_models.dart';
 
@@ -9,7 +11,11 @@ import 'tracker_models.dart';
 /// secret is embedded. The WebView captures an authorization `code` from the
 /// `foxlations://auth` redirect, which we exchange for tokens. Search and all
 /// list operations require the bearer token.
-class MalTracker extends Tracker {
+///
+/// Contributes to the Discover feed via [MetadataDiscovery], but only once
+/// connected (MAL's API needs the token) and without genre filtering (its
+/// ranking endpoint takes no genre parameter).
+class MalTracker extends Tracker implements MetadataDiscovery {
   static const _authBase = 'https://myanimelist.net/v1/oauth2';
   static const _api = 'https://api.myanimelist.net/v2';
   static const redirectUri = 'foxlations://auth';
@@ -211,6 +217,88 @@ class MalTracker extends Tracker {
       },
     );
     return res.statusCode == 200;
+  }
+
+  // ── discovery (MetadataDiscovery) ──────────────────────────────────────────
+
+  @override
+  String get discoveryId => id;
+
+  @override
+  String get discoveryName => name;
+
+  /// MAL's API requires the user's token even to browse, so it joins Discover
+  /// only once connected.
+  @override
+  bool get isAvailable => isAuthenticated;
+
+  /// The ranking endpoint takes no genre parameter, so genre chips are hidden
+  /// when MAL is the only available source.
+  @override
+  bool get supportsGenreFilter => false;
+
+  /// MAL's v2 API has no usable manga-recommendations endpoint, so it stays
+  /// trending-only — no "because you read X".
+  @override
+  bool get supportsPersonalization => false;
+
+  @override
+  Future<List<DiscoverItem>> personalized({
+    required DiscoverKind kind,
+    int page = 1,
+  }) async =>
+      const [];
+
+  @override
+  Future<List<String>> genres(DiscoverKind kind) async => const [];
+
+  @override
+  Future<List<DiscoverItem>> feed({
+    required DiscoverKind kind,
+    List<String> genres = const [],
+    DiscoverSort sort = DiscoverSort.trending,
+    int page = 1,
+  }) async {
+    if (!isAuthenticated) return const [];
+    final isAnime = kind == DiscoverKind.anime;
+    // MAL ranks manga and light novels under separate ranking_type values, so
+    // each lane maps cleanly; anime has no per-type split.
+    final rankingType = isAnime
+        ? 'bypopularity'
+        : (kind == DiscoverKind.novel ? 'novels' : 'manga');
+    final media = isAnime ? 'anime' : 'manga';
+    const limit = 30;
+    final offset = (page - 1) * limit;
+    final fields = isAnime
+        ? 'main_picture,synopsis,genres,mean'
+        : 'main_picture,synopsis,genres,mean,num_chapters';
+    final res = await http.get(
+      Uri.parse('$_api/$media/ranking'
+          '?ranking_type=$rankingType&limit=$limit&offset=$offset&fields=$fields'),
+      headers: await _headers(),
+    );
+    if (res.statusCode != 200) return const [];
+    final list = (jsonDecode(res.body)['data'] as List?) ?? const [];
+    return list.map((raw) {
+      final node = ((raw as Map)['node'] as Map?) ?? const {};
+      return DiscoverItem(
+        origin: id,
+        id: node['id'].toString(),
+        title: (node['title'] ?? 'Unknown').toString(),
+        kind: kind,
+        coverUrl: (node['main_picture']?['large'] ??
+                node['main_picture']?['medium'] ??
+                '')
+            .toString(),
+        summary: (node['synopsis'] ?? '').toString(),
+        genres: ((node['genres'] as List?) ?? const [])
+            .map((g) => ((g as Map)['name'] ?? '').toString())
+            .where((s) => s.isNotEmpty)
+            .toList(),
+        score: (node['mean'] as num?)?.toDouble() ?? 0,
+        url: 'https://myanimelist.net/$media/${node['id']}',
+      );
+    }).toList();
   }
 
   String _toMalStatus(TrackStatus s) {

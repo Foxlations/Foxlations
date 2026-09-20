@@ -9,6 +9,7 @@ import '../../../core/providers/source_provider.dart';
 import '../../../core/providers/library_type_provider.dart';
 import '../../../core/utils/url_utils.dart';
 import '../../../theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
 class LibraryStatsWidget extends StatefulWidget {
   const LibraryStatsWidget({super.key});
@@ -106,6 +107,7 @@ class _StatsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     if (manga.isEmpty) {
       return _EmptyStatsView(isVault: isVault, contentType: contentType);
     }
@@ -156,7 +158,7 @@ class _StatsContent extends StatelessWidget {
                 children: [
                   Icon(Icons.shield_rounded, size: 16, color: cs.primary),
                   const SizedBox(width: 6),
-                  Text('Vault Stats',
+                  Text(t.libraryVaultStats,
                       style: GoogleFonts.manrope(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
@@ -182,8 +184,8 @@ class _StatsContent extends StatelessWidget {
               statusCounts: statusCounts,
               total: manga.length,
               label: isVault
-                  ? 'Vault Breakdown'
-                  : '${LibraryTypeProvider.label(contentType)} Breakdown',
+                  ? t.libraryVaultBreakdown
+                  : t.libraryTypeBreakdown(LibraryTypeProvider.label(contentType)),
             ),
             const SizedBox(height: 16),
           ],
@@ -204,6 +206,7 @@ class _EmptyStatsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final word = contentType == 'all'
         ? 'manga'
         : LibraryTypeProvider.label(contentType).toLowerCase();
@@ -217,7 +220,7 @@ class _EmptyStatsView extends StatelessWidget {
                 size: 56, color: cs.outlineVariant),
             const SizedBox(height: 16),
             Text(
-              'No stats yet',
+              t.libraryNoStatsYet,
               style: GoogleFonts.manrope(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -227,8 +230,8 @@ class _EmptyStatsView extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               isVault
-                  ? 'Add $word to your vault and start reading to see stats here.'
-                  : 'Add $word to your library and start reading to see your stats here.',
+                  ? t.libraryEmptyStatsVault(word)
+                  : t.libraryEmptyStatsLibrary(word),
               textAlign: TextAlign.center,
               style: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
             ),
@@ -256,6 +259,7 @@ class _TopStatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Row(
       children: [
         Expanded(
@@ -263,7 +267,7 @@ class _TopStatsRow extends StatelessWidget {
             icon: Icons.menu_book_rounded,
             iconColor: cs.primary,
             value: _format(readChapters),
-            label: 'Chapters Read',
+            label: t.libraryChaptersRead,
           ),
         ),
         const SizedBox(width: 10),
@@ -272,7 +276,7 @@ class _TopStatsRow extends StatelessWidget {
             icon: Icons.library_books_rounded,
             iconColor: cs.secondary,
             value: '$totalManga',
-            label: 'Series',
+            label: t.librarySeries,
           ),
         ),
         const SizedBox(width: 10),
@@ -281,7 +285,7 @@ class _TopStatsRow extends StatelessWidget {
             icon: Icons.emoji_events_rounded,
             iconColor: AppTheme.warning,
             value: _format(totalChapters),
-            label: 'Total Chapters',
+            label: t.libraryTotalChapters,
           ),
         ),
       ],
@@ -353,6 +357,7 @@ class _StreakCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -370,7 +375,7 @@ class _StreakCard extends StatelessWidget {
                   size: 16, color: cs.secondary),
               const SizedBox(width: 6),
               Text(
-                'Reading Streak',
+                t.libraryReadingStreak,
                 style: GoogleFonts.manrope(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -384,7 +389,7 @@ class _StreakCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _StreakBar(
-                  label: 'Current',
+                  label: t.libraryStreakCurrent,
                   days: currentStreak,
                   maxDays: longestStreak > 0 ? longestStreak : 1,
                   color: cs.secondary,
@@ -393,7 +398,7 @@ class _StreakCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _StreakBar(
-                  label: 'Best',
+                  label: t.libraryStreakBest,
                   days: longestStreak,
                   maxDays: longestStreak > 0 ? longestStreak : 1,
                   color: cs.primary,
@@ -404,10 +409,10 @@ class _StreakCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             currentStreak == 0
-                ? 'Start a streak by reading today!'
+                ? t.libraryStreakStart
                 : currentStreak == 1
-                    ? 'Read tomorrow to keep the streak going!'
-                    : '$currentStreak days strong — keep it up!',
+                    ? t.libraryStreakKeepGoing
+                    : t.libraryStreakDaysStrong(currentStreak),
             style: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
           ),
         ],
@@ -432,6 +437,7 @@ class _StreakBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final ratio = maxDays > 0 ? (days / maxDays).clamp(0.0, 1.0) : 0.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,7 +448,7 @@ class _StreakBar extends StatelessWidget {
             Text(label,
                 style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
             Text(
-              '$days days',
+              t.libraryDaysCount(days),
               style: GoogleFonts.manrope(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -475,6 +481,7 @@ class _ActivityHeatmap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -502,7 +509,7 @@ class _ActivityHeatmap extends StatelessWidget {
                   size: 16, color: cs.primary),
               const SizedBox(width: 6),
               Text(
-                'Monthly Activity',
+                t.libraryMonthlyActivity,
                 style: GoogleFonts.manrope(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -586,7 +593,7 @@ class _ActivityHeatmap extends StatelessWidget {
           // Legend
           Row(
             children: [
-              Text('Less',
+              Text(t.libraryHeatmapLess,
                   style:
                       GoogleFonts.manrope(fontSize: 10, color: cs.outline)),
               const SizedBox(width: 4),
@@ -608,7 +615,7 @@ class _ActivityHeatmap extends StatelessWidget {
                 );
               }),
               const SizedBox(width: 4),
-              Text('More',
+              Text(t.libraryHeatmapMore,
                   style:
                       GoogleFonts.manrope(fontSize: 10, color: cs.outline)),
             ],
@@ -755,6 +762,7 @@ class _MostReadSeriesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -771,7 +779,7 @@ class _MostReadSeriesCard extends StatelessWidget {
                   size: 16, color: AppTheme.success),
               const SizedBox(width: 6),
               Text(
-                'Most-Read Series',
+                t.libraryMostReadSeries,
                 style: GoogleFonts.manrope(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -854,13 +862,13 @@ class _MostReadSeriesCard extends StatelessWidget {
                           children: [
                             _MiniStat(
                               icon: Icons.bookmark_rounded,
-                              value: '${m.readChapters} ch',
+                              value: t.libraryChaptersAbbrev(m.readChapters),
                               color: cs.secondary,
                             ),
                             const SizedBox(width: 10),
                             _MiniStat(
                               icon: Icons.menu_book_rounded,
-                              value: '${m.totalChapters} total',
+                              value: t.libraryTotalAbbrev(m.totalChapters),
                               color: cs.primary,
                             ),
                           ],

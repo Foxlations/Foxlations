@@ -157,7 +157,7 @@ in-app logging. Budget for slow iteration on M0/M1 specifically.
 
 ## Fallback if M1/M5 fails
 - **Android:** load Tachiyomi extension APKs natively via `PathClassLoader` (ART
-  has JIT; Mihon-style) — much simpler, no bundled server. Kotlin works on Android.
+  has JIT) — much simpler, no bundled server. Kotlin works on Android.
 - **iOS:** stays Dart/JS-only for third-party sources; keep porting popular sources
   to Dart (RepoForge/Foxtensions).
 - Behavior is identical where both exist; only the plumbing differs.
@@ -166,5 +166,5 @@ in-app logging. Budget for slow iteration on M0/M1 specifically.
 Two options, decide after M5:
 1. **Bundle the same Suwayomi (dexed for ART)** — uniform Dart bridge across both
    OSes; heavier on Android than it needs to be.
-2. **Native APK loading (Mihon-style)** — simplest/lightest on Android, but a
+2. **Native APK loading (ART-based)** — simplest/lightest on Android, but a
    second extension runtime to maintain. Same user-visible result.

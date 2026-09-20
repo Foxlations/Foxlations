@@ -6,6 +6,7 @@ import '../../core/providers/library_provider.dart';
 import '../../core/providers/source_provider.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../widgets/manga_image.dart';
 
 class UpdatesScreen extends StatefulWidget {
@@ -52,11 +53,12 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
 
     await _loadUpdates();
     if (mounted) {
+      final t = AppLocalizations.of(context);
       setState(() => _isUpdating = false);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(newUpdates.isNotEmpty
             ? 'Found ${newUpdates.length} new chapter${newUpdates.length == 1 ? '' : 's'}'
-            : 'No new chapters'),
+            : t.appNoNewChapters),
         duration: const Duration(seconds: 2)));
     }
   }
@@ -64,6 +66,7 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     // Group by date
     final grouped = <String, List<MangaUpdate>>{};
@@ -76,20 +79,20 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
       backgroundColor: cs.surface,
       appBar: AppBar(
         backgroundColor: cs.surface, elevation: 0,
-        title: Text('Updates', style: GoogleFonts.manrope(
+        title: Text(t.appUpdatesTitle, style: GoogleFonts.manrope(
             fontSize: 20, fontWeight: FontWeight.w800, color: cs.onSurface)),
         actions: [
           if (_isUpdating)
-            Padding(padding: const EdgeInsets.only(right: 16),
+            Padding(padding: const EdgeInsetsDirectional.only(end: 16),
               child: Center(child: SizedBox(width: 18, height: 18,
                 child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary))))
           else
             IconButton(icon: Icon(Icons.refresh_rounded, color: cs.onSurface),
-                tooltip: 'Check for updates', onPressed: _refreshUpdates),
+                tooltip: t.appCheckForUpdates, onPressed: _refreshUpdates),
           PopupMenuButton<String>(
             icon: Icon(Icons.more_vert_rounded, color: cs.onSurface),
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'clear', child: Text('Clear all')),
+              PopupMenuItem(value: 'clear', child: Text(t.appClearAll)),
             ],
             onSelected: (v) async {
               if (v == 'clear') { await LibraryUpdateService.clearUpdates(); _loadUpdates(); }
@@ -106,7 +109,7 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
                 value: _totalCount > 0 ? _checkedCount / _totalCount : null,
                 backgroundColor: cs.surfaceContainerHighest, color: cs.primary, minHeight: 3),
               const SizedBox(height: 4),
-              Text('Checking $_checkedCount / $_totalCount...',
+              Text(t.appCheckingProgress(_checkedCount, _totalCount),
                   style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
             ])),
 
@@ -116,7 +119,7 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
             child: Row(children: [
               Icon(Icons.schedule_rounded, size: 12, color: cs.outline),
               const SizedBox(width: 4),
-              Text('Last checked: ${_formatTime(_lastUpdate!)}',
+              Text(t.appLastChecked(_formatTime(_lastUpdate!)),
                   style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
             ])),
 
@@ -146,41 +149,44 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
   }
 
   Widget _buildEmpty(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Container(width: 64, height: 64,
         decoration: BoxDecoration(color: cs.primary.withAlpha(31),
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
         child: Icon(Icons.update_rounded, size: 32, color: cs.primary)),
       const SizedBox(height: 16),
-      Text('No updates yet', style: GoogleFonts.manrope(
+      Text(t.appNoUpdatesYet, style: GoogleFonts.manrope(
           fontSize: 15, fontWeight: FontWeight.w700, color: cs.onSurface)),
       const SizedBox(height: 6),
-      Text('Tap refresh to check for new chapters',
+      Text(t.appTapRefreshForChapters,
           style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
       const SizedBox(height: 16),
       FilledButton.icon(
         icon: const Icon(Icons.refresh_rounded, size: 18),
-        label: Text('Check Now', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        label: Text(t.appCheckNow, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
         style: FilledButton.styleFrom(backgroundColor: cs.primary, foregroundColor: Colors.white),
         onPressed: _isUpdating ? null : _refreshUpdates),
     ]));
   }
 
   String _formatTime(DateTime dt) {
+    final t = AppLocalizations.of(context);
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+    if (diff.inMinutes < 1) return t.appJustNow;
+    if (diff.inMinutes < 60) return t.appMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return t.appHoursAgo(diff.inHours);
+    return t.appDaysAgo(diff.inDays);
   }
 
   String _dateHeader(String date) {
+    final t = AppLocalizations.of(context);
     final now = DateTime.now();
     final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final yd = now.subtract(const Duration(days: 1));
     final yesterday = '${yd.year}-${yd.month.toString().padLeft(2, '0')}-${yd.day.toString().padLeft(2, '0')}';
-    if (date == today) return 'TODAY';
-    if (date == yesterday) return 'YESTERDAY';
+    if (date == today) return t.appToday;
+    if (date == yesterday) return t.appYesterday;
     return date.toUpperCase();
   }
 }

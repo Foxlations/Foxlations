@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/theme_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 // ── Theme Breed Data ─────────────────────────────────────────
@@ -151,6 +152,7 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeProvider = context.watch<ThemeProvider>();
     final primaryColor =
@@ -167,7 +169,7 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Appearance',
+          t.setdAppearanceTitle,
           style: GoogleFonts.manrope(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -179,7 +181,7 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
         padding: EdgeInsets.only(
             top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
         children: [
-          _SectionHeader(title: 'Theme'),
+          _SectionHeader(title: t.setdAppearanceSectionTheme),
           ...kThemeBreeds.map((breed) {
             final isSelected = breed.id == _selectedBreedId;
             final previewPrimary =
@@ -205,7 +207,7 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
             );
           }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Display'),
+          _SectionHeader(title: t.setdAppearanceSectionDisplay),
           _DarkModeTile(
             isDark: isDark,
             primaryColor: primaryColor,
@@ -383,6 +385,7 @@ class _InvertColorsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return GestureDetector(
       onTap: () => onChanged(!value),
       child: Container(
@@ -414,7 +417,7 @@ class _InvertColorsTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Invert Colors',
+                    t.setdAppearanceInvertColors,
                     style: GoogleFonts.manrope(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -423,7 +426,7 @@ class _InvertColorsTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Inverts the entire app UI',
+                    t.setdAppearanceInvertColorsDesc,
                     style: GoogleFonts.manrope(
                         fontSize: 12, color: cs.outline),
                   ),
@@ -458,6 +461,7 @@ class _DarkModeTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return GestureDetector(
       onTap: onToggle,
       child: Container(
@@ -491,7 +495,7 @@ class _DarkModeTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isDark ? 'Dark Mode' : 'Light Mode',
+                    isDark ? t.setdAppearanceDarkMode : t.setdAppearanceLightMode,
                     style: GoogleFonts.manrope(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -500,7 +504,7 @@ class _DarkModeTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    isDark ? 'Currently dark' : 'Currently light',
+                    isDark ? t.setdAppearanceCurrentlyDark : t.setdAppearanceCurrentlyLight,
                     style: GoogleFonts.manrope(
                         fontSize: 12, color: cs.outline),
                   ),

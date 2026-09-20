@@ -27,6 +27,48 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Auto-install deep link: foxlations://add-repo?url=<repo-index-url> -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="foxlations" android:host="add-repo"/>
+            </intent-filter>
+            <!-- Also accept the upstream reader apps' repo/extension-store links
+                 so a site's "add to app" button installs into Foxlations. Precise
+                 scheme+host pairs (no site emits e.g. mihon://add-repo). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="mihon" android:host="extension-store"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="tachiyomi" android:host="add-repo"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="aniyomi" android:host="add-repo"/>
+                <data android:scheme="aniyomi" android:host="extension-store"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="mangayomi" android:host="add-repo"/>
+            </intent-filter>
+            <!-- We handle foxlations/mihon/tachiyomi/aniyomi links ourselves via
+                 app_links; disable Flutter's built-in deep-linking so it does NOT
+                 also route the launch URL (which bypassed the shell + dropped the
+                 bottom nav bar). -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

@@ -130,7 +130,8 @@ class LibraryService {
   }
 
   Future<void> addManga(LibraryManga manga) async {
-    await _mangaBox?.put(manga.uniqueKey, manga);
+    await _mangaBox?.put(
+        manga.uniqueKey, manga.isInBox ? manga.clone() : manga);
   }
 
   /// Adds an entry together with its full chapter objects, preserving per-
@@ -138,11 +139,14 @@ class LibraryService {
   /// normal library and the vault so nothing is lost in the transfer.
   Future<void> addEntryWithChapters(
       LibraryManga manga, List<LibraryChapter> chapters) async {
-    await _mangaBox?.put(manga.uniqueKey, manga);
+    // Detach an entry that's still bound to its source box — Hive won't put the
+    // same instance into two boxes.
+    await _mangaBox?.put(
+        manga.uniqueKey, manga.isInBox ? manga.clone() : manga);
     for (final ch in chapters) {
       // Re-home the chapter to this box exactly as-is (isRead/lastPageRead/
       // readAt intact); the destination has no prior copy to merge with.
-      await _chapterBox?.put(ch.uniqueKey, ch);
+      await _chapterBox?.put(ch.uniqueKey, ch.isInBox ? ch.clone() : ch);
     }
   }
 
@@ -189,6 +193,26 @@ class LibraryService {
     }
   }
 
+  /// Novel reading position. Stores the exact scroll [offset] plus a reflow-safe
+  /// [fraction] (0..1) of total height, so "Resume" survives font-size changes.
+  Future<void> updateNovelProgress(
+    String sourceId,
+    String mangaUrl,
+    String chapterUrl,
+    int offset,
+    double fraction,
+  ) async {
+    final manga = getManga(sourceId, mangaUrl);
+    if (manga != null) {
+      manga.lastReadChapterUrl = chapterUrl;
+      manga.novelProgressOffset = offset;
+      manga.novelProgressFraction = fraction;
+      manga.lastReadPage = offset; // back-compat; typed fields authoritative
+      manga.lastReadAt = DateTime.now();
+      await manga.save();
+    }
+  }
+
   /// Anime playback position. Episodes ride as chapters, so the position (seconds) is
   /// stored on the episode's LibraryChapter.lastPageRead, and the manga's last-watched
   /// pointer is aimed at it so "Resume" reopens the right episode.
@@ -196,8 +220,9 @@ class LibraryService {
     String sourceId,
     String mangaUrl,
     String episodeUrl,
-    int positionSeconds,
-  ) async {
+    int positionSeconds, {
+    int totalSeconds = 0,
+  }) async {
     final key = '${sourceId}_$episodeUrl';
     var ch = _chapterBox?.get(key);
     if (ch != null) {
@@ -216,7 +241,9 @@ class LibraryService {
     final manga = getManga(sourceId, mangaUrl);
     if (manga != null) {
       manga.lastReadChapterUrl = episodeUrl;
-      manga.lastReadPage = positionSeconds;
+      manga.lastWatchSeconds = positionSeconds;
+      if (totalSeconds > 0) manga.totalSeconds = totalSeconds;
+      manga.lastReadPage = positionSeconds; // back-compat; typed fields authoritative
       manga.lastReadAt = DateTime.now();
       await manga.save();
     }

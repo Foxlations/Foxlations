@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/models/source_model.dart';
 import '../../../core/providers/source_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 import 'source_icon.dart';
@@ -19,6 +20,7 @@ class BrowseSourceDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return GestureDetector(
@@ -114,7 +116,7 @@ class BrowseSourceDetailSheet extends StatelessWidget {
                                   color: AppTheme.success.withAlpha(102)),
                             ),
                             child: Text(
-                              'Installed',
+                              t.browseInstalledBadge,
                               style: GoogleFonts.manrope(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -156,7 +158,7 @@ class BrowseSourceDetailSheet extends StatelessWidget {
 
               // About section
               Text(
-                'ABOUT',
+                t.browseAbout,
                 style: GoogleFonts.manrope(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -166,10 +168,10 @@ class BrowseSourceDetailSheet extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Source from ${source.baseUrl}\n'
-                'Language: ${source.sourceCodeLanguage.toUpperCase()}\n'
-                '${source.hasCloudflare ? 'Uses Cloudflare protection' : 'No Cloudflare'}\n'
-                '${source.isNsfw ? '18+ Content' : 'Safe for work'}',
+                '${t.browseSourceFrom(source.baseUrl)}\n'
+                '${t.browseLanguageLabel(source.sourceCodeLanguage.toUpperCase())}\n'
+                '${source.hasCloudflare ? t.browseUsesCloudflare : t.browseNoCloudflare}\n'
+                '${source.isNsfw ? t.browseAdultContent : t.browseSafeForWork}',
                 style: GoogleFonts.manrope(
                   fontSize: 13,
                   color: cs.onSurface,
@@ -181,7 +183,7 @@ class BrowseSourceDetailSheet extends StatelessWidget {
 
               // Features section
               Text(
-                'FEATURES',
+                t.browseFeatures,
                 style: GoogleFonts.manrope(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -194,9 +196,9 @@ class BrowseSourceDetailSheet extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _FeaturePill(label: 'Popular', cs: cs),
-                  _FeaturePill(label: 'Latest', cs: cs),
-                  _FeaturePill(label: 'Search', cs: cs),
+                  _FeaturePill(label: t.browsePopular, cs: cs),
+                  _FeaturePill(label: t.browseLatest, cs: cs),
+                  _FeaturePill(label: t.browseSearch, cs: cs),
                   _FeaturePill(label: source.framework, cs: cs),
                   if (source.isNsfw)
                     _FeaturePill(label: '18+', cs: cs, isWarning: true),
@@ -212,7 +214,7 @@ class BrowseSourceDetailSheet extends StatelessWidget {
                     Expanded(
                       child: FilledButton.icon(
                         icon: const Icon(Icons.explore_rounded, size: 18),
-                        label: Text('Browse ${source.name}'),
+                        label: Text(t.browseSourceAction(source.name)),
                         style: FilledButton.styleFrom(
                           backgroundColor: cs.primary,
                           foregroundColor: cs.onPrimary,
@@ -343,6 +345,7 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final color = widget.isInstalled
         ? AppTheme.error
         : Theme.of(context).colorScheme.primary;
@@ -361,8 +364,8 @@ class _ActionButtonState extends State<_ActionButton> {
               size: 18,
             ),
       label: Text(_loading
-          ? (widget.isInstalled ? 'Removing...' : 'Installing...')
-          : (widget.isInstalled ? 'Remove' : 'Install')),
+          ? (widget.isInstalled ? t.browseRemoving : t.browseInstalling)
+          : (widget.isInstalled ? t.browseRemove : t.browseInstall)),
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
         side: BorderSide(color: color.withAlpha(128)),
@@ -376,6 +379,7 @@ class _ActionButtonState extends State<_ActionButton> {
   }
 
   Future<void> _handleAction() async {
+    final t = AppLocalizations.of(context);
     setState(() => _loading = true);
     try {
       final provider = context.read<SourceProvider>();
@@ -388,7 +392,7 @@ class _ActionButtonState extends State<_ActionButton> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
+          SnackBar(content: Text(t.browseFailed(e.toString()))),
         );
       }
     }
@@ -410,6 +414,7 @@ class _UpdateButtonState extends State<_UpdateButton> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return SizedBox(
@@ -424,7 +429,7 @@ class _UpdateButtonState extends State<_UpdateButton> {
               )
             : Icon(Icons.refresh_rounded, size: 18, color: cs.primary),
         label: Text(
-          _loading ? 'Updating...' : 'Update extension code',
+          _loading ? t.browseUpdating : t.browseUpdateExtensionCode,
           style: GoogleFonts.manrope(
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -443,20 +448,21 @@ class _UpdateButtonState extends State<_UpdateButton> {
   }
 
   Future<void> _handleUpdate() async {
+    final t = AppLocalizations.of(context);
     setState(() => _loading = true);
     try {
       await context.read<SourceProvider>().refreshSourceCode(widget.source.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Updated ${widget.source.name}'),
+          content: Text(t.browseUpdatedSource(widget.source.name)),
           duration: const Duration(seconds: 2),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $e')),
+        SnackBar(content: Text(t.browseUpdateFailed(e.toString()))),
       );
     }
     if (mounted) setState(() => _loading = false);

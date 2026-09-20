@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import 'library_type_menu.dart' show libraryTypeIcon;
 
 class AppNavigation extends StatefulWidget {
@@ -56,6 +57,11 @@ class _AppNavigationState extends State<AppNavigation>
       label: 'Browse',
     ),
     _NavItem(
+      icon: Icons.auto_awesome_outlined,
+      activeIcon: Icons.auto_awesome,
+      label: 'Discover',
+    ),
+    _NavItem(
       icon: Icons.more_horiz_rounded,
       activeIcon: Icons.more_horiz,
       label: 'More',
@@ -94,9 +100,13 @@ class _AppNavigationState extends State<AppNavigation>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final mq = MediaQuery.of(context);
     final width = mq.size.width;
     final tabWidth = width / _items.length;
+    // The tab Row lays out start-to-end, so in RTL index 0 sits on the RIGHT;
+    // Positioned.left is always physical-left, so mirror the index for RTL.
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
     // Use viewPadding so the bottom inset is preserved even when an ancestor
     // (e.g. Scaffold) has consumed MediaQuery.padding. Adds a small floor so
     // labels don't sit flush against the gesture bar on devices that report 0.
@@ -122,9 +132,12 @@ class _AppNavigationState extends State<AppNavigation>
               AnimatedBuilder(
                 animation: _snakeAnimation,
                 builder: (_, __) {
-                  final fromX = _previousIndex * tabWidth + tabWidth / 2 - 32;
-                  final toX =
-                      widget.currentIndex * tabWidth + tabWidth / 2 - 32;
+                  double xFor(int i) {
+                    final visual = isRtl ? (_items.length - 1 - i) : i;
+                    return visual * tabWidth + tabWidth / 2 - 32;
+                  }
+                  final fromX = xFor(_previousIndex);
+                  final toX = xFor(widget.currentIndex);
                   final currentX =
                       fromX + (toX - fromX) * _snakeAnimation.value;
                   return Positioned(
@@ -153,17 +166,23 @@ class _AppNavigationState extends State<AppNavigation>
                   if (index == 0 && widget.isVaultMode) {
                     icon = Icons.shield_outlined;
                     activeIcon = Icons.shield_rounded;
-                    label = 'Vault';
+                    label = t.appNavVault;
                   } else if (index == 0) {
                     // Library tab shows the icon for the selected content type
                     // (Manga / Anime / Light Novels); the label stays "Library".
                     icon = libraryTypeIcon(widget.contentType);
                     activeIcon = libraryTypeIcon(widget.contentType, active: true);
-                    label = item.label;
+                    label = t.appNavLibrary;
                   } else {
                     icon = item.icon;
                     activeIcon = item.activeIcon;
-                    label = item.label;
+                    label = index == 1
+                        ? t.appNavUpdates
+                        : index == 2
+                            ? t.appNavBrowse
+                            : index == 3
+                                ? t.appNavDiscover
+                                : t.appNavMore;
                   }
                   return Expanded(
                     child: Builder(
@@ -198,7 +217,7 @@ class _AppNavigationState extends State<AppNavigation>
                                 ),
                               ),
                               if (index == 1 && widget.updatesBadge > 0)
-                                Positioned(right: -6, top: -4,
+                                PositionedDirectional(end: -6, top: -4,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                     decoration: BoxDecoration(
@@ -210,7 +229,7 @@ class _AppNavigationState extends State<AppNavigation>
                                   ),
                                 ),
                               if (index == 2 && widget.browseBadge > 0)
-                                Positioned(right: -6, top: -4,
+                                PositionedDirectional(end: -6, top: -4,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                     decoration: BoxDecoration(

@@ -1,28 +1,32 @@
-Foxlations v1.0.0 — the first official release
+Foxlations v1.1.0
 
-Foxlations now runs on-device extensions for manga, manhwa, manhua, light novels,
-and anime — no computer or server needed. Add a source, and read or watch right on
-your device.
+A new Discover feed, one-tap source setup, faster source lists, more languages,
+and a batch of fixes.
 
 Highlights
-- Anime streaming — add an anime source and watch episodes in the built-in player;
-  the app handles the extension on-device and finds the video for you.
-- On-device extensions — a wide range of existing source formats work directly,
-  no external tooling required.
-- Continue where you left off — reopen an episode to pick up right where you
-  stopped watching, and light novels return you to your exact scroll position.
-- Gets past Cloudflare — protected sources clear the check with a quick in-app step,
-  and it's remembered.
-- Volume-button reading — tap to turn a page or scroll a screen, hold to scroll
-  fluidly at a speed you set (Android; experimental on iOS).
+- Discover new series — a new Discover tab suggests manga, anime, and light novels
+  one at a time. Tap Next for another, add it to your library when one of your
+  sources carries it, or save it for later. Filter by genre, and link a tracker
+  for picks based on what you have already read.
+- One-tap source install — on a source site, its "add to app" button now opens
+  Foxlations and adds the repo for you; just confirm.
+- Faster, lighter source lists — large source repos load from a compact index
+  that's a fraction of the size, so adding and refreshing them is quicker on
+  mobile data.
+- Filter Browse by language and repository — the filter is now a pop-up with
+  Language and Repository tabs; pick any combination to narrow a long list.
+- Nine languages — the whole app is translated into English, Spanish, Portuguese,
+  French, German, Italian, Japanese, Chinese, and Arabic (Settings > Language),
+  and more can now be added by the community.
+- Right-to-left layouts — Arabic and other right-to-left languages mirror the
+  interface correctly.
 - iOS, Android, and Windows.
 
 Also in this release
-- Player: fixed seek-bar clipping in landscape, resume that actually sticks,
-  scrollable subtitle/audio/quality menus, and separate-audio-track playback.
-- Reading: light-novel chapters and ID-keyed pages load; installed sources survive
-  app re-signs; large source repos show correct language and content rating.
-- Stability: no more crash when reopening from the background (iOS); every error
-  surfaces in More > Debug logs; nothing hides under the Android navigation bar.
+- Manga, anime, and novels each keep their own progress, so Continue lands in the
+  right place for every type.
+- Fixes: manga reliably continues from your saved page; moving titles in and out
+  of the vault works again and keeps your progress; and you can no longer install
+  the same source twice.
 
 Full change list is in the app: More > About > What's New.

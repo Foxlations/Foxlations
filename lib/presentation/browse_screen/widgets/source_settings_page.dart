@@ -8,6 +8,7 @@ import '../../../core/models/source_settings.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../eval/lib.dart';
 import '../../../eval/model/source_preference.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 /// Per-source settings, driven entirely by what the extension itself declares
@@ -118,6 +119,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
   }
 
   Future<void> _confirmRemove() async {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final ok = await showDialog<bool>(
       context: context,
@@ -125,22 +127,21 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
         backgroundColor: cs.surfaceContainerHighest,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-        title: Text('Remove ${widget.source.name}?',
+        title: Text(t.browseRemoveSourceConfirm(widget.source.name),
             style: GoogleFonts.manrope(
                 fontSize: 16, fontWeight: FontWeight.w700)),
         content: Text(
-          'The source will be uninstalled. Your library entries from it are '
-          'kept, but you won\'t be able to open them until you reinstall it.',
+          t.browseRemoveSourceDesc,
           style: GoogleFonts.manrope(fontSize: 13.5, color: cs.outline),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(t.browseCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Remove',
+            child: Text(t.browseRemove,
                 style: GoogleFonts.manrope(color: AppTheme.error)),
           ),
         ],
@@ -153,6 +154,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final lang = widget.source.lang.toUpperCase();
     return Scaffold(
@@ -170,7 +172,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           // to be reachable from in here.
           TextButton(
             onPressed: _confirmRemove,
-            child: Text('Remove',
+            child: Text(t.browseRemove,
                 style: GoogleFonts.manrope(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
@@ -187,16 +189,15 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
                 _sectionLabel(cs, 'FOXLATIONS'),
                 _appSettings(cs),
                 const SizedBox(height: 8),
-                _sectionLabel(cs, 'PROVIDED BY THIS SOURCE'),
+                _sectionLabel(cs, t.browseProvidedByThisSource),
                 if (_error != null)
                   _message(cs, Icons.error_outline_rounded,
-                      'Could not load the source\'s options', _error!)
+                      t.browseCouldNotLoadOptions, _error!)
                 else if (_prefs.isEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                     child: Text(
-                      'This source doesn\'t define any options of its own. '
-                      'The settings above still apply to it.',
+                      t.browseNoSourceOptions,
                       style:
                           GoogleFonts.manrope(fontSize: 13, color: cs.outline),
                     ),
@@ -221,12 +222,13 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
   /// Options Foxlations provides for every source, whatever its author
   /// implemented.
   Widget _appSettings(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     final o = _options;
     return Column(
       children: [
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          title: Text('Base URL',
+          title: Text(t.browseBaseUrl,
               style: GoogleFonts.manrope(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -234,8 +236,8 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           subtitle: Text(
             o.baseUrlOverride.isEmpty
                 ? widget.source.baseUrl.isEmpty
-                    ? 'Using the source default'
-                    : '${widget.source.baseUrl}  (default)'
+                    ? t.browseUsingSourceDefault
+                    : t.browseBaseUrlDefault(widget.source.baseUrl)
                 : o.baseUrlOverride,
             style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline),
           ),
@@ -243,7 +245,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
               ? null
               : IconButton(
                   icon: Icon(Icons.undo_rounded, size: 18, color: cs.outline),
-                  tooltip: 'Reset to default',
+                  tooltip: t.browseResetToDefault,
                   onPressed: () => _saveOptions(
                       o.copyWith(baseUrlOverride: '')),
                 ),
@@ -254,12 +256,12 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           onChanged: (v) => _saveOptions(o.copyWith(pinned: v)),
           activeThumbColor: cs.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          title: Text('Pin to top',
+          title: Text(t.browsePinToTop,
               style: GoogleFonts.manrope(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
-          subtitle: Text('Show this source first in the sources list',
+          subtitle: Text(t.browsePinToTopDesc,
               style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
         ),
         SwitchListTile(
@@ -268,12 +270,12 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
               _saveOptions(o.copyWith(excludeFromGlobalSearch: v)),
           activeThumbColor: cs.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          title: Text('Skip in global search',
+          title: Text(t.browseSkipGlobalSearch,
               style: GoogleFonts.manrope(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
-          subtitle: Text('Leave this source out when searching everything',
+          subtitle: Text(t.browseSkipGlobalSearchDesc,
               style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
         ),
         SwitchListTile(
@@ -281,12 +283,12 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           onChanged: (v) => _saveOptions(o.copyWith(excludeFromUpdates: v)),
           activeThumbColor: cs.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          title: Text('Skip in library updates',
+          title: Text(t.browseSkipLibraryUpdates,
               style: GoogleFonts.manrope(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
-          subtitle: Text('Don\'t check this source for new chapters',
+          subtitle: Text(t.browseSkipLibraryUpdatesDesc,
               style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
         ),
         SwitchListTile(
@@ -294,14 +296,13 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           onChanged: (v) => _saveOptions(o.copyWith(requestDesktopSite: v)),
           activeThumbColor: cs.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-          title: Text('Request desktop site',
+          title: Text(t.browseRequestDesktopSite,
               style: GoogleFonts.manrope(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
           subtitle: Text(
-              'Try this if the source finds nothing, or shows no chapters — '
-              'some sites send phones a cut-down page',
+              t.browseRequestDesktopSiteDesc,
               style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
         ),
       ],
@@ -309,6 +310,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
   }
 
   Future<void> _editBaseUrl() async {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final controller = TextEditingController(
         text: _options.baseUrlOverride.isEmpty
@@ -320,7 +322,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
         backgroundColor: cs.surfaceContainerHighest,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-        title: Text('Base URL',
+        title: Text(t.browseBaseUrl,
             style:
                 GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
         content: TextField(
@@ -333,10 +335,10 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+              child: Text(t.browseCancel)),
           TextButton(
               onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Save')),
+              child: Text(t.browseSave)),
         ],
       ),
     );
@@ -379,6 +381,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
   }
 
   Widget _tile(ColorScheme cs, SourcePreference p) {
+    final t = AppLocalizations.of(context);
     final title = Text(p.title,
         style: GoogleFonts.manrope(
             fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface));
@@ -459,7 +462,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           tilePadding: const EdgeInsets.symmetric(horizontal: 20),
           title: title,
           subtitle: Text(
-            selected.isEmpty ? (p.summary ?? 'None') : '${selected.length} selected',
+            selected.isEmpty ? (p.summary ?? t.browseNone) : t.browseSelectedCount(selected.length),
             style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline),
           ),
           children: [
@@ -467,7 +470,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
               CheckboxListTile(
                 value: selected.contains('${e.value}'),
                 activeColor: cs.primary,
-                contentPadding: const EdgeInsets.only(left: 32, right: 20),
+                contentPadding: const EdgeInsetsDirectional.only(start: 32, end: 20),
                 title: Text(e.title,
                     style: GoogleFonts.manrope(
                         fontSize: 14, color: cs.onSurface)),
@@ -487,7 +490,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           title: title,
           subtitle: Text(
-            current.isEmpty ? (p.summary ?? 'Not set') : current,
+            current.isEmpty ? (p.summary ?? t.browseNotSet) : current,
             style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline),
           ),
           onTap: () async {
@@ -511,11 +514,11 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                    child: Text(t.browseCancel),
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(context, controller.text),
-                    child: const Text('Save'),
+                    child: Text(t.browseSave),
                   ),
                 ],
               ),

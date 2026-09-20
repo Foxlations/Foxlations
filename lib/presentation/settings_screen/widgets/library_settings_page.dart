@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/providers/library_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import 'source_migrate_screen.dart';
 
@@ -48,6 +49,7 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -60,7 +62,7 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Library',
+          t.setdLibraryTitle,
           style: GoogleFonts.manrope(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -72,12 +74,12 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
         padding: EdgeInsets.only(
             top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
         children: [
-          _SectionHeader(title: 'Categories'),
+          _SectionHeader(title: t.setdLibrarySectionCategories),
           _NavTile(
             icon: Icons.category_rounded,
             iconColor: cs.primary,
-            title: 'Edit Categories',
-            subtitle: 'Add, remove, and reorder categories',
+            title: t.setdLibraryEditCategories,
+            subtitle: t.setdLibraryEditCategoriesDesc,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const _EditCategoriesPage()),
@@ -86,17 +88,17 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
           _SwitchTile(
             icon: Icons.folder_off_rounded,
             iconColor: cs.primary,
-            title: 'Hide Empty Categories',
-            subtitle: 'Only show categories with manga',
+            title: t.setdLibraryHideEmpty,
+            subtitle: t.setdLibraryHideEmptyDesc,
             value: _hideEmptyCategories,
             onChanged: (v) { setState(() => _hideEmptyCategories = v); _save('lib_hide_empty_cats', v); },
           ),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Global Update'),
+          _SectionHeader(title: t.setdLibrarySectionGlobalUpdate),
           _ChoiceTile(
             icon: Icons.schedule_rounded,
             iconColor: AppTheme.success,
-            title: 'Update Frequency',
+            title: t.setdLibraryUpdateFrequency,
             value: _updateFrequency,
             options: const [
               'Manual',
@@ -110,44 +112,44 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
           _SwitchTile(
             icon: Icons.wifi_rounded,
             iconColor: AppTheme.success,
-            title: 'Wi-Fi Only',
-            subtitle: 'Only update on Wi-Fi connections',
+            title: t.setdLibraryWifiOnly,
+            subtitle: t.setdLibraryWifiOnlyDesc,
             value: _wifiOnly,
             onChanged: (v) { setState(() => _wifiOnly = v); _save('lib_update_wifi_only', v); },
           ),
           _SwitchTile(
             icon: Icons.battery_charging_full_rounded,
             iconColor: AppTheme.success,
-            title: 'Only While Charging',
-            subtitle: 'Only update when device is charging',
+            title: t.setdLibraryChargingOnly,
+            subtitle: t.setdLibraryChargingOnlyDesc,
             value: _chargingOnly,
             onChanged: (v) { setState(() => _chargingOnly = v); _save('lib_update_charging_only', v); },
           ),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Update Restrictions'),
+          _SectionHeader(title: t.setdLibrarySectionRestrictions),
           _SwitchTile(
             icon: Icons.visibility_off_rounded,
             iconColor: AppTheme.warning,
-            title: 'Skip Not Started',
-            subtitle: 'Skip manga with no reading progress',
+            title: t.setdLibrarySkipNotStarted,
+            subtitle: t.setdLibrarySkipNotStartedDesc,
             value: _skipNotStarted,
             onChanged: (v) { setState(() => _skipNotStarted = v); _save('lib_skip_not_started', v); },
           ),
           _SwitchTile(
             icon: Icons.notifications_active_rounded,
             iconColor: AppTheme.warning,
-            title: 'Show New Chapter Count',
-            subtitle: 'Show badge on library manga cards',
+            title: t.setdLibraryShowUpdateCount,
+            subtitle: t.setdLibraryShowUpdateCountDesc,
             value: _showUpdateCount,
             onChanged: (v) { setState(() => _showUpdateCount = v); _save('lib_show_update_count', v); },
           ),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Data'),
+          _SectionHeader(title: t.setdLibrarySectionData),
           _NavTile(
             icon: Icons.swap_horiz_rounded,
             iconColor: cs.primary,
-            title: 'Migrate a Source',
-            subtitle: 'Move every entry from one source to another',
+            title: t.setdLibraryMigrateSource,
+            subtitle: t.setdLibraryMigrateSourceDesc,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const SourceMigrateScreen()),
@@ -231,6 +233,7 @@ class _EditCategoriesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -242,7 +245,7 @@ class _EditCategoriesPage extends StatelessWidget {
               color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Edit Categories',
+        title: Text(t.setdLibraryEditCategories,
             style: GoogleFonts.manrope(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -266,13 +269,13 @@ class _EditCategoriesPage extends StatelessWidget {
                   Icon(Icons.category_outlined,
                       size: 64, color: cs.outline.withAlpha(128)),
                   const SizedBox(height: 16),
-                  Text('No categories',
+                  Text(t.setdLibraryNoCategories,
                       style: GoogleFonts.manrope(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: cs.onSurface)),
                   const SizedBox(height: 8),
-                  Text('Tap + to add a category',
+                  Text(t.setdTapToAddCategory,
                       style:
                           GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
                 ],
@@ -321,6 +324,7 @@ class _EditCategoriesPage extends StatelessWidget {
     final library = context.read<LibraryProvider>();
     final controller = TextEditingController();
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     showDialog(
       context: context,
@@ -328,7 +332,7 @@ class _EditCategoriesPage extends StatelessWidget {
         backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-        title: Text('New Category',
+        title: Text(t.setdNewCategory,
             style: GoogleFonts.manrope(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -338,7 +342,7 @@ class _EditCategoriesPage extends StatelessWidget {
           autofocus: true,
           style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
           decoration: InputDecoration(
-            hintText: 'Category name',
+            hintText: t.setdCategoryNameHint,
             hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
             filled: true,
             fillColor: cs.surfaceContainerHighest,
@@ -357,7 +361,7 @@ class _EditCategoriesPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
+            child: Text(t.setdActionCancel,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w600, color: cs.outline)),
           ),
@@ -369,7 +373,7 @@ class _EditCategoriesPage extends StatelessWidget {
                 Navigator.pop(ctx);
               }
             },
-            child: Text('Add',
+            child: Text(t.setdActionAdd,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700, color: cs.primary)),
           ),
@@ -382,6 +386,7 @@ class _EditCategoriesPage extends StatelessWidget {
       BuildContext context, LibraryProvider library, String oldName) {
     final controller = TextEditingController(text: oldName);
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     showDialog(
       context: context,
@@ -389,7 +394,7 @@ class _EditCategoriesPage extends StatelessWidget {
         backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-        title: Text('Rename Category',
+        title: Text(t.setdRenameCategory,
             style: GoogleFonts.manrope(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -399,7 +404,7 @@ class _EditCategoriesPage extends StatelessWidget {
           autofocus: true,
           style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
           decoration: InputDecoration(
-            hintText: 'Category name',
+            hintText: t.setdCategoryNameHint,
             hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
             filled: true,
             fillColor: cs.surfaceContainerHighest,
@@ -418,7 +423,7 @@ class _EditCategoriesPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
+            child: Text(t.setdActionCancel,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w600, color: cs.outline)),
           ),
@@ -430,7 +435,7 @@ class _EditCategoriesPage extends StatelessWidget {
                 Navigator.pop(ctx);
               }
             },
-            child: Text('Save',
+            child: Text(t.setdActionSave,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700, color: cs.primary)),
           ),
@@ -442,6 +447,7 @@ class _EditCategoriesPage extends StatelessWidget {
   void _showDeleteConfirm(
       BuildContext context, LibraryProvider library, String name) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     showDialog(
       context: context,
@@ -449,18 +455,18 @@ class _EditCategoriesPage extends StatelessWidget {
         backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-        title: Text('Delete Category',
+        title: Text(t.setdDeleteCategory,
             style: GoogleFonts.manrope(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface)),
         content: Text(
-            'Are you sure you want to delete "$name"? Manga in this category will not be removed from your library.',
+            t.setdLibraryDeleteCategoryConfirm(name),
             style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
+            child: Text(t.setdActionCancel,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w600, color: cs.outline)),
           ),
@@ -469,7 +475,7 @@ class _EditCategoriesPage extends StatelessWidget {
               library.removeCategory(name);
               Navigator.pop(ctx);
             },
-            child: Text('Delete',
+            child: Text(t.setdActionDelete,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700, color: AppTheme.error)),
           ),

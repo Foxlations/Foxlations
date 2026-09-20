@@ -107,6 +107,20 @@ class LibraryProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Persist novel reading position (scroll offset + reflow-safe fraction).
+  Future<void> updateNovelProgress(
+    String sourceId,
+    String mangaUrl,
+    String chapterUrl,
+    int offset,
+    double fraction,
+  ) async {
+    await _libraryService.updateNovelProgress(
+        sourceId, mangaUrl, chapterUrl, offset, fraction);
+    _manga = _libraryService.getAllManga();
+    notifyListeners();
+  }
+
   /// Persist anime playback position (seconds). Called on a ~5s throttle during
   /// playback (notify off, to avoid rebuilding the library mid-watch) and once on exit
   /// (notify on, so the detail screen's Resume button updates).
@@ -115,10 +129,12 @@ class LibraryProvider extends ChangeNotifier {
     String mangaUrl,
     String episodeUrl,
     int positionSeconds, {
+    int totalSeconds = 0,
     bool notify = false,
   }) async {
     await _libraryService.updateEpisodeProgress(
-        sourceId, mangaUrl, episodeUrl, positionSeconds);
+        sourceId, mangaUrl, episodeUrl, positionSeconds,
+        totalSeconds: totalSeconds);
     if (notify) {
       _manga = _libraryService.getAllManga();
       notifyListeners();

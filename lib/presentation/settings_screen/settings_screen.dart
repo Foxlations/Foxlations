@@ -9,6 +9,7 @@ import './widgets/player_settings_page.dart';
 import './widgets/downloads_settings_page.dart';
 import './widgets/browse_settings_page.dart';
 import './widgets/appearance_settings_page.dart';
+import './widgets/language_settings_page.dart';
 import './widgets/notifications_settings_page.dart';
 import './widgets/security_settings_page.dart';
 import './widgets/advanced_settings_page.dart';
@@ -16,6 +17,7 @@ import './widgets/tracking_settings_page.dart';
 import './widgets/ai_settings_page.dart';
 import './widgets/backup_settings_page.dart';
 import '../repoforge_hub_screen/repoforge_hub_screen.dart';
+import '../../l10n/app_localizations.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -24,6 +26,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -39,7 +42,7 @@ class SettingsScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Settings',
+          t.settingsTitle,
           style: GoogleFonts.manrope(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -56,17 +59,28 @@ class SettingsScreen extends StatelessWidget {
           bottom: 12 + MediaQuery.of(context).viewPadding.bottom,
         ),
         children: [
-          _SettingsSectionHeader(title: 'App'),
+          _SettingsSectionHeader(title: t.settingsSectionApp),
           _SettingsNavTile(
             icon: Icons.palette_rounded,
             iconColor: const Color(0xFFFF7A5C),
             iconBg: isDark
                 ? const Color(0xFF3D1A10)
                 : const Color(0xFFFFEDE8),
-            title: 'Appearance',
-            subtitle: 'Theme, dark mode, display',
+            title: t.settingsAppearanceTitle,
+            subtitle: t.settingsAppearanceSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const AppearanceSettingsPage())),
+          ),
+          _SettingsNavTile(
+            icon: Icons.language_rounded,
+            iconColor: const Color(0xFF3B82F6),
+            iconBg: isDark
+                ? const Color(0xFF0E1E3D)
+                : const Color(0xFFE8F0FF),
+            title: t.settingsLanguageTitle,
+            subtitle: t.settingsLanguageEntrySubtitle,
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const LanguageSettingsPage())),
           ),
           _SettingsNavTile(
             icon: Icons.notifications_rounded,
@@ -74,8 +88,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF2E0A0A)
                 : const Color(0xFFFFEEEE),
-            title: 'Notifications',
-            subtitle: 'Push alerts, frequency, reminders',
+            title: t.settingsNotificationsTitle,
+            subtitle: t.settingsNotificationsSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const NotificationsSettingsPage())),
           ),
@@ -85,19 +99,19 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF052028)
                 : const Color(0xFFE0F9FF),
-            title: 'Storage',
-            subtitle: 'Downloads, folder locations, sync',
+            title: t.settingsStorageTitle,
+            subtitle: t.settingsStorageSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const DownloadsSettingsPage())),
           ),
           const SizedBox(height: 8),
-          _SettingsSectionHeader(title: 'Manga'),
+          _SettingsSectionHeader(title: t.settingsSectionManga),
           _SettingsNavTile(
             icon: Icons.library_books_rounded,
             iconColor: cs.primary,
             iconBg: cs.primary.withAlpha(25),
-            title: 'Library',
-            subtitle: 'Categories, global update, display',
+            title: t.settingsLibraryTitle,
+            subtitle: t.settingsLibrarySubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const LibrarySettingsPage())),
           ),
@@ -107,8 +121,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF0D2E1E)
                 : const Color(0xFFE6F7EF),
-            title: 'Reader',
-            subtitle: 'Reading mode, display, navigation',
+            title: t.settingsReaderTitle,
+            subtitle: t.settingsReaderSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const ReaderSettingsPage())),
           ),
@@ -118,8 +132,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF3D1A10)
                 : const Color(0xFFFFEDE8),
-            title: 'Player',
-            subtitle: 'Seek, gestures, speed, autoplay',
+            title: t.settingsPlayerTitle,
+            subtitle: t.settingsPlayerSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const PlayerSettingsPage())),
           ),
@@ -129,8 +143,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF1A1640)
                 : const Color(0xFFEEEDFF),
-            title: 'Downloads',
-            subtitle: 'Automatic downloads, delete chapters',
+            title: t.settingsDownloadsTitle,
+            subtitle: t.settingsDownloadsSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const DownloadsSettingsPage())),
           ),
@@ -140,8 +154,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF0A1228)
                 : const Color(0xFFE8EDFF),
-            title: 'Tracking',
-            subtitle: 'MAL, AniList, Kitsu, and more',
+            title: t.settingsTrackingTitle,
+            subtitle: t.settingsTrackingSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const TrackingSettingsPage())),
           ),
@@ -151,8 +165,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF1A1530)
                 : const Color(0xFFF0EDFF),
-            title: 'AI & Translation',
-            subtitle: 'Provider, API keys, speech bubble detection',
+            title: t.settingsAiTitle,
+            subtitle: t.settingsAiSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const AiSettingsPage())),
           ),
@@ -162,8 +176,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF2E2005)
                 : const Color(0xFFFFF3D6),
-            title: 'Browse',
-            subtitle: 'Sources, extensions, global search',
+            title: t.settingsBrowseTitle,
+            subtitle: t.settingsBrowseSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const BrowseSettingsPage())),
           ),
@@ -173,21 +187,21 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF2E0A16)
                 : const Color(0xFFFFE4EC),
-            title: 'RepoForge',
-            subtitle: 'Build & manage sources from any URL',
+            title: t.settingsRepoForgeTitle,
+            subtitle: t.settingsRepoForgeSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const RepoForgeHubScreen())),
           ),
           const SizedBox(height: 8),
-          _SettingsSectionHeader(title: 'System'),
+          _SettingsSectionHeader(title: t.settingsSectionSystem),
           _SettingsNavTile(
             icon: Icons.backup_rounded,
             iconColor: const Color(0xFF16A085),
             iconBg: isDark
                 ? const Color(0xFF06231D)
                 : const Color(0xFFE2F5EF),
-            title: 'Backup & Restore',
-            subtitle: 'Create/restore backups, Tachiyomi/Mihon, auto-backup',
+            title: t.settingsBackupTitle,
+            subtitle: t.settingsBackupSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const BackupSettingsPage())),
           ),
@@ -197,8 +211,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF10143A)
                 : const Color(0xFFEEEFFF),
-            title: 'Security & Privacy',
-            subtitle: 'App lock, biometrics, screen security',
+            title: t.settingsSecurityTitle,
+            subtitle: t.settingsSecuritySubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const SecuritySettingsPage())),
           ),
@@ -208,8 +222,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? cs.surfaceContainerHighest
                 : const Color(0xFFF0F0F8),
-            title: 'Advanced',
-            subtitle: 'Network, extensions, logging, data',
+            title: t.settingsAdvancedTitle,
+            subtitle: t.settingsAdvancedSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const AdvancedSettingsPage())),
           ),
@@ -219,8 +233,8 @@ class SettingsScreen extends StatelessWidget {
             iconBg: isDark
                 ? const Color(0xFF0D2E1E)
                 : const Color(0xFFE6F7EF),
-            title: 'About',
-            subtitle: 'Version, licenses, links',
+            title: t.settingsAboutTitle,
+            subtitle: t.settingsAboutSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const AboutSettingsPage())),
           ),

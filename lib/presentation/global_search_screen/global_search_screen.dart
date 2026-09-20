@@ -9,6 +9,7 @@ import '../../core/providers/source_provider.dart';
 import '../../core/providers/vault_provider.dart';
 import '../../eval/lib.dart';
 import '../../eval/model/m_manga.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/utils/search_filter.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
@@ -115,6 +116,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final sourceProvider = context.watch<SourceProvider>();
     final sourceCount = sourceProvider.installedSources.length;
@@ -140,7 +142,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
             style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface),
             decoration: InputDecoration(
               isDense: true,
-              hintText: 'Search across all sources...',
+              hintText: t.browseSearchAllSourcesHint,
               hintStyle: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
               prefixIcon: Icon(Icons.travel_explore_rounded, size: 18, color: cs.primary),
               prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -162,7 +164,8 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   }
 
   Widget _buildBody(BuildContext context, ColorScheme cs, int sourceCount) {
-    if (sourceCount == 0) return _buildEmptyState(cs, 'No sources installed', 'Install extensions from Browse tab.');
+    final t = AppLocalizations.of(context);
+    if (sourceCount == 0) return _buildEmptyState(cs, t.browseNoSourcesInstalled, t.browseNoSourcesInstalledDesc);
 
     // No search yet
     if (_results.isEmpty && !_searching) {
@@ -173,10 +176,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
             decoration: BoxDecoration(color: cs.primary.withAlpha(20), borderRadius: BorderRadius.circular(20)),
             child: Icon(Icons.travel_explore_rounded, size: 36, color: cs.primary)),
           const SizedBox(height: 20),
-          Text('Search All Sources', style: GoogleFonts.manrope(
+          Text(t.browseSearchAllSources, style: GoogleFonts.manrope(
               fontSize: 17, fontWeight: FontWeight.w800, color: cs.onSurface)),
           const SizedBox(height: 8),
-          Text('Search $sourceCount source${sourceCount == 1 ? '' : 's'} at once.',
+          Text(t.browseSearchSourcesAtOnce(sourceCount),
               textAlign: TextAlign.center,
               style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
         ])));
@@ -196,7 +199,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
               SizedBox(width: 14, height: 14,
                 child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary)),
               const SizedBox(width: 8),
-              Text('Searching $loadingCount source${loadingCount == 1 ? '' : 's'}...',
+              Text(t.browseSearchingSources(loadingCount),
                   style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
             ])),
         // Results grouped by source
@@ -220,7 +223,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                     'searchQuery': _searchController.text.trim(),
                   }),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text('See all', style: GoogleFonts.manrope(
+                    Text(t.browseSeeAll, style: GoogleFonts.manrope(
                         fontSize: 11, fontWeight: FontWeight.w600, color: cs.primary)),
                     Icon(Icons.chevron_right_rounded, size: 16, color: cs.primary),
                   ]),
@@ -251,7 +254,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
         // No results after all sources done
         if (!_searching && _results.isEmpty)
           Padding(padding: const EdgeInsets.all(40),
-            child: Center(child: Text('No results found',
+            child: Center(child: Text(t.browseNoResultsFound,
                 style: GoogleFonts.manrope(fontSize: 14, color: cs.outline)))),
       ],
     );

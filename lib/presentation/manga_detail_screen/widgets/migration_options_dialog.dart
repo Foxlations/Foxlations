@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// What the user chose to do with a migration target.
 enum MigrationAction {
@@ -71,6 +72,7 @@ Future<MigrationChoice?> showMigrationOptions(
     builder: (ctx) {
       var opts = const MigrationOptions();
       final cs = Theme.of(ctx).colorScheme;
+      final t = AppLocalizations.of(ctx);
 
       return StatefulBuilder(
         builder: (ctx, setState) {
@@ -101,7 +103,7 @@ Future<MigrationChoice?> showMigrationOptions(
             backgroundColor: cs.surface,
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-            title: Text('Select data to include',
+            title: Text(t.detailMigrateSelectData,
                 style: GoogleFonts.manrope(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
@@ -112,24 +114,24 @@ Future<MigrationChoice?> showMigrationOptions(
               children: [
                 Text(
                     entryCount > 1
-                        ? '$entryCount entries → $targetSourceName'
-                        : '$targetTitle → $targetSourceName',
+                        ? t.detailMigrateEntriesToSource(entryCount, targetSourceName)
+                        : t.detailMigrateTitleToSource(targetTitle, targetSourceName),
                     style: GoogleFonts.manrope(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: cs.onSurface)),
                 const SizedBox(height: 6),
-                Text('Downloaded chapters do not transfer.',
+                Text(t.detailMigrateDownloadsNoTransfer,
                     style: GoogleFonts.manrope(
                         fontSize: 12.5, color: cs.outline, height: 1.4)),
                 const SizedBox(height: 12),
-                check('Chapters', opts.chapters,
+                check(t.detailMigrateChapters, opts.chapters,
                     (v) => opts = opts.copyWith(chapters: v)),
-                check('Categories', opts.categories,
+                check(t.detailMigrateCategories, opts.categories,
                     (v) => opts = opts.copyWith(categories: v)),
-                check('Tracking', opts.tracking,
+                check(t.detailMigrateTracking, opts.tracking,
                     (v) => opts = opts.copyWith(tracking: v)),
-                check('Remove downloads if migrate', opts.removeDownloads,
+                check(t.detailMigrateRemoveDownloads, opts.removeDownloads,
                     (v) => opts = opts.copyWith(removeDownloads: v)),
               ],
             ),
@@ -140,14 +142,14 @@ Future<MigrationChoice?> showMigrationOptions(
                 TextButton(
                   onPressed: () => Navigator.pop(
                       ctx, MigrationChoice(MigrationAction.showEntry, opts)),
-                  child: Text('Show entry',
+                  child: Text(t.detailMigrateShowEntry,
                       style: GoogleFonts.manrope(
                           fontWeight: FontWeight.w600, color: cs.primary)),
                 ),
               TextButton(
                 onPressed: () => Navigator.pop(
                     ctx, MigrationChoice(MigrationAction.copy, opts)),
-                child: Text('Copy',
+                child: Text(t.detailMigrateCopy,
                     style: GoogleFonts.manrope(
                         fontWeight: FontWeight.w600, color: cs.primary)),
               ),
@@ -155,7 +157,7 @@ Future<MigrationChoice?> showMigrationOptions(
                 onPressed: () => Navigator.pop(
                     ctx, MigrationChoice(MigrationAction.migrate, opts)),
                 style: FilledButton.styleFrom(backgroundColor: cs.primary),
-                child: Text('Migrate',
+                child: Text(t.detailMigrate,
                     style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
               ),
             ],

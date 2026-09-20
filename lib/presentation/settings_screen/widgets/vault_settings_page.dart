@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/vault_provider.dart';
 import '../../../core/providers/source_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import 'vault_contents_page.dart';
 
@@ -12,6 +13,7 @@ class VaultSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -28,7 +30,7 @@ class VaultSettingsPage extends StatelessWidget {
           children: [
             Icon(Icons.shield_rounded, size: 20, color: cs.primary),
             const SizedBox(width: 8),
-            Text('Vault',
+            Text(t.setdVaultTitle,
                 style: GoogleFonts.manrope(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -42,34 +44,34 @@ class VaultSettingsPage extends StatelessWidget {
             padding: EdgeInsets.only(
                 top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
             children: [
-              _SectionHeader(title: 'Access'),
+              _SectionHeader(title: t.setdVaultSectionAccess),
               _SwitchTile(
                 icon: Icons.shield_rounded,
                 iconColor: cs.primary,
-                title: 'Enable Vault',
+                title: t.setdVaultEnable,
                 subtitle:
-                    'Allow access to the hidden vault by tapping Library 8 times',
+                    t.setdVaultEnableDesc,
                 value: vault.vaultEnabled,
                 onChanged: (v) => vault.setVaultEnabled(v),
               ),
               const SizedBox(height: 8),
-              _SectionHeader(title: 'Security'),
+              _SectionHeader(title: t.setdVaultSectionSecurity),
               _NavTile(
                 icon: Icons.lock_rounded,
                 iconColor: AppTheme.warning,
-                title: vault.hasPassword ? 'Change Password' : 'Set Password',
+                title: vault.hasPassword ? t.setdVaultChangePassword : t.setdVaultSetPassword,
                 subtitle: vault.hasPassword
-                    ? 'Password is set — tap to change or remove'
-                    : 'Protect vault access with a password',
+                    ? t.setdVaultPasswordSetDesc
+                    : t.setdVaultPasswordUnsetDesc,
                 onTap: () => _showPasswordDialog(context, vault),
               ),
               const SizedBox(height: 8),
-              _SectionHeader(title: 'Vault Categories'),
+              _SectionHeader(title: t.setdVaultSectionCategories),
               _NavTile(
                 icon: Icons.category_rounded,
                 iconColor: AppTheme.secondary,
-                title: 'Edit Vault Categories',
-                subtitle: 'Add, remove, and reorder vault categories',
+                title: t.setdVaultEditCategories,
+                subtitle: t.setdVaultEditCategoriesDesc,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -77,18 +79,18 @@ class VaultSettingsPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              _SectionHeader(title: 'Contents'),
+              _SectionHeader(title: t.setdVaultSectionContents),
               _NavTile(
                 icon: Icons.swap_vert_rounded,
                 iconColor: cs.primary,
-                title: 'Manage Vault Contents',
-                subtitle: 'Move manga, anime or novels in and out of the vault',
+                title: t.setdVaultManageContents,
+                subtitle: t.setdVaultManageContentsDesc,
                 onTap: () {
                   // Moving requires the vault unlocked, so prompt first when a
                   // password is set and it isn't open yet.
                   if (vault.hasPassword && !vault.isUnlocked) {
                     AppTheme.showSnackBar(
-                        context, 'Unlock the vault first (tap in from the library)');
+                        context, t.setdVaultUnlockFirstSnack);
                     return;
                   }
                   Navigator.push(
@@ -98,19 +100,19 @@ class VaultSettingsPage extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 8),
-              _SectionHeader(title: 'Hidden Sources'),
+              _SectionHeader(title: t.setdVaultSectionHiddenSources),
               _NavTile(
                 icon: Icons.visibility_off_rounded,
                 iconColor: cs.primary,
-                title: 'Vault-Only Sources',
-                subtitle: '${vault.vaultSourceIds.length} source${vault.vaultSourceIds.length == 1 ? '' : 's'} hidden',
+                title: t.setdVaultOnlySources,
+                subtitle: t.setdVaultHiddenSourcesCount(vault.vaultSourceIds.length),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const _HiddenSourcesPage()),
                 ),
               ),
               const SizedBox(height: 8),
-              _SectionHeader(title: 'Info'),
+              _SectionHeader(title: t.setdVaultSectionInfo),
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -130,9 +132,7 @@ class VaultSettingsPage extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'The vault is a hidden library with its own categories and manga. '
-                          'Tap the Library tab 8 times rapidly to toggle vault mode. '
-                          'Vault manga are stored separately and never appear in your main library.',
+                          t.setdVaultInfoText,
                           style: GoogleFonts.manrope(
                               fontSize: 12,
                               color: cs.onSurface,
@@ -153,6 +153,7 @@ class VaultSettingsPage extends StatelessWidget {
 
   void _showPasswordDialog(BuildContext context, VaultProvider vault) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final currentController = TextEditingController();
     final newController = TextEditingController();
     final confirmController = TextEditingController();
@@ -165,7 +166,7 @@ class VaultSettingsPage extends StatelessWidget {
           return AlertDialog(
             backgroundColor: cs.surface,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Text(vault.hasPassword ? 'Change Password' : 'Set Password',
+            title: Text(vault.hasPassword ? t.setdVaultChangePassword : t.setdVaultSetPassword,
                 style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
             content: Column(mainAxisSize: MainAxisSize.min, children: [
               if (vault.hasPassword)
@@ -176,7 +177,7 @@ class VaultSettingsPage extends StatelessWidget {
                     obscureText: true,
                     style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
                     decoration: InputDecoration(
-                      hintText: 'Current password',
+                      hintText: t.setdVaultCurrentPasswordHint,
                       hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
                       filled: true, fillColor: cs.surfaceContainerHighest,
                       border: OutlineInputBorder(
@@ -189,7 +190,7 @@ class VaultSettingsPage extends StatelessWidget {
                 obscureText: true,
                 style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
                 decoration: InputDecoration(
-                  hintText: 'New password (leave empty to remove)',
+                  hintText: t.setdVaultNewPasswordHint,
                   hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
                   filled: true, fillColor: cs.surfaceContainerHighest,
                   border: OutlineInputBorder(
@@ -202,7 +203,7 @@ class VaultSettingsPage extends StatelessWidget {
                 obscureText: true,
                 style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
                 decoration: InputDecoration(
-                  hintText: 'Confirm new password',
+                  hintText: t.setdVaultConfirmPasswordHint,
                   hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
                   errorText: error,
                   filled: true, fillColor: cs.surfaceContainerHighest,
@@ -214,7 +215,7 @@ class VaultSettingsPage extends StatelessWidget {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('Cancel', style: GoogleFonts.manrope(
+                child: Text(t.setdActionCancel, style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w600, color: cs.outline))),
               FilledButton(
                 onPressed: () async {
@@ -222,18 +223,18 @@ class VaultSettingsPage extends StatelessWidget {
                   // boxes, so it's async and takes ~1s.
                   if (vault.hasPassword &&
                       !await vault.unlock(currentController.text)) {
-                    setDialogState(() => error = 'Current password is wrong');
+                    setDialogState(() => error = t.setdVaultCurrentPasswordWrong);
                     return;
                   }
                   final newPw = newController.text;
                   final confirmPw = confirmController.text;
                   if (newPw.isNotEmpty && newPw != confirmPw) {
-                    setDialogState(() => error = 'Passwords do not match');
+                    setDialogState(() => error = t.setdVaultPasswordsMismatch);
                     return;
                   }
                   setDialogState(() => error = newPw.isEmpty
-                      ? 'Removing encryption…'
-                      : 'Encrypting vault…');
+                      ? t.setdVaultRemovingEncryption
+                      : t.setdVaultEncrypting);
                   await vault.setPassword(newPw.isEmpty ? null : newPw);
                   if (!ctx.mounted) return;
                   Navigator.pop(ctx);
@@ -241,11 +242,11 @@ class VaultSettingsPage extends StatelessWidget {
                   AppTheme.showSnackBar(
                       context,
                       newPw.isEmpty
-                          ? 'Password removed — vault is no longer encrypted'
-                          : 'Password set — vault encrypted');
+                          ? t.setdVaultPasswordRemoved
+                          : t.setdVaultPasswordSet);
                 },
                 style: FilledButton.styleFrom(backgroundColor: cs.primary),
-                child: Text('Save', style: GoogleFonts.manrope(fontWeight: FontWeight.w700))),
+                child: Text(t.setdActionSave, style: GoogleFonts.manrope(fontWeight: FontWeight.w700))),
             ],
           );
         },
@@ -261,6 +262,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -272,7 +274,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
               color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Vault Categories',
+        title: Text(t.setdVaultSectionCategories,
             style: GoogleFonts.manrope(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -296,13 +298,13 @@ class _EditVaultCategoriesPage extends StatelessWidget {
                   Icon(Icons.category_outlined,
                       size: 64, color: cs.outline.withAlpha(128)),
                   const SizedBox(height: 16),
-                  Text('No vault categories',
+                  Text(t.setdVaultNoCategories,
                       style: GoogleFonts.manrope(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: cs.onSurface)),
                   const SizedBox(height: 8),
-                  Text('Tap + to add a category',
+                  Text(t.setdTapToAddCategory,
                       style:
                           GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
                 ],
@@ -349,6 +351,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
     final vault = context.read<VaultProvider>();
     final controller = TextEditingController();
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     showDialog(
       context: context,
@@ -356,7 +359,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
         backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-        title: Text('New Category',
+        title: Text(t.setdNewCategory,
             style: GoogleFonts.manrope(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -366,7 +369,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
           autofocus: true,
           style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
           decoration: InputDecoration(
-            hintText: 'Category name',
+            hintText: t.setdCategoryNameHint,
             hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
             filled: true,
             fillColor: cs.surfaceContainerHighest,
@@ -385,7 +388,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
+            child: Text(t.setdActionCancel,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w600, color: cs.outline)),
           ),
@@ -397,7 +400,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
                 Navigator.pop(ctx);
               }
             },
-            child: Text('Add',
+            child: Text(t.setdActionAdd,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700, color: cs.primary)),
           ),
@@ -410,6 +413,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
       BuildContext context, VaultProvider vault, String oldName) {
     final controller = TextEditingController(text: oldName);
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     showDialog(
       context: context,
@@ -417,7 +421,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
         backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-        title: Text('Rename Category',
+        title: Text(t.setdRenameCategory,
             style: GoogleFonts.manrope(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -427,7 +431,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
           autofocus: true,
           style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
           decoration: InputDecoration(
-            hintText: 'Category name',
+            hintText: t.setdCategoryNameHint,
             hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
             filled: true,
             fillColor: cs.surfaceContainerHighest,
@@ -446,7 +450,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
+            child: Text(t.setdActionCancel,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w600, color: cs.outline)),
           ),
@@ -458,7 +462,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
                 Navigator.pop(ctx);
               }
             },
-            child: Text('Save',
+            child: Text(t.setdActionSave,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700, color: cs.primary)),
           ),
@@ -470,6 +474,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
   void _showDeleteConfirm(
       BuildContext context, VaultProvider vault, String name) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     showDialog(
       context: context,
@@ -477,18 +482,18 @@ class _EditVaultCategoriesPage extends StatelessWidget {
         backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-        title: Text('Delete Category',
+        title: Text(t.setdDeleteCategory,
             style: GoogleFonts.manrope(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface)),
         content: Text(
-            'Are you sure you want to delete "$name"? Manga in this category will not be removed from the vault.',
+            t.setdVaultDeleteCategoryConfirm(name),
             style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel',
+            child: Text(t.setdActionCancel,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w600, color: cs.outline)),
           ),
@@ -497,7 +502,7 @@ class _EditVaultCategoriesPage extends StatelessWidget {
               vault.removeCategory(name);
               Navigator.pop(ctx);
             },
-            child: Text('Delete',
+            child: Text(t.setdActionDelete,
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700, color: AppTheme.error)),
           ),
@@ -725,6 +730,7 @@ class _HiddenSourcesPageState extends State<_HiddenSourcesPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -735,7 +741,7 @@ class _HiddenSourcesPageState extends State<_HiddenSourcesPage> {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Vault-Only Sources',
+        title: Text(t.setdVaultOnlySources,
             style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: Consumer2<SourceProvider, VaultProvider>(
@@ -746,7 +752,7 @@ class _HiddenSourcesPageState extends State<_HiddenSourcesPage> {
             installed = installed.where((s) => s.source.name.toLowerCase().contains(q)).toList();
           }
           if (installed.isEmpty && _query.isEmpty) {
-            return Center(child: Text('No installed sources',
+            return Center(child: Text(t.setdVaultNoInstalledSources,
                 style: GoogleFonts.manrope(fontSize: 14, color: cs.outline)));
           }
 
@@ -757,7 +763,7 @@ class _HiddenSourcesPageState extends State<_HiddenSourcesPage> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: Text(
-                  'Toggle sources to make them only visible in vault mode.',
+                  t.setdVaultHiddenSourcesToggleHint,
                   style: GoogleFonts.manrope(fontSize: 12, color: cs.outline, height: 1.5),
                 ),
               ),
@@ -766,7 +772,7 @@ class _HiddenSourcesPageState extends State<_HiddenSourcesPage> {
                 child: TextField(
                   style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
                   decoration: InputDecoration(
-                    hintText: 'Search sources...',
+                    hintText: t.setdVaultSearchSourcesHint,
                     hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
                     prefixIcon: Icon(Icons.search_rounded, size: 20, color: cs.outline),
                     isDense: true,

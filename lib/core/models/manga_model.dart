@@ -22,6 +22,33 @@ class LibraryManga extends HiveObject {
   /// (Hive returns null for an absent field, so old records still read).
   DateTime? lastChapterFetchAt;
 
+  // ── Content-type separation (added post-v1) ──────────────────────────────
+  // Each media type keeps its progress in its OWN field, so a stored number is
+  // never ambiguous (manga=page, anime=seconds, novel=offset+fraction). Entries
+  // saved before this split have these absent (null/0); the readers fall back to
+  // [lastReadPage] for those, which used to hold the per-type value. [lastReadPage]
+  // stays as manga's page index AND that legacy fallback.
+
+  /// 'manga' | 'anime' | 'novel'. The durable per-entry type, set when the entry
+  /// is added to the library. Null on pre-migration records — resolve from the
+  /// source's itemType when null (see [LibraryManga] callers / contentTypeOr).
+  String? contentType;
+
+  /// Anime: resume position, in whole seconds.
+  int lastWatchSeconds;
+
+  /// Anime: total episode duration, in seconds (for "% watched"). 0 = unknown.
+  int totalSeconds;
+
+  /// Novel: exact scroll/char offset for pixel-accurate restore when nothing
+  /// about the layout changed.
+  int novelProgressOffset;
+
+  /// Novel: 0.0–1.0 fraction through the chapter — reflow-safe resume that
+  /// survives font-size / reader-width changes (offset alone drifts when the
+  /// text reflows).
+  double novelProgressFraction;
+
   LibraryManga({
     required this.sourceId,
     required this.url,
@@ -39,9 +66,54 @@ class LibraryManga extends HiveObject {
     this.readChapters = 0,
     this.categories = const [],
     this.lastChapterFetchAt,
+    this.contentType,
+    this.lastWatchSeconds = 0,
+    this.totalSeconds = 0,
+    this.novelProgressOffset = 0,
+    this.novelProgressFraction = 0.0,
   }) : addedAt = addedAt ?? DateTime.now();
 
   String get uniqueKey => '${sourceId}_$url';
+
+  /// The stored [contentType], or [fallback] when this is a pre-migration record
+  /// that never stored one (resolve [fallback] from the source's itemType).
+  String contentTypeOr(String fallback) =>
+      (contentType == null || contentType!.isEmpty) ? fallback : contentType!;
+
+  /// Effective anime resume position (seconds): the typed field, falling back to
+  /// the legacy overloaded lastReadPage for entries saved before the split.
+  int get watchSecondsOr => lastWatchSeconds != 0 ? lastWatchSeconds : lastReadPage;
+
+  /// Effective novel scroll offset, same legacy fallback as [watchSecondsOr].
+  int get novelOffsetOr =>
+      novelProgressOffset != 0 ? novelProgressOffset : lastReadPage;
+
+  /// A detached copy (not bound to any Hive box). Needed to move an entry
+  /// between boxes: Hive forbids putting the same HiveObject instance into two
+  /// boxes ("cannot be stored in two different boxes").
+  LibraryManga clone() => LibraryManga(
+        sourceId: sourceId,
+        url: url,
+        title: title,
+        coverUrl: coverUrl,
+        author: author,
+        description: description,
+        genres: List<String>.from(genres),
+        status: status,
+        addedAt: addedAt,
+        lastReadAt: lastReadAt,
+        lastReadChapterUrl: lastReadChapterUrl,
+        lastReadPage: lastReadPage,
+        totalChapters: totalChapters,
+        readChapters: readChapters,
+        categories: List<String>.from(categories),
+        lastChapterFetchAt: lastChapterFetchAt,
+        contentType: contentType,
+        lastWatchSeconds: lastWatchSeconds,
+        totalSeconds: totalSeconds,
+        novelProgressOffset: novelProgressOffset,
+        novelProgressFraction: novelProgressFraction,
+      );
 }
 
 class LibraryMangaAdapter extends TypeAdapter<LibraryManga> {
@@ -73,13 +145,19 @@ class LibraryMangaAdapter extends TypeAdapter<LibraryManga> {
       categories: (fields[14] as List?)?.cast<String>() ?? [],
       // Field 15 was added later — absent on older records, hence null-safe.
       lastChapterFetchAt: fields[15] as DateTime?,
+      // Fields 16-20: content-type split (post-v1). Absent on older records.
+      contentType: fields[16] as String?,
+      lastWatchSeconds: fields[17] as int? ?? 0,
+      totalSeconds: fields[18] as int? ?? 0,
+      novelProgressOffset: fields[19] as int? ?? 0,
+      novelProgressFraction: (fields[20] as num?)?.toDouble() ?? 0.0,
     );
   }
 
   @override
   void write(BinaryWriter writer, LibraryManga obj) {
     writer
-      ..writeByte(16)
+      ..writeByte(21)
       ..writeByte(0)
       ..write(obj.sourceId)
       ..writeByte(1)
@@ -111,6 +189,16 @@ class LibraryMangaAdapter extends TypeAdapter<LibraryManga> {
       ..writeByte(14)
       ..write(obj.categories)
       ..writeByte(15)
-      ..write(obj.lastChapterFetchAt);
+      ..write(obj.lastChapterFetchAt)
+      ..writeByte(16)
+      ..write(obj.contentType)
+      ..writeByte(17)
+      ..write(obj.lastWatchSeconds)
+      ..writeByte(18)
+      ..write(obj.totalSeconds)
+      ..writeByte(19)
+      ..write(obj.novelProgressOffset)
+      ..writeByte(20)
+      ..write(obj.novelProgressFraction);
   }
 }

@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- We handle deep links ourselves via app_links; disable Flutter's built-in
+	     deep-linking so it does NOT also route the launch URL (mihon://…, etc.),
+	     which bypassed the shell and dropped the bottom nav bar. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -100,6 +105,24 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>foxlations</string>
+			</array>
+		</dict>
+		<!-- Source-repo "auto install" deep links. Aggregator sites' "add to app"
+		     buttons open the upstream apps' schemes (e.g. mihon://extension-store
+		     ?url=...); registering them lets Foxlations handle those links. iOS
+		     filters by scheme only, so DeepLinkService branches on the host
+		     (add-repo / extension-store) at runtime. -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.foxlations.mangaReader.autoinstall</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>mihon</string>
+				<string>tachiyomi</string>
+				<string>aniyomi</string>
+				<string>mangayomi</string>
 			</array>
 		</dict>
 	</array>

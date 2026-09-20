@@ -1,13 +1,15 @@
 name: manga_reader
 description: A manga reading app with extension-based sources.
 publish_to: 'none'
-version: 1.0.0+66
+version: 1.1.0+70
 
 environment:
   sdk: ^3.11.3
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
   cupertino_icons: ^1.0.8
 
@@ -63,9 +65,11 @@ dependencies:
   media_kit_libs_video: ^1.0.4
 
   # Utils
-  intl: ^0.19.0
+  intl: ^0.20.2
   path_provider: ^2.1.2
   package_info_plus: ^8.0.0
+  # Deep links: foxlations://add-repo?url=... (source-repo auto-install)
+  app_links: ^6.3.0
   scrollable_positioned_list: ^0.3.8
   file_picker: ^11.0.2
   archive: ^4.0.9
@@ -107,6 +111,7 @@ dependency_overrides:
   flutter_rust_bridge: 2.11.1
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - assets/

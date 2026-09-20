@@ -10,6 +10,7 @@ import '../../../core/providers/tracking_provider.dart';
 import '../../../core/utils/search_filter.dart';
 import '../../../eval/lib.dart';
 import '../../../eval/model/m_manga.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 /// Moves *every* library entry from one source to another in one pass — the
@@ -60,6 +61,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
 
   // ── source enumeration ──────────────────────────────────────
   List<_SourceGroup> _fromGroups() {
+    final t = AppLocalizations.of(context);
     final lib = context.read<LibraryProvider>();
     final sources = context.read<SourceProvider>().installedSources;
     final byId = {for (final s in sources) s.source.id: s};
@@ -72,7 +74,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
       final installed = inst != null;
       final label = installed
           ? inst.source.name
-          : 'Imported source · ${_shortId(e.key)}';
+          : t.repoImportedSource(_shortId(e.key));
       return _SourceGroup(e.key, label, e.value, installed);
     }).toList();
     // Installed first, then by count desc.
@@ -106,6 +108,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
 
   // ── run ─────────────────────────────────────────────────────
   Future<void> _start() async {
+    final t = AppLocalizations.of(context);
     final fromId = _fromId, toId = _toId;
     if (fromId == null || toId == null) return;
     final to = _installed(toId);
@@ -120,7 +123,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
     // optional title search) and cache the fetched detail for the commit.
     setState(() {
       _busy = true;
-      _busyLabel = 'Checking matches';
+      _busyLabel = t.repoCheckingMatches;
       _progress = 0;
       _progressTotal = entries.length;
     });
@@ -143,22 +146,21 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Migrate this source?'),
+        title: Text(t.repoMigrateThisSource),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _summaryRow(ctx, '$urlN matched by URL', Icons.link_rounded),
+            _summaryRow(ctx, t.repoMatchedByUrl(urlN), Icons.link_rounded),
             if (titleN > 0)
-              _summaryRow(ctx, '$titleN matched by title', Icons.title_rounded),
+              _summaryRow(ctx, t.repoMatchedByTitle(titleN), Icons.title_rounded),
             _summaryRow(
                 ctx,
-                '$noneN not found — left in place',
+                t.repoNotFoundLeftInPlace(noneN),
                 Icons.remove_circle_outline_rounded),
             const SizedBox(height: 10),
             Text(
-              'Read progress, categories and tracking carry over. The originals '
-              'are removed only for entries that move.',
+              t.repoMigrateCarryOver,
               style: GoogleFonts.manrope(fontSize: 12, height: 1.4),
             ),
           ],
@@ -166,12 +168,12 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(t.repoCancel)),
           FilledButton(
               onPressed: (urlN + titleN) == 0
                   ? null
                   : () => Navigator.pop(ctx, true),
-              child: Text('Migrate ${urlN + titleN}')),
+              child: Text(t.repoMigrateCount(urlN + titleN))),
         ],
       ),
     );
@@ -211,13 +213,14 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
 
   Future<void> _commit(
       List<_PlanItem> plan, String fromId, String toId) async {
+    final t = AppLocalizations.of(context);
     final lib = context.read<LibraryProvider>();
     final tracking = context.read<TrackingProvider>();
     final movable = plan.where((p) => p.matchType != 'none').toList();
 
     setState(() {
       _busy = true;
-      _busyLabel = 'Migrating';
+      _busyLabel = t.repoMigrating;
       _progress = 0;
       _progressTotal = movable.length;
     });
@@ -283,6 +286,11 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
       lastReadAt: old.lastReadAt,
       lastReadChapterUrl: sameUrl ? old.lastReadChapterUrl : null,
       lastReadPage: sameUrl ? old.lastReadPage : 0,
+      contentType: old.contentType,
+      lastWatchSeconds: sameUrl ? old.lastWatchSeconds : 0,
+      totalSeconds: sameUrl ? old.totalSeconds : 0,
+      novelProgressOffset: sameUrl ? old.novelProgressOffset : 0,
+      novelProgressFraction: sameUrl ? old.novelProgressFraction : 0.0,
       totalChapters: detail?.chapters?.length ?? old.totalChapters,
       readChapters: old.readChapters,
     );
@@ -317,13 +325,14 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
   // ── UI ──────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
         backgroundColor: cs.surface,
         elevation: 0,
-        title: Text('Migrate a source',
+        title: Text(t.repoMigrateASource,
             style: GoogleFonts.manrope(
                 fontSize: 18, fontWeight: FontWeight.w700)),
       ),
@@ -336,6 +345,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
   }
 
   Widget _buildForm(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     final fromGroups = _fromGroups();
     final toSources = _toSources();
     final fromSel = fromGroups.where((g) => g.id == _fromId).firstOrNull;
@@ -344,26 +354,24 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Move every library entry from one source to another. Same-site '
-            'swaps match exactly by URL; imported entries from a backup can be '
-            're-homed to a real source too.',
+        Text(t.repoMigrateIntro,
             style: GoogleFonts.manrope(
                 fontSize: 12.5, height: 1.4, color: cs.onSurfaceVariant)),
         const SizedBox(height: 20),
-        _label('FROM', cs),
+        _label(t.repoFrom, cs),
         _picker(
           cs,
           fromSel == null
-              ? 'Select a source…'
+              ? t.repoSelectSource
               : '${fromSel.label}  ·  ${fromSel.count}',
           fromGroups.isEmpty,
           () => _pickFrom(fromGroups),
         ),
         const SizedBox(height: 16),
-        _label('TO', cs),
+        _label(t.repoTo, cs),
         _picker(
           cs,
-          toSel == null ? 'Select a source…' : toSel.source.name,
+          toSel == null ? t.repoSelectSource : toSel.source.name,
           _fromId == null || toSources.isEmpty,
           () => _pickTo(toSources),
         ),
@@ -372,13 +380,11 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           contentPadding: EdgeInsets.zero,
           value: _matchByTitle,
           activeColor: cs.primary,
-          title: Text('Also match by title',
+          title: Text(t.repoAlsoMatchByTitle,
               style: GoogleFonts.manrope(
                   fontSize: 14, fontWeight: FontWeight.w600)),
           subtitle: Text(
-              'For cross-site moves: if an entry isn’t found by URL, search the '
-              'new source by title and take the closest match. Off by default '
-              'so it can’t attach the wrong series.',
+              t.repoAlsoMatchByTitleHint,
               style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline)),
           onChanged: (v) => setState(() => _matchByTitle = v),
         ),
@@ -386,7 +392,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
         FilledButton.icon(
           onPressed: (_fromId != null && _toId != null) ? _start : null,
           icon: const Icon(Icons.swap_horiz_rounded),
-          label: const Text('Migrate source'),
+          label: Text(t.repoMigrateSource),
           style: FilledButton.styleFrom(
               backgroundColor: cs.primary,
               padding: const EdgeInsets.symmetric(vertical: 14)),
@@ -405,44 +411,47 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
         ]),
       );
 
-  Widget _buildResult(ColorScheme cs) => ListView(
+  Widget _buildResult(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
+    return ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Icon(Icons.check_circle_rounded, color: cs.primary, size: 48),
           const SizedBox(height: 12),
-          Text('Migration complete',
+          Text(t.repoMigrationComplete,
               style: GoogleFonts.manrope(
                   fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
-          _summaryRow(context, '$_movedUrl moved by URL', Icons.link_rounded),
+          _summaryRow(context, t.repoMovedByUrl(_movedUrl), Icons.link_rounded),
           if (_movedTitle > 0)
             _summaryRow(
-                context, '$_movedTitle moved by title', Icons.title_rounded),
-          _summaryRow(context, '${_unmatched.length} left in place',
+                context, t.repoMovedByTitle(_movedTitle), Icons.title_rounded),
+          _summaryRow(context, t.repoLeftInPlace(_unmatched.length),
               Icons.remove_circle_outline_rounded),
           if (_unmatched.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text('Not migrated (still on the old source):',
+            Text(t.repoNotMigratedHeader,
                 style: GoogleFonts.manrope(
                     fontSize: 12.5, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            ..._unmatched.take(50).map((t) => Padding(
+            ..._unmatched.take(50).map((title) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Text('• $t',
+                  child: Text('• $title',
                       style: GoogleFonts.manrope(
                           fontSize: 12, color: cs.onSurfaceVariant)),
                 )),
-            Text('Use the per-title Migrate for these.',
+            Text(t.repoUsePerTitleMigrate,
                 style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline)),
           ],
           const SizedBox(height: 24),
           FilledButton(
             onPressed: () => Navigator.pop(context),
             style: FilledButton.styleFrom(backgroundColor: cs.primary),
-            child: const Text('Done'),
+            child: Text(t.repoDone),
           ),
         ],
       );
+  }
 
   Widget _label(String t, ColorScheme cs) => Padding(
         padding: const EdgeInsets.only(bottom: 6),

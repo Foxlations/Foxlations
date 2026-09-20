@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/cookie_store.dart';
 import '../../core/services/webview_service.dart';
 import '../../core/utils/adblock.dart';
+import '../../l10n/app_localizations.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String url;
@@ -50,6 +51,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -57,23 +59,23 @@ class _WebViewScreenState extends State<WebViewScreen> {
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () => _controller?.goBack(),
-            tooltip: 'Back',
+            tooltip: t.appBack,
           ),
           IconButton(
             icon: const Icon(Icons.arrow_forward_rounded),
             onPressed: () => _controller?.goForward(),
-            tooltip: 'Forward',
+            tooltip: t.appForward,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => _controller?.reload(),
-            tooltip: 'Reload',
+            tooltip: t.appReload,
           ),
           if (widget.cloudflareMode)
             IconButton(
               icon: const Icon(Icons.check_circle),
               onPressed: _extractCookiesAndClose,
-              tooltip: 'Done — save cookies',
+              tooltip: t.appDoneSaveCookies,
             ),
         ],
         bottom: _isLoading

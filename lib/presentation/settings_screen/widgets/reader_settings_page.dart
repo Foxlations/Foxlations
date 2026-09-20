@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 /// Reader preference keys. The reader screen and ReaderProvider read from
@@ -111,27 +112,25 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
   /// and pins it to 50%, so warn the user (esp. that playing audio gets stuck) first.
   Future<bool> _confirmIosVolume() async {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Experimental on iOS',
+        title: Text(t.readerExperimentalOnIos,
             style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
         content: Text(
-          'iOS has no proper volume-button API, so this works by watching the system '
-          'volume — it can be glitchy. While reading, the volume of anything you\'re '
-          'listening to (music, a podcast) will be held at 50% and can\'t be changed. '
-          'Enable anyway?',
+          t.readerIosVolumeWarning,
           style: GoogleFonts.manrope(fontSize: 13),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(t.readerCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Enable')),
+              child: Text(t.readerEnable)),
         ],
       ),
     );
@@ -141,6 +140,7 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -148,16 +148,16 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context)),
-        title: Text('Reader',
+        title: Text(t.readerTitle,
             style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: ListView(
         padding: EdgeInsets.only(
             top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
         children: [
-          _SectionHeader(title: 'Preferences'),
+          _SectionHeader(title: t.readerPreferences),
           _SegmentedTile(icon: Icons.auto_stories_rounded, iconColor: cs.primary,
-              title: 'Reading Mode',
+              title: t.readerReadingMode,
               options: _readingModeLabels,
               selected: _readingMode,
               onChanged: (v) async {
@@ -169,102 +169,102 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
                 }
               }),
           _SliderTile(icon: Icons.text_fields_rounded, iconColor: cs.primary,
-              title: 'Font Size', value: _fontSize, min: 10, max: 24, divisions: 14,
+              title: t.readerFontSize, value: _fontSize, min: 10, max: 24, divisions: 14,
               onChanged: (v) {
                 setState(() => _fontSize = v);
                 _setDouble(ReaderPrefs.fontSize, v);
               }),
           _SliderTile(icon: Icons.zoom_in_rounded, iconColor: cs.primary,
-              title: 'Image Zoom', value: _imageZoom, min: 1.0, max: 3.0, divisions: 20,
+              title: t.readerImageZoom, value: _imageZoom, min: 1.0, max: 3.0, divisions: 20,
               onChanged: (v) {
                 setState(() => _imageZoom = v);
                 _setDouble(ReaderPrefs.imageZoom, v);
               }),
           _SwitchTile(icon: Icons.skip_next_rounded, iconColor: cs.primary,
-              title: 'Auto-Preload Next Chapter', subtitle: 'Load next chapter in background',
+              title: t.readerAutoPreloadNextChapter, subtitle: t.readerAutoPreloadNextChapterSubtitle,
               value: _autoPreload, onChanged: (v) {
                 setState(() => _autoPreload = v);
                 _setBool(ReaderPrefs.autoPreload, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Reading Mode'),
+          _SectionHeader(title: t.readerReadingMode),
           _SwitchTile(icon: Icons.crop_rounded, iconColor: cs.primary,
-              title: 'Crop Borders', subtitle: 'Remove white borders from pages',
+              title: t.readerCropBorders, subtitle: t.readerCropBordersSubtitle,
               value: _cropBorders, onChanged: (v) {
                 setState(() => _cropBorders = v);
                 _setBool(ReaderPrefs.cropBorders, v);
               }),
           _SwitchTile(icon: Icons.filter_b_and_w_rounded, iconColor: cs.primary,
-              title: 'Grayscale', subtitle: 'Display pages in grayscale',
+              title: t.readerGrayscale, subtitle: t.readerGrayscaleSubtitle,
               value: _grayscale, onChanged: (v) {
                 setState(() => _grayscale = v);
                 _setBool(ReaderPrefs.grayscale, v);
               }),
           _SwitchTile(icon: Icons.invert_colors_rounded, iconColor: cs.primary,
-              title: 'Invert Colors', subtitle: 'Swap light and dark colors',
+              title: t.readerInvertColors, subtitle: t.readerInvertColorsSubtitle,
               value: _invertColors, onChanged: (v) {
                 setState(() => _invertColors = v);
                 _setBool(ReaderPrefs.invertColors, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Display'),
+          _SectionHeader(title: t.readerDisplay),
           _ChoiceTile(icon: Icons.aspect_ratio_rounded, iconColor: AppTheme.success,
-              title: 'Scale Type', value: _scaleType,
+              title: t.readerScaleType, value: _scaleType,
               options: const ['Fit Screen', 'Stretch', 'Fit Width', 'Fit Height', 'Original Size', 'Smart Fit'],
               onChanged: (v) {
                 setState(() => _scaleType = v);
                 _setString(ReaderPrefs.scaleType, v);
               }),
           _ChoiceTile(icon: Icons.zoom_out_map_rounded, iconColor: AppTheme.success,
-              title: 'Zoom Start Position', value: _zoomStart,
+              title: t.readerZoomStartPosition, value: _zoomStart,
               options: const ['Automatic', 'Left', 'Right', 'Center'],
               onChanged: (v) {
                 setState(() => _zoomStart = v);
                 _setString(ReaderPrefs.zoomStart, v);
               }),
           _ChoiceTile(icon: Icons.format_color_fill_rounded, iconColor: AppTheme.success,
-              title: 'Background Color', value: _bgColor,
+              title: t.readerBackgroundColor, value: _bgColor,
               options: const ['Black', 'Gray', 'White', 'Automatic'],
               onChanged: (v) {
                 setState(() => _bgColor = v);
                 _setString(ReaderPrefs.bgColor, v);
               }),
           _SwitchTile(icon: Icons.brightness_high_rounded, iconColor: AppTheme.success,
-              title: 'Keep Screen On', subtitle: 'Prevent screen from sleeping',
+              title: t.readerKeepScreenOn, subtitle: t.readerKeepScreenOnSubtitle,
               value: _keepScreenOn, onChanged: (v) {
                 setState(() => _keepScreenOn = v);
                 _setBool(ReaderPrefs.keepScreenOn, v);
               }),
           _SwitchTile(icon: Icons.numbers_rounded, iconColor: AppTheme.success,
-              title: 'Show Page Number', subtitle: 'Display page indicator overlay',
+              title: t.readerShowPageNumber, subtitle: t.readerShowPageNumberSubtitle,
               value: _showPageNumber, onChanged: (v) {
                 setState(() => _showPageNumber = v);
                 _setBool(ReaderPrefs.showPageNumber, v);
               }),
           _SwitchTile(icon: Icons.fullscreen_rounded, iconColor: AppTheme.success,
-              title: 'Fullscreen', subtitle: 'Hide system bars while reading',
+              title: t.readerFullscreen, subtitle: t.readerFullscreenSubtitle,
               value: _fullscreen, onChanged: (v) {
                 setState(() => _fullscreen = v);
                 _setBool(ReaderPrefs.fullscreen, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Navigation'),
+          _SectionHeader(title: t.readerNavigation),
           _ChoiceTile(icon: Icons.touch_app_rounded, iconColor: AppTheme.secondary,
-              title: 'Navigation Layout', value: _navLayout,
+              title: t.readerNavigationLayout, value: _navLayout,
               options: const ['Right & Left', 'L-shaped', 'Kindle-like', 'Edge', 'Disabled'],
               onChanged: (v) {
                 setState(() => _navLayout = v);
                 _setString(ReaderPrefs.navLayout, v);
               }),
           _SwitchTile(icon: Icons.swap_horiz_rounded, iconColor: AppTheme.secondary,
-              title: 'Invert Tap Zones', subtitle: 'Swap left/right tap navigation',
+              title: t.readerInvertTapZones, subtitle: t.readerInvertTapZonesSubtitle,
               value: _invertTapZones, onChanged: (v) {
                 setState(() => _invertTapZones = v);
                 _setBool(ReaderPrefs.invertTapZones, v);
               }),
           _SwitchTile(icon: Icons.volume_up_rounded, iconColor: AppTheme.secondary,
-              title: 'Volume Keys',
-              subtitle: 'Tap to turn a page/scroll; hold to scroll (webtoon)',
+              title: t.readerVolumeKeys,
+              subtitle: t.readerVolumeKeysSubtitle,
               value: _volumeKeys, onChanged: (v) async {
                 // iOS has no real volume-button API — warn before enabling.
                 if (v && Platform.isIOS && !await _confirmIosVolume()) return;
@@ -273,16 +273,16 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
               }),
           if (_volumeKeys)
             _SliderTile(icon: Icons.speed_rounded, iconColor: AppTheme.secondary,
-                title: 'Hold-scroll Speed', value: _volumeScrollSpeed,
+                title: t.readerHoldScrollSpeed, value: _volumeScrollSpeed,
                 min: 150, max: 2000, divisions: 37,
                 onChanged: (v) {
                   setState(() => _volumeScrollSpeed = v);
                   _setDouble(ReaderPrefs.volumeScrollSpeed, v);
                 }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Transitions'),
+          _SectionHeader(title: t.readerTransitions),
           _ChoiceTile(icon: Icons.animation_rounded, iconColor: AppTheme.warning,
-              title: 'Page Transition', value: _pageTransition,
+              title: t.readerPageTransition, value: _pageTransition,
               options: const ['Slide', 'Fade', 'None'],
               onChanged: (v) {
                 setState(() => _pageTransition = v);

@@ -8,6 +8,7 @@ import '../../core/repoforge/framework_detector_service.dart';
 import '../../core/repoforge/local_repo_service.dart';
 import '../../core/repoforge/repoforge_fetcher.dart';
 import '../../core/repoforge/source_adapter.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 
 /// In-app "Create Source" flow (RepoForge, local-only): enter a site URL,
@@ -101,10 +102,34 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
         : base[0].toUpperCase() + base.substring(1);
   }
 
+  /// Localized friendly label for a selector role key (see [_roles]).
+  String _roleLabel(AppLocalizations t, String key) {
+    switch (key) {
+      case 'item':
+        return t.repoRoleItem;
+      case 'title':
+        return t.repoRoleTitle;
+      case 'cover':
+        return t.repoRoleCover;
+      case 'nextPage':
+        return t.repoRoleNextPage;
+      case 'detailTitle':
+        return t.repoRoleDetailTitle;
+      case 'chapters':
+        return t.repoRoleChapters;
+      case 'page_images':
+        return t.repoRolePageImages;
+      case 'episodes':
+        return t.repoRoleEpisodes;
+    }
+    return key;
+  }
+
   Future<void> _detect() async {
+    final t = AppLocalizations.of(context);
     final url = _urlCtl.text.trim();
     if (url.isEmpty) {
-      setState(() => _error = 'Enter a site URL first.');
+      setState(() => _error = t.repoEnterUrlFirst);
       return;
     }
     setState(() {
@@ -121,7 +146,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
       );
       _seedFromExt(ext, url);
     } catch (e) {
-      if (mounted) setState(() => _error = 'Detection failed: $e');
+      if (mounted) setState(() => _error = t.repoDetectionFailed('$e'));
     } finally {
       if (mounted) setState(() => _detecting = false);
     }
@@ -179,6 +204,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
   }
 
   Future<void> _fetchTestPage() async {
+    final t = AppLocalizations.of(context);
     final url = _testUrlCtl.text.trim();
     if (url.isEmpty) return;
     setState(() => _fetching = true);
@@ -191,14 +217,15 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
     });
     AppTheme.showSnackBar(
       context,
-      html.isEmpty ? 'Fetch failed' : 'Fetched ${html.length} chars — now test selectors',
+      html.isEmpty ? t.repoFetchFailed : t.repoFetchedChars(html.length),
     );
   }
 
   void _testSelector(String key) {
+    final t = AppLocalizations.of(context);
     final html = _fetchedHtml;
     if (html == null || html.isEmpty) {
-      AppTheme.showSnackBar(context, 'Fetch a page first');
+      AppTheme.showSnackBar(context, t.repoFetchPageFirst);
       return;
     }
     setState(() {
@@ -208,16 +235,18 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
   }
 
   void _preview() {
+    final t = AppLocalizations.of(context);
     try {
       setState(() => _jsPreview = RepoForgeSourceAdapter.generateSourceCode(_buildExt()));
     } catch (e) {
-      setState(() => _error = 'Generation failed: $e');
+      setState(() => _error = t.repoGenerationFailed('$e'));
     }
   }
 
   Future<void> _save() async {
+    final t = AppLocalizations.of(context);
     if (_ext == null) {
-      AppTheme.showSnackBar(context, 'Detect a site first');
+      AppTheme.showSnackBar(context, t.repoDetectSiteFirst);
       return;
     }
     setState(() => _saving = true);
@@ -229,28 +258,35 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
       await provider.addRepo(await _localRepo.indexPath());
       await provider.installSource(source);
       if (!mounted) return;
-      AppTheme.showSnackBar(context, 'Created & installed "${source.name}"');
+      AppTheme.showSnackBar(context, t.repoCreatedInstalled(source.name));
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      AppTheme.showSnackBar(context, 'Save failed: $e');
+      AppTheme.showSnackBar(context, t.repoSaveFailed('$e'));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
+    final detectSteps = [
+      t.repoStepFetching,
+      t.repoStepMatching,
+      t.repoStepExtracting,
+      t.repoStepFinalizing,
+    ];
     return Scaffold(
       appBar: AppBar(
-        title: Text('Create Source',
+        title: Text(t.repoCreateSource,
             style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
             16, 12, 16, 40 + MediaQuery.of(context).viewPadding.bottom),
         children: [
-          _sectionLabel('Site URL', cs),
+          _sectionLabel(t.repoSiteUrl, cs),
           Row(children: [
             Expanded(
               child: TextField(
@@ -267,13 +303,13 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
               child: _detecting
                   ? const SizedBox(
                       width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Detect'),
+                  : Text(t.repoDetect),
             ),
           ]),
           if (_detecting)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text(_detectSteps[_detectStep],
+              child: Text(detectSteps[_detectStep],
                   style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
             ),
           if (_error != null)
@@ -289,6 +325,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
   }
 
   List<Widget> _buildDetectedSection(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     final framework = (_ext!['framework'] as String?) ?? 'Custom';
     final confidence = (_ext!['confidence'] as num?)?.toInt() ?? 0;
     final isApi = _ext!['isApiSource'] == true;
@@ -309,7 +346,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
               Text(framework,
                   style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 15, color: cs.onSurface)),
               Text(
-                'confidence $confidence%${isApi ? ' · API source' : ''}',
+                '${t.repoConfidence(confidence)}${isApi ? ' · ${t.repoApiSource}' : ''}',
                 style: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
               ),
             ]),
@@ -320,10 +357,10 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
 
       // ── Metadata ──
       const SizedBox(height: 20),
-      _sectionLabel('Details', cs),
+      _sectionLabel(t.repoDetails, cs),
       TextField(
         controller: _nameCtl,
-        decoration: _inputDecoration('Source name', cs, label: 'Name'),
+        decoration: _inputDecoration(t.repoSourceNameHint, cs, label: t.repoName),
       ),
       const SizedBox(height: 10),
       Row(children: [
@@ -331,16 +368,16 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
           width: 100,
           child: TextField(
             controller: _langCtl,
-            decoration: _inputDecoration('en', cs, label: 'Lang'),
+            decoration: _inputDecoration('en', cs, label: t.repoLang),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'manga', label: Text('Manga')),
-              ButtonSegment(value: 'anime', label: Text('Anime')),
-              ButtonSegment(value: 'novel', label: Text('Novel')),
+            segments: [
+              ButtonSegment(value: 'manga', label: Text(t.repoManga)),
+              ButtonSegment(value: 'anime', label: Text(t.repoAnime)),
+              ButtonSegment(value: 'novel', label: Text(t.repoNovel)),
             ],
             selected: {_contentType},
             onSelectionChanged: (s) => setState(() => _contentType = s.first),
@@ -349,16 +386,16 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
       ]),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
-        title: Text('NSFW', style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface)),
+        title: Text(t.repoNsfw, style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface)),
         value: _nsfw,
         onChanged: (v) => setState(() => _nsfw = v),
       ),
 
       // ── Scraping studio ──
       const SizedBox(height: 8),
-      _sectionLabel('Scraping Studio', cs),
+      _sectionLabel(t.repoScrapingStudio, cs),
       Text(
-        'Fetch a page, then test each selector to see how many elements it matches.',
+        t.repoScrapingStudioHint,
         style: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
       ),
       const SizedBox(height: 10),
@@ -367,7 +404,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
           child: TextField(
             controller: _testUrlCtl,
             autocorrect: false,
-            decoration: _inputDecoration('URL to test against', cs),
+            decoration: _inputDecoration(t.repoUrlToTestHint, cs),
           ),
         ),
         const SizedBox(width: 8),
@@ -375,7 +412,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
           onPressed: _fetching ? null : _fetchTestPage,
           child: _fetching
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Fetch'),
+              : Text(t.repoFetch),
         ),
       ]),
       if (_fetchedHtml != null)
@@ -383,15 +420,15 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
           padding: const EdgeInsets.only(top: 6),
           child: Text(
             _fetchedHtml!.isEmpty
-                ? 'Fetch failed — the site may block automated access.'
-                : 'Loaded ${_fetchedHtml!.length} chars.',
+                ? t.repoFetchFailedBlocked
+                : t.repoLoadedChars(_fetchedHtml!.length),
             style: GoogleFonts.manrope(
                 fontSize: 11.5,
                 color: _fetchedHtml!.isEmpty ? AppTheme.error : cs.outline),
           ),
         ),
       const SizedBox(height: 12),
-      for (final r in _roles) _selectorRow(r.$1, r.$2, cs),
+      for (final r in _roles) _selectorRow(r.$1, _roleLabel(t, r.$1), cs),
 
       // ── Actions ──
       const SizedBox(height: 20),
@@ -400,7 +437,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
           child: OutlinedButton.icon(
             onPressed: _preview,
             icon: const Icon(Icons.code_rounded, size: 18),
-            label: const Text('Preview JS'),
+            label: Text(t.repoPreviewJs),
           ),
         ),
         const SizedBox(width: 12),
@@ -410,7 +447,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
             icon: _saving
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.save_rounded, size: 18),
-            label: const Text('Create & Install'),
+            label: Text(t.repoCreateInstall),
           ),
         ),
       ]),
@@ -419,6 +456,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
   }
 
   Widget _selectorRow(String key, String label, ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     final count = _testCounts[key];
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -432,7 +470,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
                 .copyWith(
               // Tap to pick from cataloged selectors for this field.
               suffixIcon: IconButton(
-                tooltip: 'Pick a known selector',
+                tooltip: t.repoPickKnownSelector,
                 icon: Icon(Icons.expand_more_rounded, size: 20, color: cs.outline),
                 onPressed: () => _pickSelector(key, label, cs),
               ),
@@ -445,7 +483,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
         TextButton.icon(
           onPressed: () => _testSelector(key),
           icon: Icon(Icons.play_arrow_rounded, size: 18, color: cs.primary),
-          label: Text('Test',
+          label: Text(t.repoTest,
               style: GoogleFonts.manrope(
                   fontSize: 12, fontWeight: FontWeight.w700, color: cs.primary)),
           style: TextButton.styleFrom(
@@ -461,13 +499,14 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
   /// Bottom-sheet list of cataloged selectors for [key], searchable, so a user
   /// who doesn't know CSS can choose one that's known to work for this field.
   Future<void> _pickSelector(String key, String label, ColorScheme cs) async {
+    final t = AppLocalizations.of(context);
     final detected = _selectorCtls[key]!.text.trim();
     final candidates = FrameworkDetectorService.candidateSelectorsForRole(
       key,
       detected: detected.isEmpty ? null : detected,
     );
     if (candidates.isEmpty) {
-      AppTheme.showSnackBar(context, 'No cataloged selectors for "$label"');
+      AppTheme.showSnackBar(context, t.repoNoCatalogedSelectors(label));
       return;
     }
     final picked = await showModalBottomSheet<String>(
@@ -495,6 +534,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
   }
 
   Widget _matchBadge(int count, ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     final invalid = count < 0;
     final none = count == 0;
     // 0 matches is a warning (amber), not a hard error — the selector is valid,
@@ -505,9 +545,9 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
             ? AppTheme.warning
             : Colors.green;
     final text = invalid
-        ? 'invalid'
+        ? t.repoInvalid
         : none
-            ? 'no match'
+            ? t.repoNoMatch
             : '$count';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -523,17 +563,19 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
     );
   }
 
-  List<Widget> _buildPreview(ColorScheme cs) => [
+  List<Widget> _buildPreview(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
+    return [
         const SizedBox(height: 20),
         Row(children: [
-          _sectionLabel('Generated source', cs),
+          _sectionLabel(t.repoGeneratedSource, cs),
           const Spacer(),
           IconButton(
-            tooltip: 'Copy',
+            tooltip: t.repoCopy,
             icon: Icon(Icons.copy_rounded, size: 18, color: cs.outline),
             onPressed: () {
               Clipboard.setData(ClipboardData(text: _jsPreview ?? ''));
-              AppTheme.showSnackBar(context, 'Copied source to clipboard');
+              AppTheme.showSnackBar(context, t.repoCopiedToClipboard);
             },
           ),
         ]),
@@ -554,6 +596,7 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
           ),
         ),
       ];
+  }
 
   Widget _confidenceChip(int confidence, ColorScheme cs) {
     final color = confidence >= 70
@@ -617,6 +660,7 @@ class _SelectorPickerSheetState extends State<_SelectorPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final filtered = _query.isEmpty
         ? widget.candidates
@@ -644,8 +688,8 @@ class _SelectorPickerSheetState extends State<_SelectorPickerSheet> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Selector for ${widget.title}',
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(t.repoSelectorFor(widget.title),
                     style: GoogleFonts.manrope(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
@@ -661,7 +705,7 @@ class _SelectorPickerSheetState extends State<_SelectorPickerSheet> {
                 style: GoogleFonts.robotoMono(fontSize: 12.5),
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: 'Search selectors…',
+                  hintText: t.repoSearchSelectors,
                   prefixIcon: Icon(Icons.search_rounded,
                       size: 18, color: cs.outline),
                   border: OutlineInputBorder(
@@ -694,9 +738,9 @@ class _SelectorPickerSheetState extends State<_SelectorPickerSheet> {
                         ? null
                         : Text(
                             count < 0
-                                ? 'invalid'
+                                ? t.repoInvalid
                                 : count == 0
-                                    ? 'no match'
+                                    ? t.repoNoMatch
                                     : '$count',
                             style: GoogleFonts.manrope(
                               fontSize: 11.5,

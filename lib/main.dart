@@ -22,17 +22,22 @@ import 'core/providers/vault_provider.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/providers/download_provider.dart';
 import 'core/providers/library_type_provider.dart';
+import 'core/providers/locale_provider.dart';
+import 'core/providers/discover_provider.dart';
 import 'core/services/library_update_service.dart';
 import 'core/services/backup_service.dart';
 import 'core/services/app_navigator.dart';
+import 'core/services/deep_link_service.dart';
 import 'core/services/secure_store.dart';
 import 'theme/app_theme.dart';
 import 'routes/app_routes.dart';
+import 'l10n/app_localizations.dart';
 import 'widgets/app_navigation.dart';
 import 'widgets/library_type_menu.dart';
 import 'presentation/library_screen/library_screen.dart';
 import 'presentation/updates_screen/updates_screen.dart';
 import 'presentation/browse_screen/browse_screen.dart';
+import 'presentation/discover_screen/discover_screen.dart';
 
 
 void main() async {
@@ -102,6 +107,18 @@ class MangaReaderApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TrackingProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => VaultProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => LibraryTypeProvider()..initialize()),
+        ChangeNotifierProvider(create: (_) => LocaleProvider()..initialize()),
+        ChangeNotifierProvider(create: (ctx) {
+          // Discover reads (never mutates) the tracking / source / library /
+          // vault providers, all registered above, so they resolve here.
+          final d = DiscoverProvider();
+          d.tracking = ctx.read<TrackingProvider>();
+          d.sources = ctx.read<SourceProvider>();
+          d.library = ctx.read<LibraryProvider>();
+          d.vault = ctx.read<VaultProvider>();
+          d.initialize();
+          return d;
+        }),
         ChangeNotifierProvider(create: (ctx) {
           final dp = DownloadProvider()..initialize();
           // Wire source provider reference after build
@@ -111,10 +128,13 @@ class MangaReaderApp extends StatelessWidget {
           return dp;
         }),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (_, themeProvider, __) {
+      child: Consumer2<ThemeProvider, LocaleProvider>(
+        builder: (_, themeProvider, localeProvider, _) {
           return MaterialApp(
             title: 'Foxlations',
+            locale: localeProvider.locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             navigatorKey: rootNavigatorKey,
             scaffoldMessengerKey: rootMessengerKey,
             debugShowCheckedModeBanner: false,
@@ -123,7 +143,13 @@ class MangaReaderApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme(
                 primaryColor: themeProvider.primaryColor(Brightness.dark)),
             themeMode: themeProvider.themeMode,
-            home: const AppShell(),
+            // Always boot into the shell, even when the OS launches us via a
+            // foxlations:// deep link — its URL would otherwise become the
+            // platform's initial route name, bypass `home`, and fall through
+            // onGenerateRoute's default to a bare, shell-less screen (no bottom
+            // nav). DeepLinkService handles the link on top of the shell.
+            onGenerateInitialRoutes: (_) =>
+                [MaterialPageRoute(builder: (_) => const AppShell())],
             navigatorObservers: [routeObserver],
             onGenerateRoute: AppRoutes.onGenerateRoute,
             // Wrap the entire app in a ColorFiltered when invert colors is
@@ -165,12 +191,15 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     LibraryScreen(),
     UpdatesScreen(),
     BrowseScreen(),
+    DiscoverScreen(),
   ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Handle foxlations:// deep links (source-repo auto-install).
+    DeepLinkService.initialize();
     _loadUpdatesBadge();
     // Run any due automatic backup once the library boxes have opened, then a
     // due automatic library update (Settings > Library > Update frequency). Both
@@ -205,6 +234,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void _showVaultPasswordDialog(VaultProvider vault) {
     final controller = TextEditingController();
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     String? error;
 
     showDialog(
@@ -217,7 +247,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           title: Row(children: [
             Icon(Icons.shield_rounded, size: 20, color: cs.primary),
             const SizedBox(width: 8),
-            Text('Vault Password', style: GoogleFonts.manrope(
+            Text(t.appVaultPassword, style: GoogleFonts.manrope(
                 fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -227,7 +257,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               autofocus: true,
               style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
               decoration: InputDecoration(
-                hintText: 'Enter password',
+                hintText: t.appEnterPassword,
                 hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
                 errorText: error,
                 filled: true,
@@ -245,7 +275,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                   Navigator.pop(ctx);
                   vault.enterVault();
                 } else {
-                  setDialogState(() => error = 'Wrong password');
+                  setDialogState(() => error = t.appWrongPassword);
                 }
               },
             ),
@@ -253,7 +283,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Cancel', style: GoogleFonts.manrope(
+              child: Text(t.appCancel, style: GoogleFonts.manrope(
                   fontWeight: FontWeight.w600, color: cs.outline))),
             FilledButton(
               onPressed: () async {
@@ -265,11 +295,11 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                   Navigator.pop(ctx);
                   vault.enterVault();
                 } else {
-                  setDialogState(() => error = 'Wrong password');
+                  setDialogState(() => error = t.appWrongPassword);
                 }
               },
               style: FilledButton.styleFrom(backgroundColor: cs.primary),
-              child: Text('Unlock', style: GoogleFonts.manrope(fontWeight: FontWeight.w700))),
+              child: Text(t.appUnlock, style: GoogleFonts.manrope(fontWeight: FontWeight.w700))),
           ],
         ),
       ),
@@ -306,9 +336,16 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   void _onTabChanged(int index) {
-    if (index == 3) {
+    // "More" is the last tab and opens Settings rather than a stack page.
+    if (index == 4) {
       Navigator.pushNamed(context, AppRoutes.settings);
       return;
+    }
+
+    // Discover: kick off the first feed load only when the tab is opened, so the
+    // recommendation fetch never runs at app startup for users who don't use it.
+    if (index == 3) {
+      context.read<DiscoverProvider>().ensureLoaded();
     }
 
     // Track rapid taps on Library tab for vault activation

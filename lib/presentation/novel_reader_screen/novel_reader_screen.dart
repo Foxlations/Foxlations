@@ -10,6 +10,7 @@ import '../../core/providers/library_provider.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/services/volume_keys.dart';
 import '../../eval/lib.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Text reader for light-novel sources. Fetches the chapter's HTML via the
 /// source's `getHtmlContent`, renders it as readable paragraphs, and supports
@@ -23,6 +24,7 @@ class NovelReaderScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? chapters;
   final int currentIndex;
   final int startOffset;
+  final double startFraction;
 
   const NovelReaderScreen({
     super.key,
@@ -34,6 +36,7 @@ class NovelReaderScreen extends StatefulWidget {
     this.chapters,
     this.currentIndex = 0,
     this.startOffset = 0,
+    this.startFraction = 0.0,
   });
 
   @override
@@ -86,18 +89,31 @@ class _NovelReaderScreenState extends State<NovelReaderScreen> {
     _saveThrottle?.cancel();
     _saveThrottle = Timer(const Duration(seconds: 1), () {
       if (!mounted || _lib == null) return;
-      _lib!.updateReadingProgress(
-          widget.sourceId, widget.mangaUrl!, _url, _lastOffset.round());
+      _lib!.updateNovelProgress(widget.sourceId, widget.mangaUrl!, _url,
+          _lastOffset.round(), _currentFraction());
     });
   }
 
+  // Reflow-safe progress: fraction of total scroll height. Novels reflow on
+  // font-size/width changes, so a raw offset drifts; the fraction restores the
+  // same reading position after a reflow, the offset for an exact match.
+  double _currentFraction() {
+    if (!_scrollController.hasClients) return 0.0;
+    final max = _scrollController.position.maxScrollExtent;
+    return max > 0 ? (_lastOffset / max).clamp(0.0, 1.0) : 0.0;
+  }
+
   void _restoreScroll() {
-    if (widget.startOffset <= 0) return;
+    if (widget.startOffset <= 0 && widget.startFraction <= 0) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_scrollController.hasClients) return;
-      _scrollController.jumpTo(widget.startOffset
-          .toDouble()
-          .clamp(0.0, _scrollController.position.maxScrollExtent));
+      final max = _scrollController.position.maxScrollExtent;
+      // Prefer the exact offset; if the content reflowed shorter than where we
+      // stopped, fall back to the saved fraction so we land at the same spot.
+      final target = (widget.startOffset > 0 && widget.startOffset <= max)
+          ? widget.startOffset.toDouble()
+          : (widget.startFraction > 0 ? widget.startFraction * max : 0.0);
+      _scrollController.jumpTo(target.clamp(0.0, max));
     });
   }
 
@@ -170,8 +186,8 @@ class _NovelReaderScreenState extends State<NovelReaderScreen> {
     _saveThrottle?.cancel();
     _scrollController.removeListener(_saveProgress);
     if (widget.mangaUrl != null && _lib != null && _lastOffset > 0) {
-      _lib!.updateReadingProgress(
-          widget.sourceId, widget.mangaUrl!, _url, _lastOffset.round());
+      _lib!.updateNovelProgress(widget.sourceId, widget.mangaUrl!, _url,
+          _lastOffset.round(), _currentFraction());
     }
     _holdTimer?.cancel();
     _holdScrollTimer?.cancel();
@@ -194,7 +210,7 @@ class _NovelReaderScreenState extends State<NovelReaderScreen> {
         (service) => service.getHtmlContent(_url),
       );
       _paragraphs = _toParagraphs(html);
-      if (_paragraphs.isEmpty) _error = 'No chapter text found';
+      if (_paragraphs.isEmpty) _error = AppLocalizations.of(context).readerNoChapterText;
     } catch (e) {
       _error = e.toString();
     }
@@ -243,20 +259,21 @@ class _NovelReaderScreenState extends State<NovelReaderScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(_title ?? widget.mangaTitle ?? 'Reading',
+        title: Text(_title ?? widget.mangaTitle ?? t.readerReadingTitle,
             style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700),
             maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
-            tooltip: 'Smaller text',
+            tooltip: t.readerSmallerText,
             icon: const Icon(Icons.text_decrease_rounded),
             onPressed: () => setState(
                 () => _fontSize = (_fontSize - 1).clamp(12, 30).toDouble()),
           ),
           IconButton(
-            tooltip: 'Larger text',
+            tooltip: t.readerLargerText,
             icon: const Icon(Icons.text_increase_rounded),
             onPressed: () => setState(
                 () => _fontSize = (_fontSize + 1).clamp(12, 30).toDouble()),
@@ -274,7 +291,7 @@ class _NovelReaderScreenState extends State<NovelReaderScreen> {
                       textAlign: TextAlign.center,
                       style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
                   const SizedBox(height: 12),
-                  FilledButton(onPressed: _load, child: const Text('Retry')),
+                  FilledButton(onPressed: _load, child: Text(t.readerRetry)),
                 ]))
               : ListView.builder(
                   controller: _scrollController,
@@ -298,18 +315,19 @@ class _NovelReaderScreenState extends State<NovelReaderScreen> {
 
   Widget _navBar(ColorScheme cs) {
     if (widget.chapters == null) return const SizedBox.shrink();
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         OutlinedButton.icon(
           onPressed: _hasPrev ? () => _go(1) : null,
           icon: const Icon(Icons.chevron_left_rounded, size: 18),
-          label: const Text('Previous'),
+          label: Text(t.readerPrevious),
         ),
         OutlinedButton.icon(
           onPressed: _hasNext ? () => _go(-1) : null,
           icon: const Icon(Icons.chevron_right_rounded, size: 18),
-          label: const Text('Next'),
+          label: Text(t.readerNext),
         ),
       ]),
     );

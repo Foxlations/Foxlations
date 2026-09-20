@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 class ReaderHudWidget extends StatelessWidget {
@@ -81,6 +82,7 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -136,12 +138,12 @@ class _TopBar extends StatelessWidget {
               ),
               _HudButton(
                 icon: Icons.list_rounded,
-                tooltip: 'Chapters',
+                tooltip: t.readerChapters,
                 onTap: onChapterList,
               ),
               _HudButton(
                 icon: Icons.settings_rounded,
-                tooltip: 'Settings',
+                tooltip: t.readerSettings,
                 onTap: onSettings,
               ),
             ],
@@ -175,6 +177,7 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -240,13 +243,13 @@ class _BottomBar extends StatelessWidget {
                 children: [
                   _HudButton(
                     icon: Icons.skip_previous_rounded,
-                    tooltip: 'Previous chapter',
+                    tooltip: t.readerPreviousChapter,
                     onTap: hasPreviousChapter
                         ? onPreviousChapter
                         : null,
                   ),
                   Text(
-                    'Page ${currentPage + 1} of $totalPages',
+                    t.readerPageOf(currentPage + 1, totalPages),
                     style: GoogleFonts.manrope(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -255,7 +258,7 @@ class _BottomBar extends StatelessWidget {
                   ),
                   _HudButton(
                     icon: Icons.skip_next_rounded,
-                    tooltip: 'Next chapter',
+                    tooltip: t.readerNextChapter,
                     onTap: hasNextChapter ? onNextChapter : null,
                   ),
                 ],

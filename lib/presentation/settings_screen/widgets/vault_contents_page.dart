@@ -6,6 +6,8 @@ import '../../../core/models/manga_model.dart';
 import '../../../core/providers/library_provider.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../core/providers/vault_provider.dart';
+import '../../../core/services/app_logger.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import '../../widgets/manga_image.dart';
 
@@ -27,7 +29,6 @@ class _VaultContentsPageState extends State<VaultContentsPage>
 
   // The three content types, resolved from each entry's source.
   static const _types = ['manga', 'anime', 'novel'];
-  static const _labels = ['Manga', 'Anime', 'Novels'];
   int _typeIndex = 0;
 
   @override
@@ -52,36 +53,59 @@ class _VaultContentsPageState extends State<VaultContentsPage>
   String _typeOf(BuildContext context, LibraryManga m) {
     final installed =
         context.read<SourceProvider>().getInstalledSource(m.sourceId);
-    return installed?.source.itemType ?? 'manga';
+    return m.contentTypeOr(installed?.source.itemType ?? 'manga');
   }
 
   Future<void> _toVault(
       BuildContext context, LibraryManga m) async {
+    final t = AppLocalizations.of(context);
     final lib = context.read<LibraryProvider>();
     final vault = context.read<VaultProvider>();
-    final chapters = lib.fullChapters(m.sourceId, m.url);
-    await vault.addEntryWithChapters(m, chapters);
-    await lib.removeFromLibrary(m.sourceId, m.url);
-    if (context.mounted) {
-      AppTheme.showSnackBar(context, '"${m.title}" moved to vault');
+    try {
+      logger.info('Vault move IN: ${m.title} key=${m.sourceId}_${m.url}',
+          category: LogCategory.library);
+      final chapters = lib.fullChapters(m.sourceId, m.url);
+      await vault.addEntryWithChapters(m, chapters);
+      await lib.removeFromLibrary(m.sourceId, m.url);
+      if (context.mounted) {
+        AppTheme.showSnackBar(context, t.setdVaultContentsMovedIn(m.title));
+      }
+    } catch (e, st) {
+      logger.error('Vault move IN failed: $e',
+          category: LogCategory.library, detail: st.toString());
+      if (context.mounted) {
+        AppTheme.showSnackBar(context, "Couldn't move to vault: $e");
+      }
     }
   }
 
   Future<void> _fromVault(
       BuildContext context, LibraryManga m) async {
+    final t = AppLocalizations.of(context);
     final lib = context.read<LibraryProvider>();
     final vault = context.read<VaultProvider>();
-    final chapters = vault.fullChapters(m.sourceId, m.url);
-    await lib.addEntryWithChapters(m, chapters);
-    await vault.removeFromLibrary(m.sourceId, m.url);
-    if (context.mounted) {
-      AppTheme.showSnackBar(context, '"${m.title}" moved out of vault');
+    try {
+      logger.info('Vault move OUT: ${m.title} key=${m.sourceId}_${m.url}',
+          category: LogCategory.library);
+      final chapters = vault.fullChapters(m.sourceId, m.url);
+      await lib.addEntryWithChapters(m, chapters);
+      await vault.removeFromLibrary(m.sourceId, m.url);
+      if (context.mounted) {
+        AppTheme.showSnackBar(context, t.setdVaultContentsMovedOut(m.title));
+      }
+    } catch (e, st) {
+      logger.error('Vault move OUT failed: $e',
+          category: LogCategory.library, detail: st.toString());
+      if (context.mounted) {
+        AppTheme.showSnackBar(context, "Couldn't move from vault: $e");
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final vault = context.watch<VaultProvider>();
     final lib = context.watch<LibraryProvider>();
 
@@ -91,7 +115,7 @@ class _VaultContentsPageState extends State<VaultContentsPage>
         backgroundColor: cs.surface,
         appBar: AppBar(
           backgroundColor: cs.surface,
-          title: Text('Vault Contents',
+          title: Text(t.setdVaultContentsTitle,
               style: GoogleFonts.manrope(
                   fontWeight: FontWeight.w700, color: cs.onSurface)),
         ),
@@ -99,7 +123,7 @@ class _VaultContentsPageState extends State<VaultContentsPage>
           child: Padding(
             padding: const EdgeInsets.all(32),
             child: Text(
-              'Unlock the vault first to manage its contents.',
+              t.setdVaultContentsLockedMessage,
               textAlign: TextAlign.center,
               style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurfaceVariant),
             ),
@@ -109,6 +133,11 @@ class _VaultContentsPageState extends State<VaultContentsPage>
     }
 
     final type = _types[_typeIndex];
+    final labels = [
+      t.setdVaultContentsTabManga,
+      t.setdVaultContentsTabAnime,
+      t.setdVaultContentsTabNovels,
+    ];
     final inLibrary =
         lib.manga.where((m) => _typeOf(context, m) == type).toList()
           ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
@@ -121,7 +150,7 @@ class _VaultContentsPageState extends State<VaultContentsPage>
       appBar: AppBar(
         backgroundColor: cs.surface,
         elevation: 0,
-        title: Text('Vault Contents',
+        title: Text(t.setdVaultContentsTitle,
             style: GoogleFonts.manrope(
                 fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
         bottom: TabBar(
@@ -131,16 +160,16 @@ class _VaultContentsPageState extends State<VaultContentsPage>
           indicatorColor: cs.primary,
           labelStyle:
               GoogleFonts.manrope(fontSize: 13.5, fontWeight: FontWeight.w700),
-          tabs: [for (final l in _labels) Tab(text: l)],
+          tabs: [for (final l in labels) Tab(text: l)],
         ),
       ),
       body: ListView(
         padding: EdgeInsets.only(
             bottom: 24 + MediaQuery.of(context).viewPadding.bottom),
         children: [
-          _sectionHeader(cs, 'In your library', '→ move into vault'),
+          _sectionHeader(cs, t.setdVaultContentsInLibrary, t.setdVaultContentsMoveIntoHint),
           if (inLibrary.isEmpty)
-            _emptyRow(cs, 'No ${_labels[_typeIndex].toLowerCase()} in your library')
+            _emptyRow(cs, t.setdVaultContentsEmptyLibrary(labels[_typeIndex].toLowerCase()))
           else
             for (final m in inLibrary)
               _entryRow(
@@ -151,9 +180,9 @@ class _VaultContentsPageState extends State<VaultContentsPage>
                 onTap: () => _toVault(context, m),
               ),
           const SizedBox(height: 12),
-          _sectionHeader(cs, 'In the vault', '← move back out'),
+          _sectionHeader(cs, t.setdVaultContentsInVault, t.setdVaultContentsMoveOutHint),
           if (inVault.isEmpty)
-            _emptyRow(cs, 'No ${_labels[_typeIndex].toLowerCase()} in the vault')
+            _emptyRow(cs, t.setdVaultContentsEmptyVault(labels[_typeIndex].toLowerCase()))
           else
             for (final m in inVault)
               _entryRow(
@@ -198,6 +227,7 @@ class _VaultContentsPageState extends State<VaultContentsPage>
     required Color tint,
     required VoidCallback onTap,
   }) {
+    final t = AppLocalizations.of(context);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
       leading: ClipRRect(
@@ -213,7 +243,7 @@ class _VaultContentsPageState extends State<VaultContentsPage>
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.manrope(
               fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
-      subtitle: Text('${m.readChapters}/${m.totalChapters} read',
+      subtitle: Text(t.setdVaultContentsReadProgress(m.readChapters, m.totalChapters),
           style: GoogleFonts.manrope(fontSize: 11.5, color: cs.onSurfaceVariant)),
       trailing: IconButton(
         icon: Icon(icon, color: tint),

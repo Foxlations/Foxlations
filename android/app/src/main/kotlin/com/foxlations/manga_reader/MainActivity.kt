@@ -20,7 +20,7 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
 
         // Same "foxlations/jvm" channel the app uses on iOS/desktop, but backed by the
-        // Mihon-style ART loader (ExtensionHost) instead of an embedded JVM. Work runs on a
+        // ART-based dex loader (ExtensionHost) instead of an embedded JVM. Work runs on a
         // worker thread; the reply is posted to the main thread.
         val channel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger, "foxlations/jvm")

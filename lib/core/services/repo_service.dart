@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/source_model.dart';
 import '../utils/portable_path.dart';
 import 'app_logger.dart';
+import 'pb_index_decoder.dart';
 
 class RepoIndexResult {
   final String repoName;
@@ -136,9 +137,60 @@ class RepoService {
     return sib == url ? null : sib;
   }
 
+  // A format-1.6 deprecation stub (keiyoushi / NovelSourcery / Tsundoku forks):
+  // index.min.json holds only nag entries — "Outdated App" plus one or more
+  // "Update to <app> x.y+" — while the real catalogue lives in index.json.
+  bool _isStubName(String name) {
+    final n = name.trim().toLowerCase();
+    return n == 'outdated app' ||
+        n.contains('outdated') ||
+        n.startsWith('update to ');
+  }
+
   bool _isDeprecationStub(List<MangaSource> sources) =>
       sources.isNotEmpty &&
-      sources.every((s) => s.name.trim().toLowerCase() == 'outdated app');
+      sources.length <= 3 &&
+      sources.every((s) => _isStubName(s.name));
+
+  /// Fetch + decode the compact protobuf index ($base/index.pb) for a standard
+  /// keiyoushi/Mihon repo layout. Returns the index.json-shaped Map, or null on
+  /// any failure (non-standard URL, 404, bad gzip/protobuf, or the pointer-only
+  /// form) so the caller falls back to the JSON index.
+  Future<Map<String, dynamic>?> _tryFetchPbIndex(String indexUrl) async {
+    if (_isLocalPath(indexUrl)) return null;
+    final q = indexUrl.indexOf('?');
+    final path = q >= 0 ? indexUrl.substring(0, q) : indexUrl;
+    final query = q >= 0 ? indexUrl.substring(q) : '';
+    final slash = path.lastIndexOf('/');
+    if (slash <= 0) return null;
+    final last = path.substring(slash + 1);
+    // Only when the URL is a standard repo index filename — otherwise
+    // "$dir/index.pb" could point at an unrelated file.
+    if (last != 'index.pb' &&
+        last != 'index.json' &&
+        last != 'index.min.json') {
+      return null;
+    }
+    final pbUrl = '${path.substring(0, slash)}/index.pb$query';
+    try {
+      final resp = await _dio.get<List<int>>(
+        _effectiveUrl(pbUrl),
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = resp.data;
+      if (bytes == null || bytes.isEmpty) return null;
+      final map = decodePbIndex(bytes);
+      if (map == null) return null;
+      final n =
+          ((map['extensionList'] as Map?)?['extensions'] as List?)?.length ?? 0;
+      await logger.info(
+          'Protobuf index: $pbUrl (${bytes.length} B, $n extensions)',
+          category: LogCategory.repo);
+      return map;
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<RepoIndexResult> fetchRepoIndex(String repoUrl) async {
     // The URL the caller/saved-list holds, before any .pb→index.json rewrite or
@@ -146,12 +198,23 @@ class RepoService {
     // cache MUST be keyed by this or keiyoushi/NovelSourcery show nothing until a manual
     // refresh (their saved .pb/.min.json differs from the index.json we actually fetch).
     final originalUrl = repoUrl;
-    repoUrl = _asJsonIndexUrl(repoUrl);
-    await logger.info('Fetching repo: $repoUrl', category: LogCategory.network);
+    await logger.info('Fetching repo: $originalUrl', category: LogCategory.network);
     try {
       dynamic data;
 
-      if (_isLocalPath(repoUrl)) {
+      // Prefer the compact protobuf index (~13x smaller than
+      // index.json). Returns null on any failure so we fall back to JSON below.
+      final pbData = await _tryFetchPbIndex(originalUrl);
+      if (pbData != null) {
+        data = pbData;
+        // Point repoUrl at the index.json sibling so sibling discovery and the
+        // cache key line up with the JSON path.
+        repoUrl = _fullJsonSibling(originalUrl) ?? _asJsonIndexUrl(originalUrl);
+      } else {
+        repoUrl = _asJsonIndexUrl(originalUrl);
+      }
+
+      if (data == null && _isLocalPath(repoUrl)) {
         // Local file path
         final path = repoUrl.startsWith('file://')
             ? Uri.parse(repoUrl.startsWith('file:///')
@@ -167,7 +230,7 @@ class RepoService {
         data = jsonDecode(content);
         await logger.info('Loaded local repo: $path',
             category: LogCategory.repo);
-      } else {
+      } else if (data == null) {
         // HTTP fetch
         final fetchUrl = _effectiveUrl(repoUrl);
         final response = await _dio.get<dynamic>(fetchUrl);

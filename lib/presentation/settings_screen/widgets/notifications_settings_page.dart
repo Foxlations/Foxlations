@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Notification preference keys. Toggling these only persists the user's
 /// choice — actual delivery requires the flutter_local_notifications plugin
@@ -59,6 +60,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -66,56 +68,56 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context)),
-        title: Text('Notifications',
+        title: Text(t.setxNotifTitle,
             style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: ListView(
         padding: EdgeInsets.only(
             top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
         children: [
-          _SectionHeader(title: 'Chapter Updates'),
+          _SectionHeader(title: t.setxNotifSectionChapterUpdates),
           _SwitchTile(icon: Icons.new_releases_rounded, iconColor: cs.primary,
-              title: 'New Chapters', subtitle: 'Notify when new chapters are available',
+              title: t.setxNotifNewChaptersTitle, subtitle: t.setxNotifNewChaptersSubtitle,
               value: _newChapters, onChanged: (v) {
                 setState(() => _newChapters = v);
                 _setBool(NotificationPrefs.newChapters, v);
               }),
           _SwitchTile(icon: Icons.update_rounded, iconColor: cs.primary,
-              title: 'Library Updates', subtitle: 'Notify after library update completes',
+              title: t.setxNotifLibraryUpdatesTitle, subtitle: t.setxNotifLibraryUpdatesSubtitle,
               value: _libraryUpdate, onChanged: (v) {
                 setState(() => _libraryUpdate = v);
                 _setBool(NotificationPrefs.libraryUpdate, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Downloads'),
+          _SectionHeader(title: t.setxNotifSectionDownloads),
           _SwitchTile(icon: Icons.download_done_rounded, iconColor: AppTheme.success,
-              title: 'Download Complete', subtitle: 'Notify when chapters finish downloading',
+              title: t.setxNotifDownloadCompleteTitle, subtitle: t.setxNotifDownloadCompleteSubtitle,
               value: _downloadComplete, onChanged: (v) {
                 setState(() => _downloadComplete = v);
                 _setBool(NotificationPrefs.downloadComplete, v);
               }),
           _SwitchTile(icon: Icons.error_outline_rounded, iconColor: AppTheme.error,
-              title: 'Download Error', subtitle: 'Notify when a download fails',
+              title: t.setxNotifDownloadErrorTitle, subtitle: t.setxNotifDownloadErrorSubtitle,
               value: _downloadError, onChanged: (v) {
                 setState(() => _downloadError = v);
                 _setBool(NotificationPrefs.downloadError, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Behavior'),
+          _SectionHeader(title: t.setxNotifSectionBehavior),
           _SwitchTile(icon: Icons.volume_up_rounded, iconColor: AppTheme.secondary,
-              title: 'Sound', subtitle: 'Play sound for notifications',
+              title: t.setxNotifSoundTitle, subtitle: t.setxNotifSoundSubtitle,
               value: _sound, onChanged: (v) {
                 setState(() => _sound = v);
                 _setBool(NotificationPrefs.sound, v);
               }),
           _SwitchTile(icon: Icons.vibration_rounded, iconColor: AppTheme.secondary,
-              title: 'Vibration', subtitle: 'Vibrate for notifications',
+              title: t.setxNotifVibrationTitle, subtitle: t.setxNotifVibrationSubtitle,
               value: _vibration, onChanged: (v) {
                 setState(() => _vibration = v);
                 _setBool(NotificationPrefs.vibration, v);
               }),
           _SwitchTile(icon: Icons.groups_rounded, iconColor: AppTheme.secondary,
-              title: 'Group Notifications', subtitle: 'Combine multiple notifications',
+              title: t.setxNotifGroupTitle, subtitle: t.setxNotifGroupSubtitle,
               value: _groupNotifications, onChanged: (v) {
                 setState(() => _groupNotifications = v);
                 _setBool(NotificationPrefs.groupNotifications, v);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 import '../library_screen.dart';
 
 // ── Filter State ─────────────────────────────────────────────
@@ -89,6 +90,7 @@ class _LibraryFilterPanelWidgetState extends State<LibraryFilterPanelWidget>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         color: cs.surface,
@@ -125,10 +127,10 @@ class _LibraryFilterPanelWidgetState extends State<LibraryFilterPanelWidget>
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
-            tabs: const [
-              Tab(text: 'Filter'),
-              Tab(text: 'Sort'),
-              Tab(text: 'Display'),
+            tabs: [
+              Tab(text: t.libraryTabFilter),
+              Tab(text: t.libraryTabSort),
+              Tab(text: t.libraryTabDisplay),
             ],
           ),
           SizedBox(
@@ -178,7 +180,7 @@ class _LibraryFilterPanelWidgetState extends State<LibraryFilterPanelWidget>
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text(
-                  'Apply',
+                  t.libraryApply,
                   style: GoogleFonts.manrope(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -202,13 +204,14 @@ class _FilterTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final options = [
-      (MangaReadingStatus.all, 'All', Icons.list_rounded),
-      (MangaReadingStatus.reading, 'Reading', Icons.auto_stories_rounded),
-      (MangaReadingStatus.completed, 'Completed', Icons.done_all_rounded),
-      (MangaReadingStatus.onHold, 'On Hold', Icons.pause_circle_rounded),
-      (MangaReadingStatus.dropped, 'Dropped', Icons.cancel_rounded),
-      (MangaReadingStatus.planToRead, 'Plan to Read', Icons.bookmark_add_rounded),
+      (MangaReadingStatus.all, t.libraryStatusAll, Icons.list_rounded),
+      (MangaReadingStatus.reading, t.libraryStatusReading, Icons.auto_stories_rounded),
+      (MangaReadingStatus.completed, t.libraryStatusCompleted, Icons.done_all_rounded),
+      (MangaReadingStatus.onHold, t.libraryStatusOnHold, Icons.pause_circle_rounded),
+      (MangaReadingStatus.dropped, t.libraryStatusDropped, Icons.cancel_rounded),
+      (MangaReadingStatus.planToRead, t.libraryStatusPlanToRead, Icons.bookmark_add_rounded),
     ];
 
     return ListView(
@@ -243,11 +246,12 @@ class _SortTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final fields = [
-      (LibrarySortField.lastUpdated, 'Last Updated', Icons.update_rounded),
-      (LibrarySortField.title, 'Title', Icons.sort_by_alpha_rounded),
-      (LibrarySortField.unreadCount, 'Unread Count', Icons.notifications_none_rounded),
-      (LibrarySortField.rating, 'Rating', Icons.star_border_rounded),
+      (LibrarySortField.lastUpdated, t.librarySortLastUpdated, Icons.update_rounded),
+      (LibrarySortField.title, t.librarySortTitle, Icons.sort_by_alpha_rounded),
+      (LibrarySortField.unreadCount, t.librarySortUnreadCount, Icons.notifications_none_rounded),
+      (LibrarySortField.rating, t.librarySortRating, Icons.star_border_rounded),
     ];
 
     return ListView(
@@ -258,7 +262,7 @@ class _SortTab extends StatelessWidget {
           children: [
             Expanded(
               child: _DirectionButton(
-                label: 'Ascending',
+                label: t.libraryAscending,
                 icon: Icons.arrow_upward_rounded,
                 isSelected: direction == LibrarySortDirection.ascending,
                 onTap: () =>
@@ -268,7 +272,7 @@ class _SortTab extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: _DirectionButton(
-                label: 'Descending',
+                label: t.libraryDescending,
                 icon: Icons.arrow_downward_rounded,
                 isSelected: direction == LibrarySortDirection.descending,
                 onTap: () =>
@@ -305,11 +309,12 @@ class _DisplayTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       children: [
         Text(
-          'Cover Size',
+          t.libraryCoverSize,
           style: GoogleFonts.manrope(
             fontSize: 13,
             fontWeight: FontWeight.w700,
@@ -320,21 +325,21 @@ class _DisplayTab extends StatelessWidget {
         Row(
           children: [
             _CoverSizeButton(
-              label: 'Small',
+              label: t.librarySizeSmall,
               icon: Icons.grid_view_rounded,
               isSelected: coverSize == LibraryCoverSize.small,
               onTap: () => onCoverSizeChanged(LibraryCoverSize.small),
             ),
             const SizedBox(width: 8),
             _CoverSizeButton(
-              label: 'Medium',
+              label: t.librarySizeMedium,
               icon: Icons.view_module_rounded,
               isSelected: coverSize == LibraryCoverSize.medium,
               onTap: () => onCoverSizeChanged(LibraryCoverSize.medium),
             ),
             const SizedBox(width: 8),
             _CoverSizeButton(
-              label: 'Large',
+              label: t.librarySizeLarge,
               icon: Icons.view_agenda_rounded,
               isSelected: coverSize == LibraryCoverSize.large,
               onTap: () => onCoverSizeChanged(LibraryCoverSize.large),

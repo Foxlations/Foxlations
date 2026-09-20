@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/app_logger.dart';
 import '../../../core/services/image_loader.dart';
 import '../../../theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Advanced preference keys. Switches persist; some have no runtime effect
 /// yet (DNS-over-HTTPS, third-party extensions, external browser) — those
@@ -65,36 +66,39 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
 
   Future<void> _clearChapterCache() async {
     ImageLoader().clearCache();
-    if (mounted) AppTheme.showSnackBar(context, 'Chapter image cache cleared');
+    if (mounted) {
+      AppTheme.showSnackBar(
+          context, AppLocalizations.of(context).setxAdvancedCacheCleared);
+    }
   }
 
   Future<void> _confirmClearDatabase() async {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cs.surface,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-        title: Text('Clear database?',
+        title: Text(t.setxAdvancedClearDbTitle,
             style: GoogleFonts.manrope(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface)),
         content: Text(
-          'This permanently deletes your library, categories, and read '
-          'history. Installed extensions and downloads are not affected.',
+          t.setxAdvancedClearDbBody,
           style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurfaceVariant),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
+            child: Text(t.setxAdvancedCancel,
                 style: GoogleFonts.manrope(color: cs.outline)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Clear',
+            child: Text(t.setxAdvancedClear,
                 style: GoogleFonts.manrope(
                     color: AppTheme.error, fontWeight: FontWeight.w700)),
           ),
@@ -118,8 +122,7 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
       }
     }
     if (mounted) {
-      AppTheme.showSnackBar(
-          context, 'Database cleared — restart the app to reseed defaults');
+      AppTheme.showSnackBar(context, t.setxAdvancedDbCleared);
     }
   }
 
@@ -127,6 +130,7 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -134,69 +138,69 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context)),
-        title: Text('Advanced',
+        title: Text(t.setxAdvancedTitle,
             style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: ListView(
         padding: EdgeInsets.only(
             top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
         children: [
-          _SectionHeader(title: 'Logging'),
+          _SectionHeader(title: t.setxAdvancedSectionLogging),
           _SwitchTile(icon: Icons.bug_report_rounded, iconColor: cs.outline,
-              title: 'Verbose Logging', subtitle: 'Log detailed debug information',
+              title: t.setxAdvancedVerboseLoggingTitle, subtitle: t.setxAdvancedVerboseLoggingSubtitle,
               value: _verboseLogging, onChanged: (v) {
                 setState(() => _verboseLogging = v);
                 _setBool(AdvancedPrefs.verboseLogging, v);
               }),
           _ActionTile(icon: Icons.list_alt_rounded, iconColor: AppTheme.warning,
-              title: 'View Error Logs', subtitle: 'Browse debug and error logs',
+              title: t.setxAdvancedViewErrorLogsTitle, subtitle: t.setxAdvancedViewErrorLogsSubtitle,
               onTap: () => Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const ErrorLogViewerPage()))),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Network'),
+          _SectionHeader(title: t.setxAdvancedSectionNetwork),
           _SwitchTile(icon: Icons.dns_rounded, iconColor: const Color(0xFF06B6D4),
-              title: 'DNS over HTTPS', subtitle: 'Use secure DNS resolution',
+              title: t.setxAdvancedDnsOverHttpsTitle, subtitle: t.setxAdvancedDnsOverHttpsSubtitle,
               value: _dnsOverHttps, onChanged: (v) {
                 setState(() => _dnsOverHttps = v);
                 _setBool(AdvancedPrefs.dnsOverHttps, v);
               }),
           if (_dnsOverHttps)
             _ChoiceTile(icon: Icons.cloud_rounded, iconColor: const Color(0xFF06B6D4),
-                title: 'DNS Provider', value: _dnsProvider,
+                title: t.setxAdvancedDnsProviderTitle, value: _dnsProvider,
                 options: const ['Cloudflare', 'Google', 'AdGuard', 'Custom'],
                 onChanged: (v) {
                   setState(() => _dnsProvider = v);
                   _setString(AdvancedPrefs.dnsProvider, v);
                 }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Extensions'),
+          _SectionHeader(title: t.setxAdvancedSectionExtensions),
           _SwitchTile(icon: Icons.extension_rounded, iconColor: AppTheme.warning,
-              title: 'Third-Party Extensions', subtitle: 'Allow extensions from unknown sources',
+              title: t.setxAdvancedThirdPartyTitle, subtitle: t.setxAdvancedThirdPartySubtitle,
               value: _thirdPartyExtensions, onChanged: (v) {
                 setState(() => _thirdPartyExtensions = v);
                 _setBool(AdvancedPrefs.thirdPartyExtensions, v);
               }),
           _SwitchTile(icon: Icons.system_update_alt_rounded, iconColor: AppTheme.warning,
-              title: 'Extension Update Alerts', subtitle: 'Notify when extensions have updates',
+              title: t.setxAdvancedExtUpdateTitle, subtitle: t.setxAdvancedExtUpdateSubtitle,
               value: _extensionUpdateNotify, onChanged: (v) {
                 setState(() => _extensionUpdateNotify = v);
                 _setBool(AdvancedPrefs.extensionUpdateNotify, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Browser'),
+          _SectionHeader(title: t.setxAdvancedSectionBrowser),
           _SwitchTile(icon: Icons.open_in_browser_rounded, iconColor: AppTheme.secondary,
-              title: 'External Browser', subtitle: 'Open links in system browser',
+              title: t.setxAdvancedExternalBrowserTitle, subtitle: t.setxAdvancedExternalBrowserSubtitle,
               value: _externalBrowser, onChanged: (v) {
                 setState(() => _externalBrowser = v);
                 _setBool(AdvancedPrefs.externalBrowser, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Data'),
+          _SectionHeader(title: t.setxAdvancedSectionData),
           _ActionTile(icon: Icons.cleaning_services_rounded, iconColor: AppTheme.error,
-              title: 'Clear Chapter Cache', subtitle: 'Free up storage space',
+              title: t.setxAdvancedClearCacheTitle, subtitle: t.setxAdvancedClearCacheSubtitle,
               onTap: _clearChapterCache),
           _ActionTile(icon: Icons.delete_sweep_rounded, iconColor: AppTheme.error,
-              title: 'Clear Database', subtitle: 'Reset library, categories, and read history',
+              title: t.setxAdvancedClearDbEntryTitle, subtitle: t.setxAdvancedClearDbEntrySubtitle,
               onTap: _confirmClearDatabase),
           const SizedBox(height: 24),
         ],
@@ -322,6 +326,7 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -329,12 +334,12 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context)),
-        title: Text('Error Logs',
+        title: Text(t.setxAdvancedErrorLogsTitle,
             style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
         actions: [
           IconButton(
             icon: Icon(Icons.delete_outline_rounded, color: cs.outline),
-            tooltip: 'Clear all logs',
+            tooltip: t.setxAdvancedClearAllLogsTooltip,
             onPressed: () => _confirmClear(context)),
         ],
       ),
@@ -345,11 +350,11 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(children: [
             Expanded(child: _FilterDropdown<LogCategory?>(
-              label: 'Category', value: _selectedCategory, items: _categoryLabels,
+              label: t.setxAdvancedFilterCategory, value: _selectedCategory, items: _categoryLabels,
               onChanged: (v) => setState(() => _selectedCategory = v), cs: cs)),
             const SizedBox(width: 8),
             Expanded(child: _FilterDropdown<LogLevel?>(
-              label: 'Level', value: _minLevel, items: _levelLabels,
+              label: t.setxAdvancedFilterLevel, value: _minLevel, items: _levelLabels,
               onChanged: (v) => setState(() => _minLevel = v), cs: cs)),
           ]),
         ),
@@ -365,10 +370,10 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
                 return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.check_circle_outline_rounded, color: cs.outline, size: 48),
                   const SizedBox(height: 12),
-                  Text('No logs yet', style: GoogleFonts.manrope(
+                  Text(t.setxAdvancedNoLogs, style: GoogleFonts.manrope(
                       fontSize: 15, color: cs.outline, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  Text('Logs will appear here as you use the app',
+                  Text(t.setxAdvancedNoLogsSubtitle,
                       style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
                 ]));
               }
@@ -387,29 +392,30 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
 
   void _confirmClear(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     showDialog(context: context, builder: (_) => AlertDialog(
       backgroundColor: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      title: Text('Clear all logs?',
+      title: Text(t.setxAdvancedClearLogsTitle,
           style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: cs.onSurface)),
-      content: Text('This will permanently delete all stored log entries.',
+      content: Text(t.setxAdvancedClearLogsBody,
           style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.manrope(color: cs.outline))),
+            child: Text(t.setxAdvancedCancel, style: GoogleFonts.manrope(color: cs.outline))),
         TextButton(
           onPressed: () async {
             Navigator.pop(context);
             await AppLogger.instance.clearLogs();
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('Logs cleared', style: GoogleFonts.manrope(color: Colors.white)),
+                content: Text(t.setxAdvancedLogsCleared, style: GoogleFonts.manrope(color: Colors.white)),
                 backgroundColor: AppTheme.success,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
             }
           },
-          child: Text('Clear', style: GoogleFonts.manrope(
+          child: Text(t.setxAdvancedClear, style: GoogleFonts.manrope(
               color: AppTheme.error, fontWeight: FontWeight.w700))),
       ],
     ));
@@ -432,6 +438,7 @@ class _LogEntryTileState extends State<_LogEntryTile> {
   Widget build(BuildContext context) {
     final entry = widget.entry;
     final cs = widget.cs;
+    final t = AppLocalizations.of(context);
     final timeStr =
         '${entry.timestamp.hour.toString().padLeft(2, '0')}:'
         '${entry.timestamp.minute.toString().padLeft(2, '0')}:'
@@ -444,7 +451,7 @@ class _LogEntryTileState extends State<_LogEntryTile> {
           text: '[${entry.levelLabel}][${entry.categoryLabel}] ${entry.message}'
               '${entry.detail != null ? '\n${entry.detail}' : ''}'));
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Copied to clipboard', style: GoogleFonts.manrope(color: Colors.white)),
+          content: Text(t.setxAdvancedCopiedToClipboard, style: GoogleFonts.manrope(color: Colors.white)),
           backgroundColor: cs.primary, behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 1),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));

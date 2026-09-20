@@ -14,6 +14,7 @@ import '../../core/providers/library_provider.dart';
 import '../../core/providers/tracking_provider.dart';
 import '../../core/providers/download_provider.dart';
 import '../library_screen/library_screen.dart' show kBookmarkedMangaIdsKey;
+import '../../l10n/app_localizations.dart';
 import '../../eval/model/page_url.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/manga_image.dart';
@@ -52,8 +53,8 @@ class ReaderScreen extends StatelessWidget {
     final installed = sourceProvider.getInstalledSource(sourceId);
 
     if (installed == null) {
-      return const Scaffold(
-        body: Center(child: Text('Source not installed')),
+      return Scaffold(
+        body: Center(child: Text(AppLocalizations.of(context).readerSourceNotInstalled)),
       );
     }
 
@@ -375,6 +376,7 @@ class _ReaderBodyState extends State<_ReaderBody>
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return Consumer<ReaderProvider>(
       builder: (_, reader, __) {
         // Sync slider to currentPage once pages are loaded
@@ -435,7 +437,7 @@ class _ReaderBodyState extends State<_ReaderBody>
                               valueColor: AlwaysStoppedAnimation(Colors.white)),
                           ),
                           const SizedBox(width: 8),
-                          Text('Translating…',
+                          Text(t.readerTranslating,
                             style: GoogleFonts.manrope(
                               fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
                         ]),
@@ -468,6 +470,7 @@ class _ReaderBodyState extends State<_ReaderBody>
   Color _onBg = Colors.white;
 
   Widget _buildError(ReaderProvider reader) {
+    final t = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -485,7 +488,7 @@ class _ReaderBodyState extends State<_ReaderBody>
           FilledButton.icon(
             onPressed: () => reader.loadPages(),
             icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: Text('Retry', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+            label: Text(t.readerRetry, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
             style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
           ),
         ],
@@ -657,6 +660,7 @@ class _ReaderBodyState extends State<_ReaderBody>
   }
 
   Widget _buildScrollReader(BuildContext context, ReaderProvider reader) {
+    final t = AppLocalizations.of(context);
     final itemCount = reader.pages.length + 1;
 
     return ScrollablePositionedList.builder(
@@ -675,7 +679,7 @@ class _ReaderBodyState extends State<_ReaderBody>
                 child: Column(children: [
                   CircularProgressIndicator(color: _onBg.withAlpha(150)),
                   const SizedBox(height: 16),
-                  Text('Loading next chapter...',
+                  Text(t.readerLoadingNextChapter,
                       style: GoogleFonts.manrope(fontSize: 13, color: _onBg.withAlpha(165))),
                 ]),
               );
@@ -784,13 +788,14 @@ class _ReaderBodyState extends State<_ReaderBody>
 
   Widget _buildChapterTransition(BuildContext context, ChapterBoundary boundary) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
       color: const Color(0xFF1A1A2E),
       child: Column(
         children: [
           if (boundary.prevChapterName != null)
-            Text('Finished: ${boundary.prevChapterName}',
+            Text(t.readerFinishedChapter(boundary.prevChapterName!),
                 style: GoogleFonts.manrope(fontSize: 12, color: _onBg.withAlpha(165)),
                 textAlign: TextAlign.center),
           Padding(
@@ -816,6 +821,7 @@ class _ReaderBodyState extends State<_ReaderBody>
 
   Widget _buildEndCard(BuildContext context, {required bool isLast, VoidCallback? onNext}) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 32),
       child: Column(children: [
@@ -826,19 +832,19 @@ class _ReaderBodyState extends State<_ReaderBody>
         ),
         const SizedBox(height: 16),
         Text(
-          isLast ? 'You\'re all caught up!' : 'End of Chapter',
+          isLast ? t.readerAllCaughtUp : t.readerEndOfChapter,
           style: GoogleFonts.manrope(
               fontSize: 16, fontWeight: FontWeight.w700, color: _onBg.withAlpha(200)),
         ),
         const SizedBox(height: 8),
         if (isLast)
-          Text('This is the latest chapter available.',
+          Text(t.readerLatestChapterAvailable,
               style: GoogleFonts.manrope(fontSize: 13, color: _onBg.withAlpha(165)),
               textAlign: TextAlign.center)
         else if (onNext != null)
           FilledButton.icon(
             icon: const Icon(Icons.skip_next_rounded, size: 20),
-            label: Text('Load Next Chapter',
+            label: Text(t.readerLoadNextChapter,
                 style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
             style: FilledButton.styleFrom(
               backgroundColor: cs.primary,
@@ -873,6 +879,7 @@ class _ReaderBodyState extends State<_ReaderBody>
   }
 
   Widget _buildTopBar(BuildContext context, ReaderProvider reader) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -892,7 +899,7 @@ class _ReaderBodyState extends State<_ReaderBody>
           _HudButton(
             icon: Icons.arrow_back_ios_new_rounded,
             onTap: () => Navigator.pop(context),
-            tooltip: 'Back',
+            tooltip: t.readerBack,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -900,7 +907,7 @@ class _ReaderBodyState extends State<_ReaderBody>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.mangaTitle ?? 'Reader',
+                  widget.mangaTitle ?? t.readerTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.manrope(
@@ -928,7 +935,7 @@ class _ReaderBodyState extends State<_ReaderBody>
           _HudButton(
             icon: Icons.tune_rounded,
             onTap: () => _showSettingsSheet(context, reader),
-            tooltip: 'Settings',
+            tooltip: t.readerSettings,
           ),
         ],
       ),
@@ -936,6 +943,7 @@ class _ReaderBodyState extends State<_ReaderBody>
   }
 
   Widget _buildBottomBar(BuildContext context, ReaderProvider reader) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -1050,7 +1058,7 @@ class _ReaderBodyState extends State<_ReaderBody>
                           color: _isTranslationActive ? Colors.white : Colors.white70),
                     const SizedBox(width: 6),
                     Text(
-                      _isTranslating ? 'Translating...' : 'AI Translate',
+                      _isTranslating ? t.readerTranslating : t.readerAiTranslate,
                       style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700,
                           color: _isTranslationActive ? Colors.white : Colors.white70),
                     ),
@@ -1087,14 +1095,14 @@ class _ReaderBodyState extends State<_ReaderBody>
                 onTap: reader.hasPreviousChapter
                     ? () => reader.goToPreviousChapter()
                     : () {},
-                tooltip: 'Previous chapter',
+                tooltip: t.readerPreviousChapter,
                 size: 20,
               ),
               const SizedBox(width: 24),
               _HudButton(
                 icon: Icons.bookmark_border_rounded,
                 onTap: () {},
-                tooltip: 'Bookmark',
+                tooltip: t.readerBookmark,
                 size: 18,
               ),
               const SizedBox(width: 24),
@@ -1103,7 +1111,7 @@ class _ReaderBodyState extends State<_ReaderBody>
                 onTap: reader.hasNextChapter
                     ? () => reader.goToNextChapter()
                     : () {},
-                tooltip: 'Next chapter',
+                tooltip: t.readerNextChapter,
                 size: 20,
               ),
             ],
@@ -1216,7 +1224,7 @@ class _ReaderBodyState extends State<_ReaderBody>
         // so background scroll prefetch can't spam snackbars.
         if (index == reader.currentPage) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Translation failed: $e'), duration: const Duration(seconds: 3)));
+            SnackBar(content: Text(AppLocalizations.of(context).readerTranslationFailed(e)), duration: const Duration(seconds: 3)));
         }
       }
     }
@@ -1262,6 +1270,7 @@ class _ReaderBodyState extends State<_ReaderBody>
 
   void _showSettingsSheet(BuildContext context, ReaderProvider reader) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surface,
@@ -1282,7 +1291,7 @@ class _ReaderBodyState extends State<_ReaderBody>
               ),
             ),
             const SizedBox(height: 16),
-            Text('Reading Mode',
+            Text(t.readerReadingMode,
                 style: GoogleFonts.manrope(
                     fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
             const SizedBox(height: 12),
@@ -1577,17 +1586,17 @@ class _ReaderBodyState extends State<_ReaderBody>
   }
 
   String _modeLabel(ReadingMode mode) => switch (mode) {
-        ReadingMode.ltr => 'Left to Right',
-        ReadingMode.rtl => 'Right to Left',
-        ReadingMode.vertical => 'Continuous Scroll',
-        ReadingMode.webtoon => 'Webtoon',
+        ReadingMode.ltr => AppLocalizations.of(context).readerModeLtrLabel,
+        ReadingMode.rtl => AppLocalizations.of(context).readerModeRtlLabel,
+        ReadingMode.vertical => AppLocalizations.of(context).readerModeVerticalLabel,
+        ReadingMode.webtoon => AppLocalizations.of(context).readerModeWebtoonLabel,
       };
 
   String _modeSubtitle(ReadingMode mode) => switch (mode) {
-        ReadingMode.ltr => 'Tap left/right to turn pages',
-        ReadingMode.rtl => 'Manga-style right to left',
-        ReadingMode.vertical => 'Scroll vertically through pages',
-        ReadingMode.webtoon => 'Optimized for long vertical strips',
+        ReadingMode.ltr => AppLocalizations.of(context).readerModeLtrSubtitle,
+        ReadingMode.rtl => AppLocalizations.of(context).readerModeRtlSubtitle,
+        ReadingMode.vertical => AppLocalizations.of(context).readerModeVerticalSubtitle,
+        ReadingMode.webtoon => AppLocalizations.of(context).readerModeWebtoonSubtitle,
       };
 
   IconData _modeIcon(ReadingMode mode) => switch (mode) {

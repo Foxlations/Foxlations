@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../l10n/app_localizations.dart';
+
 /// Opens an OAuth authorize URL in a WebView and captures the result:
 ///  - token/implicit flow (AniList): reads `#access_token=…` from the pin page.
 ///  - code/PKCE flow (MAL): intercepts the `foxlations://auth?code=…` redirect.
@@ -61,9 +63,10 @@ class _TrackerOAuthScreenState extends State<TrackerOAuthScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Connect ${widget.trackerName}',
+        title: Text(t.trackConnectTracker(widget.trackerName),
             style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
       ),
       body: Column(children: [
@@ -72,7 +75,7 @@ class _TrackerOAuthScreenState extends State<TrackerOAuthScreen> {
           color: cs.surfaceContainerHighest,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Text(
-            'Log in and press Authorize. You’ll be signed in automatically.',
+            t.trackOauthInstructions,
             style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurfaceVariant),
           ),
         ),

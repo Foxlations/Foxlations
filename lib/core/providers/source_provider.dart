@@ -20,6 +20,9 @@ class SourceProvider extends ChangeNotifier {
   List<String> _repoUrls = [];
   Map<String, RepoIndexResult> _repoIndexes = {};
   List<InstalledSource> _installedSources = [];
+  // Ids with an install in flight — guards against a double-tap racing two
+  // concurrent installs of the same source into duplicate entries.
+  final Set<String> _installing = {};
   bool _isLoading = false;
   String? _error;
 
@@ -149,12 +152,26 @@ class SourceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addRepo(String url) async {
+  /// Fetch a repo's index WITHOUT saving it, so a confirm dialog (e.g. the
+  /// deep-link auto-install) can show the repo's name and source count before
+  /// the user commits. Returns null if the fetch fails.
+  Future<RepoIndexResult?> previewRepo(String url) async {
+    try {
+      return await _repoService.fetchRepoIndex(url);
+    } catch (e) {
+      debugPrint('[SourceProvider] previewRepo failed: $e');
+      return null;
+    }
+  }
+
+  Future<void> addRepo(String url, {RepoIndexResult? prefetched}) async {
     await _repoService.addRepo(url);
     _repoUrls = await _repoService.getSavedRepos();
 
     try {
-      _repoIndexes[url] = await _repoService.fetchRepoIndex(url);
+      // Reuse an index already fetched for a preview (deep-link confirm) so a
+      // big repo is not downloaded + parsed twice.
+      _repoIndexes[url] = prefetched ?? await _repoService.fetchRepoIndex(url);
     } catch (e) {
       debugPrint('[SourceProvider] addRepo fetch failed: $e');
       await logger.error('Failed to fetch repo: $url',
@@ -182,6 +199,8 @@ class SourceProvider extends ChangeNotifier {
   }
 
   Future<void> installSource(MangaSource source) async {
+    // Ignore a duplicate tap while this source is already installing.
+    if (!_installing.add(source.id)) return;
     try {
       await _sourceManager.installSource(source);
       _installedSources = await _sourceManager.getInstalledSources();
@@ -190,6 +209,8 @@ class SourceProvider extends ChangeNotifier {
       _error = 'Install failed: $e';
       notifyListeners();
       rethrow;
+    } finally {
+      _installing.remove(source.id);
     }
   }
 

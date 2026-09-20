@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/models/player_settings.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Video-player options — feeds media_kit's controls theme (double-tap seek
 /// distances, gestures, long-press speed, autoplay, default speed).
@@ -26,6 +27,7 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -35,7 +37,7 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Player',
+        title: Text(t.setdPlayerTitle,
             style: GoogleFonts.manrope(
                 fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
@@ -43,48 +45,48 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
         child: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          _header(cs, 'DOUBLE-TAP TO SEEK'),
-          _pick(cs, 'Skip forward', '${_s.seekForwardSeconds}s', () async {
+          _header(cs, t.setdPlayerSectionSeek),
+          _pick(cs, t.setdPlayerSkipForward, '${_s.seekForwardSeconds}s', () async {
             final v = await _pickSeconds(_s.seekForwardSeconds);
             if (v != null) {
               await PlayerSettings.setInt(PlayerSettings.kSeekForward, v);
               setState(() => _s = _copy(seekForwardSeconds: v));
             }
           }),
-          _pick(cs, 'Skip backward', '${_s.seekBackwardSeconds}s', () async {
+          _pick(cs, t.setdPlayerSkipBackward, '${_s.seekBackwardSeconds}s', () async {
             final v = await _pickSeconds(_s.seekBackwardSeconds);
             if (v != null) {
               await PlayerSettings.setInt(PlayerSettings.kSeekBackward, v);
               setState(() => _s = _copy(seekBackwardSeconds: v));
             }
           }),
-          _header(cs, 'GESTURES'),
-          _toggle(cs, 'Hold to speed up',
-              'Press and hold anywhere to play at ${_s.speedFactor}x', _s.longPressSpeedUp,
+          _header(cs, t.setdPlayerSectionGestures),
+          _toggle(cs, t.setdPlayerHoldToSpeed,
+              t.setdPlayerHoldToSpeedDesc(_s.speedFactor), _s.longPressSpeedUp,
               (v) async {
             await PlayerSettings.setBool(PlayerSettings.kLongPressSpeedUp, v);
             setState(() => _s = _copy(longPressSpeedUp: v));
           }),
-          _pick(cs, 'Hold speed', '${_s.speedFactor}x', () async {
+          _pick(cs, t.setdPlayerHoldSpeed, '${_s.speedFactor}x', () async {
             final v = await _pickSpeed(_s.speedFactor, const [1.25, 1.5, 2.0, 2.5, 3.0]);
             if (v != null) {
               await PlayerSettings.setDouble(PlayerSettings.kSpeedFactor, v);
               setState(() => _s = _copy(speedFactor: v));
             }
           }),
-          _toggle(cs, 'Volume swipe', 'Slide up/down on the right half to adjust volume',
+          _toggle(cs, t.setdPlayerVolumeSwipe, t.setdPlayerVolumeSwipeDesc,
               _s.volumeGesture, (v) async {
             await PlayerSettings.setBool(PlayerSettings.kVolumeGesture, v);
             setState(() => _s = _copy(volumeGesture: v));
           }),
-          _toggle(cs, 'Brightness swipe',
-              'Slide up/down on the left half to adjust brightness', _s.brightnessGesture,
+          _toggle(cs, t.setdPlayerBrightnessSwipe,
+              t.setdPlayerBrightnessSwipeDesc, _s.brightnessGesture,
               (v) async {
             await PlayerSettings.setBool(PlayerSettings.kBrightnessGesture, v);
             setState(() => _s = _copy(brightnessGesture: v));
           }),
-          _header(cs, 'PLAYBACK'),
-          _pick(cs, 'Default speed', '${_s.defaultSpeed}x', () async {
+          _header(cs, t.setdPlayerSectionPlayback),
+          _pick(cs, t.setdPlayerDefaultSpeed, '${_s.defaultSpeed}x', () async {
             final v = await _pickSpeed(
                 _s.defaultSpeed, const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]);
             if (v != null) {
@@ -92,14 +94,14 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
               setState(() => _s = _copy(defaultSpeed: v));
             }
           }),
-          _toggle(cs, 'Autoplay next episode',
-              'Start the next episode automatically when one ends', _s.autoplayNext,
+          _toggle(cs, t.setdPlayerAutoplayNext,
+              t.setdPlayerAutoplayNextDesc, _s.autoplayNext,
               (v) async {
             await PlayerSettings.setBool(PlayerSettings.kAutoplayNext, v);
             setState(() => _s = _copy(autoplayNext: v));
           }),
-          _toggle(cs, 'Auto-skip intro/outro',
-              'Skip source-marked openings/endings without tapping', _s.autoSkipIntro,
+          _toggle(cs, t.setdPlayerAutoSkipIntro,
+              t.setdPlayerAutoSkipIntroDesc, _s.autoSkipIntro,
               (v) async {
             await PlayerSettings.setBool(PlayerSettings.kAutoSkipIntro, v);
             setState(() => _s = _copy(autoSkipIntro: v));
@@ -149,7 +151,7 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
   Future<int?> _pickSeconds(int current) => showDialog<int>(
         context: context,
         builder: (ctx) => SimpleDialog(
-          title: Text('Skip amount',
+          title: Text(AppLocalizations.of(context).setdPlayerSkipAmountTitle,
               style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
           children: [
             for (final s in const [5, 10, 15, 30, 60, 90])
@@ -161,7 +163,7 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
   Future<double?> _pickSpeed(double current, List<double> options) => showDialog<double>(
         context: context,
         builder: (ctx) => SimpleDialog(
-          title: Text('Speed',
+          title: Text(AppLocalizations.of(context).setdPlayerSpeedTitle,
               style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
           children: [
             for (final s in options) _dialogRow(ctx, '${s}x', s, s == current),

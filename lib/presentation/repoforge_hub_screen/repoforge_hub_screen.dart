@@ -14,6 +14,7 @@ import '../../core/providers/source_provider.dart';
 import '../../core/repoforge/local_repo_service.dart';
 import '../../core/repoforge/selector_knowledge_base.dart';
 import '../../core/repoforge/mangayomi_js_generator.dart';
+import '../../l10n/app_localizations.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import 'repoforge_coverage_screen.dart';
@@ -88,18 +89,19 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
   }
 
   Future<void> _deleteSource(MangaSource s) async {
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete source?'),
-        content: Text('"${s.name}" will be removed from My Sources.'),
+        title: Text(t.repoDeleteSourceTitle),
+        content: Text(t.repoDeleteSourceBody(s.name)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+              child: Text(t.repoCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete')),
+              child: Text(t.repoDelete)),
         ],
       ),
     );
@@ -109,20 +111,21 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
     final provider = context.read<SourceProvider>();
     await provider.uninstallSource(s.id);
     await provider.refreshRepos();
-    if (mounted) AppTheme.showSnackBar(context, 'Deleted "${s.name}"');
+    if (mounted) AppTheme.showSnackBar(context, t.repoDeletedSource(s.name));
     _load();
   }
 
   Future<void> _exportAll() async {
+    final t = AppLocalizations.of(context);
     if (_sources.isEmpty) {
-      AppTheme.showSnackBar(context, 'No sources to export');
+      AppTheme.showSnackBar(context, t.repoNoSourcesToExport);
       return;
     }
     try {
       final bundle = await _repo.exportBundle();
       final bytes = Uint8List.fromList(utf8.encode(bundle));
       String? path = await FilePicker.saveFile(
-        dialogTitle: 'Export RepoForge sources',
+        dialogTitle: t.repoExportDialogTitle,
         fileName: 'foxlations_sources.json',
         bytes: bytes,
       );
@@ -138,13 +141,14 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
         await f.writeAsBytes(bytes);
         path = f.path;
       }
-      AppTheme.showSnackBar(context, 'Exported ${_sources.length} sources');
+      AppTheme.showSnackBar(context, t.repoExportedSources(_sources.length));
     } catch (e) {
-      if (mounted) AppTheme.showSnackBar(context, 'Export failed: $e');
+      if (mounted) AppTheme.showSnackBar(context, t.repoExportFailed('$e'));
     }
   }
 
   Future<void> _import() async {
+    final t = AppLocalizations.of(context);
     try {
       final res = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -158,10 +162,10 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
       final provider = context.read<SourceProvider>();
       await provider.addRepo(await _repo.indexPath());
       await provider.refreshRepos();
-      if (mounted) AppTheme.showSnackBar(context, 'Imported $n source(s)');
+      if (mounted) AppTheme.showSnackBar(context, t.repoImportedSources(n));
       _load();
     } catch (e) {
-      if (mounted) AppTheme.showSnackBar(context, 'Import failed: $e');
+      if (mounted) AppTheme.showSnackBar(context, t.repoImportFailed('$e'));
     }
   }
 
@@ -200,7 +204,9 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
     );
   }
 
-  Widget _heroCard(ColorScheme cs) => Container(
+  Widget _heroCard(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
+    return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -214,7 +220,7 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
           Row(children: [
             Icon(Icons.auto_fix_high_rounded, color: cs.primary, size: 24),
             const SizedBox(width: 10),
-            Text('Build sources from any URL',
+            Text(t.repoBuildFromUrl,
                 style: GoogleFonts.manrope(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -227,7 +233,7 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: cs.primary.withAlpha(120)),
               ),
-              child: Text('BETA',
+              child: Text(t.repoBeta,
                   style: GoogleFonts.manrope(
                       fontSize: 9,
                       fontWeight: FontWeight.w800,
@@ -237,10 +243,7 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
           ]),
           const SizedBox(height: 8),
           Text(
-            'Detect a site’s framework, tune selectors, and install a working '
-            'manga / anime / novel source — no server, all on-device. RepoForge '
-            'is in beta, so it won’t always get a source right — check the '
-            'result and tweak the selectors if a site doesn’t come out correct.',
+            t.repoHeroDescription,
             style: GoogleFonts.manrope(
                 fontSize: 12.5, height: 1.4, color: cs.onSurfaceVariant),
           ),
@@ -262,8 +265,10 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    '${MangayomiJsGenerator.supportedFrameworks.length} frameworks · '
-                    '$_mangaKbCount manga + $_novelKbCount novel sites known',
+                    t.repoCoverageSummary(
+                        MangayomiJsGenerator.supportedFrameworks.length,
+                        _mangaKbCount,
+                        _novelKbCount),
                     style: GoogleFonts.manrope(
                         fontSize: 12, fontWeight: FontWeight.w600),
                   ),
@@ -274,13 +279,16 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
           ),
         ]),
       );
+  }
 
-  Widget _actionsRow(ColorScheme cs) => Row(children: [
+  Widget _actionsRow(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
+    return Row(children: [
         Expanded(
           child: FilledButton.icon(
             onPressed: _newSource,
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('New Source'),
+            label: Text(t.repoNewSource),
             style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14)),
           ),
@@ -290,15 +298,18 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
           child: OutlinedButton.icon(
             onPressed: _import,
             icon: const Icon(Icons.file_download_rounded, size: 18),
-            label: const Text('Import'),
+            label: Text(t.repoImport),
             style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14)),
           ),
         ),
       ]);
+  }
 
-  Widget _mySourcesHeader(ColorScheme cs) => Row(children: [
-        Text('MY SOURCES${_sources.isEmpty ? '' : ' (${_sources.length})'}',
+  Widget _mySourcesHeader(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
+    return Row(children: [
+        Text('${t.repoMySources}${_sources.isEmpty ? '' : ' (${_sources.length})'}',
             style: GoogleFonts.manrope(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
@@ -309,30 +320,35 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
           TextButton.icon(
             onPressed: _exportAll,
             icon: const Icon(Icons.file_upload_rounded, size: 16),
-            label: const Text('Export all'),
+            label: Text(t.repoExportAll),
             style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
           ),
       ]);
+  }
 
-  Widget _emptyState(ColorScheme cs) => Container(
+  Widget _emptyState(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
+    return Container(
         padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
         alignment: Alignment.center,
         child: Column(children: [
           Icon(Icons.travel_explore_rounded, size: 40, color: cs.outline),
           const SizedBox(height: 12),
-          Text('No sources yet',
+          Text(t.repoNoSourcesYet,
               style: GoogleFonts.manrope(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: cs.onSurface)),
           const SizedBox(height: 6),
-          Text('Tap “New Source” to generate one from a site URL.',
+          Text(t.repoEmptyStateHint,
               textAlign: TextAlign.center,
               style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
         ]),
       );
+  }
 
   Widget _sourceCard(MangaSource s, ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     final installed = context.watch<SourceProvider>().isInstalled(s.id);
     final icon = s.isAnime
         ? Icons.movie_rounded
@@ -360,7 +376,7 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
                 fontWeight: FontWeight.w700, fontSize: 14)),
         subtitle: Text(
           '$host · ${s.framework}${s.isNsfw ? ' · 18+' : ''}'
-          '${installed ? '' : ' · not installed'}',
+          '${installed ? '' : ' · ${t.repoNotInstalled}'}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline),
@@ -380,10 +396,10 @@ class _RepoForgeHubScreenState extends State<RepoForgeHubScreen> {
                 break;
             }
           },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'open', child: Text('Open in browse')),
-            PopupMenuItem(value: 'edit', child: Text('Edit / re-detect')),
-            PopupMenuItem(value: 'delete', child: Text('Delete')),
+          itemBuilder: (_) => [
+            PopupMenuItem(value: 'open', child: Text(t.repoOpenInBrowse)),
+            PopupMenuItem(value: 'edit', child: Text(t.repoEditRedetect)),
+            PopupMenuItem(value: 'delete', child: Text(t.repoDelete)),
           ],
         ),
       ),

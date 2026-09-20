@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/providers/tracking_provider.dart';
 import '../../../core/tracking/tracker.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import '../../tracking/tracker_oauth_screen.dart';
 
@@ -13,6 +14,7 @@ class TrackingSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final tracking = context.watch<TrackingProvider>();
     return Scaffold(
       backgroundColor: cs.surface,
@@ -23,7 +25,7 @@ class TrackingSettingsPage extends StatelessWidget {
             icon: Icon(Icons.arrow_back_ios_new_rounded,
                 color: cs.onSurface, size: 20),
             onPressed: () => Navigator.pop(context)),
-        title: Text('Tracking',
+        title: Text(t.trackTitle,
             style: GoogleFonts.manrope(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -33,14 +35,13 @@ class TrackingSettingsPage extends StatelessWidget {
         padding: EdgeInsets.only(
             top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
         children: [
-          _SectionHeader(title: 'Services'),
+          _SectionHeader(title: t.trackServices),
           for (final t in tracking.trackers) _TrackerTile(tracker: t),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'Connect a tracking service to sync your reading progress. '
-              'Once a manga is linked, progress updates automatically as you read.',
+              t.trackServicesDescription,
               textAlign: TextAlign.center,
               style: GoogleFonts.manrope(
                   fontSize: 12, color: cs.outline, height: 1.5),
@@ -81,30 +82,31 @@ class _TrackerTile extends StatelessWidget {
       BuildContext context, TrackingProvider tp) async {
     final userCtl = TextEditingController();
     final passCtl = TextEditingController();
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Log in to ${tracker.name}'),
+        title: Text(t.trackLogInTo(tracker.name)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(
             controller: userCtl,
             autocorrect: false,
-            decoration: const InputDecoration(labelText: 'Email or username'),
+            decoration: InputDecoration(labelText: t.trackEmailOrUsername),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: passCtl,
             obscureText: true,
-            decoration: const InputDecoration(labelText: 'Password'),
+            decoration: InputDecoration(labelText: t.trackPassword),
           ),
         ]),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+              child: Text(t.trackCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Log in')),
+              child: Text(t.trackLogIn)),
         ],
       ),
     );
@@ -115,12 +117,13 @@ class _TrackerTile extends StatelessWidget {
       AppTheme.showSnackBar(
           context,
           success
-              ? 'Connected to ${tracker.name}'
-              : 'Login failed — check your credentials');
+              ? t.trackConnectedTo(tracker.name)
+              : t.trackLoginFailed);
     }
   }
 
   Future<void> _oauthLogin(BuildContext context, TrackingProvider tp) async {
+    final t = AppLocalizations.of(context);
     var cid = tp.clientId(tracker.id);
     if (cid.isEmpty) {
       final entered = await _promptClientId(context, tp);
@@ -130,7 +133,7 @@ class _TrackerTile extends StatelessWidget {
     final url = tp.authorizeUrl(tracker.id);
     if (url == null) {
       if (context.mounted) {
-        AppTheme.showSnackBar(context, 'Set a client ID first');
+        AppTheme.showSnackBar(context, t.trackSetClientIdFirst);
       }
       return;
     }
@@ -156,38 +159,37 @@ class _TrackerTile extends StatelessWidget {
     final ok = await tp.completeOAuth(tracker.id, captured);
     if (context.mounted) {
       AppTheme.showSnackBar(context,
-          ok ? 'Connected to ${tracker.name}' : 'Could not complete sign-in');
+          ok ? t.trackConnectedTo(tracker.name) : t.trackCouldNotCompleteSignIn);
     }
   }
 
   Future<String?> _promptClientId(
       BuildContext context, TrackingProvider tp) async {
     final ctl = TextEditingController(text: tp.clientId(tracker.id));
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('${tracker.name} client ID (advanced)'),
+        title: Text(t.trackClientIdTitle(tracker.name)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(
-            'Optional. Foxlations already has a built-in ${tracker.name} client '
-            'ID — just tap Connect. Only set this if you registered your own '
-            '${tracker.name} developer app and want to use it instead.',
+            t.trackClientIdDescription(tracker.name),
             style: GoogleFonts.manrope(fontSize: 12),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: ctl,
             autocorrect: false,
-            decoration: const InputDecoration(labelText: 'Client ID'),
+            decoration: InputDecoration(labelText: t.trackClientId),
           ),
         ]),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+              child: Text(t.trackCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Save')),
+              child: Text(t.trackSave)),
         ],
       ),
     );
@@ -198,24 +200,25 @@ class _TrackerTile extends StatelessWidget {
 
   Future<void> _manualToken(BuildContext context, TrackingProvider tp) async {
     final ctl = TextEditingController();
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Paste access token'),
+        title: Text(t.trackPasteAccessToken),
         content: TextField(
           controller: ctl,
           maxLines: 3,
           autocorrect: false,
-          decoration: const InputDecoration(
-              hintText: 'Paste the token shown after authorizing'),
+          decoration: InputDecoration(
+              hintText: t.trackPasteTokenHint),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+              child: Text(t.trackCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Connect')),
+              child: Text(t.trackConnect)),
         ],
       ),
     );
@@ -223,13 +226,14 @@ class _TrackerTile extends StatelessWidget {
     final connected = await tp.connectWithToken(tracker.id, ctl.text.trim());
     if (context.mounted) {
       AppTheme.showSnackBar(context,
-          connected ? 'Connected to ${tracker.name}' : 'Could not verify token');
+          connected ? t.trackConnectedTo(tracker.name) : t.trackCouldNotVerifyToken);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final connected = tracker.isAuthenticated;
     final color = Color(tracker.colorValue);
     return Container(
@@ -260,10 +264,12 @@ class _TrackerTile extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               connected
-                  ? 'Connected${tracker.username != null ? ' as ${tracker.username}' : ''}'
+                  ? (tracker.username != null
+                      ? t.trackConnectedAs(tracker.username!)
+                      : t.trackConnected)
                   : (tracker.authType == TrackerAuthType.oauth
-                      ? 'Tap Connect to authorize'
-                      : 'Sign in with your account'),
+                      ? t.trackTapConnectToAuthorize
+                      : t.trackSignInWithAccount),
               style: GoogleFonts.manrope(
                   fontSize: 12,
                   color: connected ? AppTheme.success : cs.outline),
@@ -272,7 +278,7 @@ class _TrackerTile extends StatelessWidget {
         ),
         if (!connected && tracker.authType == TrackerAuthType.oauth)
           IconButton(
-            tooltip: 'Client ID',
+            tooltip: t.trackClientId,
             icon: Icon(Icons.key_rounded, size: 18, color: cs.outline),
             onPressed: () =>
                 _promptClientId(context, context.read<TrackingProvider>()),
@@ -291,7 +297,7 @@ class _TrackerTile extends StatelessWidget {
               border: Border.all(
                   color: connected ? AppTheme.error : cs.primary, width: 1),
             ),
-            child: Text(connected ? 'Disconnect' : 'Connect',
+            child: Text(connected ? t.trackDisconnect : t.trackConnect,
                 style: GoogleFonts.manrope(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,

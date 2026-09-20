@@ -605,7 +605,7 @@ class AiTranslationService {
     final results = <TranslatedRegion>[];
 
     try {
-      // Download model if needed (like TachiyomiAT's downloadModelIfNeeded).
+      // Download model if needed.
       final isDownloaded = await modelManager.isModelDownloaded(toLang.bcpCode);
       if (!isDownloaded) {
         debugPrint('[AI] Downloading ML Kit model for $targetLang...');

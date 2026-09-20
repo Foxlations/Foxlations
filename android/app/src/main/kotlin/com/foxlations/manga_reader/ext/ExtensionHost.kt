@@ -37,7 +37,7 @@ import okhttp3.Headers
 import java.io.File
 
 /**
- * Android extension host — the Mihon-style ART loader. Loads Tachiyomi/Aniyomi/keiyoushi
+ * Android extension host — the ART-based dex loader. Loads Tachiyomi/Aniyomi/keiyoushi
  * extension APKs directly on the device runtime (ChildFirstPathClassLoader) and runs their
  * source methods, emitting the SAME JSON contract as the embedded-JVM SourceRunner so the
  * Dart side is platform-identical. No embedded JVM, no dex2jar — DexClassLoader loads dex.

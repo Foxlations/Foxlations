@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/update_service.dart';
 import '../../theme/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 import '../webview_screen/webview_screen.dart';
 
 /// Tells the user a newer build exists.
@@ -22,7 +23,8 @@ class UpdatePrompt {
     final release = await UpdateService.check(force: force);
     if (release == null) {
       if (force && context.mounted) {
-        AppTheme.showSnackBar(context, 'You\'re on the latest version');
+        AppTheme.showSnackBar(
+            context, AppLocalizations.of(context).appOnLatestVersion);
       }
       return;
     }
@@ -56,6 +58,7 @@ class _UpdateSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final isIOS = Platform.isIOS;
 
     return SafeArea(
@@ -87,12 +90,12 @@ class _UpdateSheet extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Update available',
+                        Text(t.appUpdateAvailable,
                             style: GoogleFonts.manrope(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                                 color: cs.onSurface)),
-                        Text('v${release.version} · build ${release.buildNumber}',
+                        Text(t.appVersionBuild(release.version, release.buildNumber),
                             style: GoogleFonts.manrope(
                                 fontSize: 12.5, color: cs.onSurfaceVariant)),
                       ],
@@ -126,6 +129,7 @@ class _UpdateSheet extends StatelessWidget {
 
   // ── Android: go straight to the APK ───────────────────────────────────────
   Widget _androidActions(BuildContext context, ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Column(
       children: [
         SizedBox(
@@ -149,19 +153,19 @@ class _UpdateSheet extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (_) => WebViewScreen(
                     url: release.apkUrl,
-                    title: 'Download update',
+                    title: t.appDownloadUpdate,
                   ),
                 ),
               );
             },
-            child: Text('Download v${release.version}',
+            child: Text(t.appDownloadVersion(release.version),
                 style: GoogleFonts.manrope(
                     fontSize: 14.5, fontWeight: FontWeight.w700)),
           ),
         ),
         const SizedBox(height: 6),
         Text(
-          'Opens the APK download. Android will ask you to confirm the install.',
+          t.appApkDownloadHint,
           textAlign: TextAlign.center,
           style: GoogleFonts.manrope(fontSize: 11.5, color: cs.onSurfaceVariant),
         ),
@@ -171,6 +175,7 @@ class _UpdateSheet extends StatelessWidget {
 
   // ── iOS: AltStore does the updating ───────────────────────────────────────
   Widget _iosActions(BuildContext context, ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Column(
       children: [
         Container(
@@ -187,8 +192,7 @@ class _UpdateSheet extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'Update from AltStore or SideStore — open it and refresh. '
-                  'iOS can\'t install an app downloaded in a browser.',
+                  t.appIosUpdateHint,
                   style: GoogleFonts.manrope(
                       fontSize: 12.5, height: 1.4, color: cs.onSurface),
                 ),
@@ -212,11 +216,10 @@ class _UpdateSheet extends StatelessWidget {
                   const ClipboardData(text: UpdateService.sourceUrl));
               if (context.mounted) {
                 Navigator.pop(context);
-                AppTheme.showSnackBar(
-                    context, 'Source URL copied — add it in AltStore');
+                AppTheme.showSnackBar(context, t.appSourceUrlCopied);
               }
             },
-            child: Text('Copy AltStore source URL',
+            child: Text(t.appCopyAltstoreUrl,
                 style: GoogleFonts.manrope(
                     fontSize: 14, fontWeight: FontWeight.w700)),
           ),

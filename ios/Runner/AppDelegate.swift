@@ -4,6 +4,13 @@ import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  /// The URL that cold-launched the app via a custom scheme (mihon://, etc.).
+  /// This app is scene-based, so it's captured in SceneDelegate.scene(willConnectTo:)
+  /// — before Flutter plugins register — because app_links can miss the cold-start
+  /// scene event under the implicit-engine embedding. Dart pulls it via the
+  /// foxlations/deeplink channel. Consumed once.
+  static var launchURL: URL?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -21,6 +28,21 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    // Hand the captured cold-start URL to Dart (DeepLinkService).
+    let messenger = engineBridge.applicationRegistrar.messenger()
+    let channel = FlutterMethodChannel(
+      name: "foxlations/deeplink",
+      binaryMessenger: messenger)
+    channel.setMethodCallHandler { (call, result) in
+      if call.method == "getColdStartLink" {
+        result(AppDelegate.launchURL?.absoluteString)
+        AppDelegate.launchURL = nil
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
     #if FOXLATIONS_JVM
     // Embedded-JVM channel for Kotlin extensions. Only present in the JVM build
     // (the -DFOXLATIONS_JVM configuration); a no-op in the normal production build.

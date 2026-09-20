@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/providers/source_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../presentation/webview_screen/webview_screen.dart';
 import '../../../theme/app_theme.dart';
 
@@ -37,6 +38,7 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final source = context.watch<SourceProvider>();
 
@@ -51,7 +53,7 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Browse',
+          t.browseTitle,
           style: GoogleFonts.manrope(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -63,50 +65,50 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
         padding: EdgeInsets.only(
             top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
         children: [
-          _SectionHeader(title: 'Sources'),
+          _SectionHeader(title: t.browseSectionSources),
           _SwitchTile(
             icon: Icons.eighteen_up_rating_rounded,
             iconColor: AppTheme.error,
-            title: 'Show NSFW Sources',
-            subtitle: 'Show 18+ sources in browse and search',
+            title: t.browseShowNsfw,
+            subtitle: t.browseShowNsfwDesc,
             value: source.showNsfw,
             onChanged: source.setShowNsfw,
           ),
           _SwitchTile(
             icon: Icons.push_pin_rounded,
             iconColor: cs.primary,
-            title: 'Pinned Sources Only',
-            subtitle: 'Only show pinned sources in browse',
+            title: t.browsePinnedOnly,
+            subtitle: t.browsePinnedOnlyBrowseDesc,
             value: source.pinnedOnlyBrowse,
             onChanged: source.setPinnedOnlyBrowse,
           ),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Global Search'),
+          _SectionHeader(title: t.browseSectionGlobalSearch),
           _SwitchTile(
             icon: Icons.travel_explore_rounded,
             iconColor: cs.primary,
-            title: 'Pinned Sources Only',
-            subtitle: 'Only search pinned sources in global search',
+            title: t.browsePinnedOnly,
+            subtitle: t.browsePinnedOnlyGlobalSearchDesc,
             value: source.pinnedOnlyGlobalSearch,
             onChanged: source.setPinnedOnlyGlobalSearch,
           ),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'WebView'),
+          _SectionHeader(title: t.browseSectionWebView),
           _SwitchTile(
             icon: Icons.block_rounded,
             iconColor: AppTheme.warning,
-            title: 'Ad Blocker',
-            subtitle: 'Block ads, popups, and overlays in the browser',
+            title: t.browseAdBlocker,
+            subtitle: t.browseAdBlockerDesc,
             value: _adBlockEnabled,
             onChanged: _setAdBlock,
           ),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Extensions'),
+          _SectionHeader(title: t.browseSectionExtensions),
           _SwitchTile(
             icon: Icons.system_update_alt_rounded,
             iconColor: AppTheme.secondary,
-            title: 'Auto-Update Extensions',
-            subtitle: 'Refresh installed extension code on app launch',
+            title: t.browseAutoUpdate,
+            subtitle: t.browseAutoUpdateDesc,
             value: source.autoUpdateExtensions,
             onChanged: source.setAutoUpdateExtensions,
           ),

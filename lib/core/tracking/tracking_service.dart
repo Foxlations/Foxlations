@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import '../discovery/metadata_discovery.dart';
 import '../services/secure_store.dart';
 
 import 'anilist_tracker.dart';
@@ -24,13 +25,24 @@ class TrackingService {
 
   List<Tracker> get all => trackers.values.toList();
 
+  /// Trackers that can power the Discover feed and are usable right now — AniList
+  /// always (public API), MAL only once connected. Ordered with the public one
+  /// first so Discover has a working default before any login.
+  List<MetadataDiscovery> get discoverySources {
+    final list =
+        trackers.values.whereType<MetadataDiscovery>().where((d) => d.isAvailable);
+    return list.toList()
+      ..sort((a, b) => (a.supportsGenreFilter ? 0 : 1)
+          .compareTo(b.supportsGenreFilter ? 0 : 1));
+  }
+
   Future<void> init() async {
     // This box holds OAuth access and refresh tokens, so it is encrypted with
     // a key from the platform keystore (see SecureStore). Falls back to
     // plaintext only if the keystore is unreachable, which would otherwise
     // leave the app unable to open its own data.
     _box = await Hive.openBox(_boxName, encryptionCipher: SecureStore.cipher);
-    for (final t in [AniListTracker(), MalTracker(), KitsuTracker()]) {
+    for (final t in <Tracker>[AniListTracker(), MalTracker(), KitsuTracker()]) {
       trackers[t.id] = t;
       final s = _box.get('session_${t.id}');
       if (s is Map) t.restoreSession(Map<String, dynamic>.from(s));

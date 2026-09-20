@@ -13,6 +13,7 @@ import '../../eval/lib.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/library_provider.dart';
 import '../../core/services/app_logger.dart';
+import '../../l10n/app_localizations.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String sourceId;
@@ -275,21 +276,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   /// "Continue where you left off / Start from the beginning" prompt (anime only).
   Future<bool> _askResume(int seconds) async {
+    final t = AppLocalizations.of(context);
     final at = _fmt(Duration(seconds: seconds));
     final choice = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: Text('Resume playback?',
+        title: Text(t.miscResumePlaybackTitle,
             style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
-        content: Text('You stopped watching at $at.'),
+        content: Text(t.miscStoppedWatchingAt(at)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Start over')),
+              child: Text(t.miscStartOver)),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: Text('Continue ($at)')),
+              child: Text(t.miscContinueAt(at))),
         ],
       ),
     );
@@ -310,6 +312,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _duration > Duration.zero && _position >= _duration - const Duration(seconds: 15);
     _lib!.updateEpisodeProgress(widget.sourceId, mangaUrl, _epUrl,
         atEnd ? 0 : _position.inSeconds,
+        totalSeconds: _duration.inSeconds,
         notify: notify);
   }
 
@@ -451,9 +454,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  void _showQualityPicker() => _openSheet(_sheet('Quality', [
+  void _showQualityPicker() {
+    final t = AppLocalizations.of(context);
+    _openSheet(_sheet(t.miscQuality, [
         ..._videos.asMap().entries.map((e) => ListTile(
-              title: Text(e.value.quality.isEmpty ? 'Source ${e.key}' : e.value.quality,
+              title: Text(e.value.quality.isEmpty ? t.miscSourceIndex(e.key) : e.value.quality,
                   style: GoogleFonts.manrope(color: Colors.white)),
               trailing: e.key == _currentVideoIndex
                   ? const Icon(Icons.check_rounded, color: Colors.white)
@@ -464,32 +469,34 @@ class _PlayerScreenState extends State<PlayerScreen> {
               },
             )),
       ]));
+  }
 
   void _showSubtitlePicker() {
+    final t = AppLocalizations.of(context);
     final subs =
         _videos.isNotEmpty ? (_videos[_currentVideoIndex].subtitles ?? []) : <MTrack>[];
     _openSheet(StatefulBuilder(
-      builder: (ctx, setSheet) => _sheet('Subtitles', [
+      builder: (ctx, setSheet) => _sheet(t.miscSubtitles, [
         ListTile(
-          title: Text('Off', style: GoogleFonts.manrope(color: Colors.white)),
+          title: Text(t.miscSubtitleOff, style: GoogleFonts.manrope(color: Colors.white)),
           onTap: () {
             Navigator.pop(context);
             _player.setSubtitleTrack(SubtitleTrack.no());
           },
         ),
-        ...subs.map((t) => ListTile(
-              title: Text(t.label ?? t.file ?? 'Unknown',
+        ...subs.map((track) => ListTile(
+              title: Text(track.label ?? track.file ?? t.miscUnknownTrack,
                   style: GoogleFonts.manrope(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
-                if (t.file != null) {
-                  _player.setSubtitleTrack(SubtitleTrack.uri(t.file!, title: t.label));
+                if (track.file != null) {
+                  _player.setSubtitleTrack(SubtitleTrack.uri(track.file!, title: track.label));
                 }
               },
             )),
         const Divider(color: Colors.white24),
         ListTile(
-          title: Text('Subtitle delay',
+          title: Text(t.miscSubtitleDelay,
               style: GoogleFonts.manrope(color: Colors.white)),
           subtitle: Text('${_subDelay.toStringAsFixed(1)}s',
               style: GoogleFonts.manrope(color: Colors.white54, fontSize: 12)),
@@ -509,23 +516,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _showAudioPicker() {
+    final t = AppLocalizations.of(context);
     final audios =
         _videos.isNotEmpty ? (_videos[_currentVideoIndex].audios ?? []) : <MTrack>[];
-    _openSheet(_sheet('Audio', [
-      ...audios.map((t) => ListTile(
-            title: Text(t.label ?? t.file ?? 'Unknown',
+    _openSheet(_sheet(t.miscAudio, [
+      ...audios.map((track) => ListTile(
+            title: Text(track.label ?? track.file ?? t.miscUnknownTrack,
                 style: GoogleFonts.manrope(color: Colors.white)),
             onTap: () {
               Navigator.pop(context);
-              if (t.file != null) {
-                _player.setAudioTrack(AudioTrack.uri(t.file!, title: t.label));
+              if (track.file != null) {
+                _player.setAudioTrack(AudioTrack.uri(track.file!, title: track.label));
               }
             },
           )),
     ]));
   }
 
-  void _showSpeedPicker() => _openSheet(_sheet('Playback speed', [
+  void _showSpeedPicker() {
+    final t = AppLocalizations.of(context);
+    _openSheet(_sheet(t.miscPlaybackSpeed, [
         for (final s in const [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0])
           ListTile(
             title: Text('${s}x', style: GoogleFonts.manrope(color: Colors.white)),
@@ -538,6 +548,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             },
           ),
       ]));
+  }
 
   @override
   void dispose() {
@@ -699,6 +710,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       );
 
   Widget _skipButton() {
+    final t = AppLocalizations.of(context);
     final s = _activeStamp!;
     return Positioned(
       right: 24,
@@ -711,13 +723,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
           ),
           onPressed: () => _player.seek(Duration(milliseconds: (s.end * 1000).round())),
           icon: const Icon(Icons.fast_forward_rounded, size: 18),
-          label: Text(s.isOutro ? 'Skip Outro' : 'Skip Intro'),
+          label: Text(s.isOutro ? t.miscSkipOutro : t.miscSkipIntro),
         ),
       ),
     );
   }
 
   Widget _lockOverlay() {
+    final t = AppLocalizations.of(context);
     return Stack(
       children: [
         Positioned.fill(
@@ -733,7 +746,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           child: SafeArea(
             child: IconButton(
               icon: const Icon(Icons.lock_rounded, color: Colors.white),
-              tooltip: 'Unlock controls',
+              tooltip: t.miscUnlockControls,
               onPressed: () => setState(() => _locked = false),
             ),
           ),
@@ -743,6 +756,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _buildError() {
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -750,14 +764,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
         children: [
           const Icon(Icons.error_outline_rounded, color: Colors.white54, size: 52),
           const SizedBox(height: 16),
-          Text(_error ?? 'Unknown error',
+          Text(_error ?? t.miscUnknownError,
               style: GoogleFonts.manrope(color: Colors.white70, fontSize: 14),
               textAlign: TextAlign.center),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             onPressed: _loadVideoList,
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Retry'),
+            label: Text(t.miscRetry),
           ),
         ],
       ),

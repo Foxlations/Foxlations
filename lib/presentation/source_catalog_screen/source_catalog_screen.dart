@@ -4,6 +4,7 @@ import '../widgets/manga_image.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/catalog_provider.dart';
 import '../../eval/model/m_manga.dart';
+import '../../l10n/app_localizations.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 
@@ -27,7 +28,8 @@ class SourceCatalogScreen extends StatelessWidget {
     if (installed == null) {
       return Scaffold(
         appBar: AppBar(title: Text(sourceName)),
-        body: const Center(child: Text('Source not installed')),
+        body: Center(
+            child: Text(AppLocalizations.of(context).browseSourceNotInstalledBody)),
       );
     }
 
@@ -69,7 +71,8 @@ class _CatalogBodyState extends State<_CatalogBody> {
     super.initState();
     if (widget.hasCloudflare) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        AppTheme.showSnackBar(context, 'Bypassing Cloudflare protection...',
+        AppTheme.showSnackBar(
+            context, AppLocalizations.of(context).browseBypassingCloudflare,
             duration: const Duration(seconds: 3));
       });
     }
@@ -78,6 +81,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
 
     return Consumer<CatalogProvider>(
       builder: (_, catalog, __) {
@@ -87,7 +91,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.open_in_browser),
-                tooltip: 'Open in WebView',
+                tooltip: t.browseOpenInWebView,
                 onPressed: () {
                   Navigator.pushNamed(
                     context,
@@ -161,6 +165,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
   }
 
   Widget _buildContent(BuildContext context, CatalogProvider catalog) {
+    final t = AppLocalizations.of(context);
     // Categories tab, not yet drilled into a category: show the category list.
     if (catalog.currentTab == CatalogTab.categories &&
         catalog.selectedCategory == null) {
@@ -179,7 +184,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
             ),
             const SizedBox(height: 16),
             Text(
-              is403 ? 'Cloudflare Protection' : 'Failed to load',
+              is403 ? t.browseCloudflareProtection : t.browseFailedToLoad,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -187,7 +192,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Text(
                 is403
-                    ? 'This source requires solving a Cloudflare challenge in the browser first.'
+                    ? t.browseCloudflareChallengeDesc
                     : catalog.error!,
                 style: Theme.of(context).textTheme.bodySmall,
                 textAlign: TextAlign.center,
@@ -197,14 +202,14 @@ class _CatalogBodyState extends State<_CatalogBody> {
             if (is403)
               FilledButton.icon(
                 icon: const Icon(Icons.open_in_browser),
-                label: const Text('Open in WebView'),
+                label: Text(t.browseOpenInWebView),
                 onPressed: () async {
                   final result = await Navigator.pushNamed(
                     context,
                     AppRoutes.webview,
                     arguments: {
                       'url': catalog.source.baseUrl,
-                      'title': 'Solve Cloudflare',
+                      'title': t.browseSolveCloudflare,
                       'cloudflareMode': true,
                     },
                   );
@@ -214,7 +219,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
             if (is403) const SizedBox(height: 8),
             FilledButton(
               onPressed: () => catalog.refresh(),
-              child: const Text('Retry'),
+              child: Text(t.browseRetry),
             ),
           ],
         ),
@@ -229,11 +234,11 @@ class _CatalogBodyState extends State<_CatalogBody> {
       // Match the wording to the source's content type — an anime or novel
       // source shouldn't say "no manga".
       final noun = switch (catalog.source.itemType) {
-        'anime' => 'anime',
-        'novel' => 'light novels',
-        _ => 'manga',
+        'anime' => t.browseContentAnime,
+        'novel' => t.browseContentNovels,
+        _ => t.browseContentManga,
       };
-      return Center(child: Text('No $noun found'));
+      return Center(child: Text(t.browseNoContentFound(noun)));
     }
 
     final grid = RefreshIndicator(
@@ -282,6 +287,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
   }
 
   Widget _categoryBackBar(BuildContext context, CatalogProvider catalog) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     return Material(
       color: cs.surfaceContainerHighest,
@@ -292,7 +298,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
           child: Row(children: [
             Icon(Icons.arrow_back_rounded, size: 18, color: cs.primary),
             const SizedBox(width: 8),
-            Text('All categories',
+            Text(t.browseAllCategories,
                 style: Theme.of(context)
                     .textTheme
                     .labelLarge
@@ -310,13 +316,14 @@ class _CatalogBodyState extends State<_CatalogBody> {
   }
 
   Widget _buildCategoryList(BuildContext context, CatalogProvider catalog) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     if (catalog.categoriesLoading && catalog.categories.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
     if (catalog.categories.isEmpty) {
       return Center(
-        child: Text('No categories',
+        child: Text(t.browseNoCategories,
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
@@ -350,16 +357,17 @@ class _CatalogBodyState extends State<_CatalogBody> {
   }
 
   void _showSearch(BuildContext context, CatalogProvider catalog) {
+    final t = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (_) {
         final controller = TextEditingController();
         return AlertDialog(
-          title: const Text('Search'),
+          title: Text(t.browseSearch),
           content: TextField(
             controller: controller,
             autofocus: true,
-            decoration: const InputDecoration(hintText: 'Search manga...'),
+            decoration: InputDecoration(hintText: t.browseSearchMangaHint),
             onSubmitted: (query) {
               Navigator.pop(context);
               catalog.search(query);
@@ -368,14 +376,14 @@ class _CatalogBodyState extends State<_CatalogBody> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(t.browseCancel),
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
                 catalog.search(controller.text);
               },
-              child: const Text('Search'),
+              child: Text(t.browseSearch),
             ),
           ],
         );
@@ -394,6 +402,7 @@ class _MangaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
 
     return GestureDetector(
       onTap: () {
@@ -438,7 +447,7 @@ class _MangaCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            manga.name ?? 'Unknown',
+            manga.name ?? t.browseUnknown,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall,

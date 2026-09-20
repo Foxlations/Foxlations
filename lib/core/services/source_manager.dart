@@ -85,6 +85,19 @@ class SourceManager {
       }
     }
 
+    // Defensive: collapse any duplicate ids that a past double-tap race left in
+    // storage (keep the latest), and persist the cleanup once.
+    final byId = <String, InstalledSource>{};
+    for (final s in _installed) {
+      byId[s.source.id] = s;
+    }
+    if (byId.length != _installed.length) {
+      _installed = byId.values.toList();
+      await _saveInstalled();
+      await logger.info('Removed duplicate installed sources',
+          category: LogCategory.extension);
+    }
+
     await logger.info('Loaded ${_installed.length} installed sources',
         category: LogCategory.extension);
     _loaded = true;
@@ -269,7 +282,7 @@ class SourceManager {
     String itemType = source.itemType;
 
     if (Platform.isAndroid) {
-      // Android loads the extension APK's dex DIRECTLY on ART (Mihon-style) — no jar and
+      // Android loads the extension APK's dex DIRECTLY on ART — no jar and
       // no dex2jar. keiyoushi's jarUrl is JVM bytecode (not loadable on ART), so always
       // use the apk; the native host reads the entry class from the apk manifest.
       final apkPath = '${dir.path}/$safeId.apk';

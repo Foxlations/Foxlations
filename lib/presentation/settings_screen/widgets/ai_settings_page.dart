@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 /// AI & Translation settings page.
@@ -96,6 +97,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -109,7 +111,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
         title: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.translate_rounded, size: 20, color: cs.primary),
           const SizedBox(width: 8),
-          Text('AI & Translation', style: GoogleFonts.manrope(
+          Text(t.trackAiTitle, style: GoogleFonts.manrope(
               fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
         ]),
         bottom: TabBar(
@@ -118,10 +120,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           unselectedLabelColor: cs.outline,
           indicatorColor: cs.primary,
           labelStyle: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700),
-          tabs: const [
-            Tab(text: 'Translation'),
-            Tab(text: 'API Keys'),
-            Tab(text: 'Models'),
+          tabs: [
+            Tab(text: t.trackTabTranslation),
+            Tab(text: t.trackTabApiKeys),
+            Tab(text: t.trackTabModels),
           ],
         ),
       ),
@@ -140,6 +142,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
   }
 
   Widget _buildTranslationTab(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 12),
       children: [
@@ -147,13 +150,13 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _SwitchTile(
             icon: Icons.translate_rounded, iconColor: cs.primary,
-            title: 'Enable AI Translation', subtitle: 'Show translate button in the reader',
+            title: t.trackEnableAiTranslation, subtitle: t.trackEnableAiTranslationDesc,
             value: _translationEnabled,
             onChanged: (v) { setState(() => _translationEnabled = v); _saveSetting('ai_translation_enabled', v); },
           ),
         ),
         const SizedBox(height: 8),
-        _SectionHeader(title: 'Provider'),
+        _SectionHeader(title: t.trackProvider),
         ..._providers.map((p) => _buildProviderCard(cs, p)),
         const SizedBox(height: 8),
         if (_selectedProvider == 'huggingface')
@@ -161,12 +164,12 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: _SwitchTile(
               icon: Icons.wifi_off_rounded, iconColor: AppTheme.secondary,
-              title: 'Offline Mode', subtitle: 'Use downloaded models without internet',
+              title: t.trackOfflineMode, subtitle: t.trackOfflineModeDesc,
               value: _offlineMode,
               onChanged: (v) { setState(() => _offlineMode = v); _saveSetting('offline_translation', v); },
             ),
           ),
-        _SectionHeader(title: 'Translation Settings'),
+        _SectionHeader(title: t.trackTranslationSettings),
         // Target language
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -183,8 +186,8 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
                 child: Icon(Icons.language_rounded, color: cs.primary, size: 18)),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Target Language', style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
-                Text('Translate manga text into this language', style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+                Text(t.trackTargetLanguage, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+                Text(t.trackTargetLanguageDesc, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
               ])),
               DropdownButton<String>(
                 value: _targetLanguage,
@@ -202,18 +205,18 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _SwitchTile(
             icon: Icons.chat_bubble_outline_rounded, iconColor: cs.primary,
-            title: 'Bubble Detection', subtitle: 'Auto-detect speech bubbles in manga pages',
+            title: t.trackBubbleDetection, subtitle: t.trackBubbleDetectionDesc,
             value: _bubbleDetection,
             onChanged: (v) { setState(() => _bubbleDetection = v); _saveSetting('ai_bubble_detection', v); },
           ),
         ),
         const SizedBox(height: 8),
-        _SectionHeader(title: 'Quality'),
+        _SectionHeader(title: t.trackQuality),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(children: ['fast', 'balanced', 'high'].map((q) {
             final isSelected = _translationQuality == q;
-            final label = q == 'fast' ? 'Fast' : q == 'balanced' ? 'Balanced' : 'High Quality';
+            final label = q == 'fast' ? t.trackQualityFast : q == 'balanced' ? t.trackQualityBalanced : t.trackQualityHigh;
             return Expanded(child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3),
               child: GestureDetector(
@@ -236,7 +239,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           }).toList()),
         ),
         const SizedBox(height: 8),
-        _SectionHeader(title: 'Koharu Server'),
+        _SectionHeader(title: t.trackKoharuServer),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Container(
@@ -250,10 +253,10 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
               Row(children: [
                 const Text('🖥️', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 8),
-                Text('Server URL', style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                Text(t.trackServerUrl, style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
               ]),
               const SizedBox(height: 4),
-              Text('Full manga inpainting via local Docker server',
+              Text(t.trackKoharuServerDesc,
                   style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
               const SizedBox(height: 8),
               TextField(
@@ -287,6 +290,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
 
   Widget _buildProviderCard(ColorScheme cs, Map<String, String> provider) {
     final isSelected = _selectedProvider == provider['id'];
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
       child: GestureDetector(
@@ -327,7 +331,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
                 Row(children: [
                   const Icon(Icons.key_rounded, size: 10, color: AppTheme.warning),
                   const SizedBox(width: 3),
-                  Text('API key required', style: GoogleFonts.manrope(
+                  Text(t.trackApiKeyRequired, style: GoogleFonts.manrope(
                       fontSize: 10, color: AppTheme.warning, fontWeight: FontWeight.w500)),
                 ]),
               ],
@@ -340,6 +344,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
   }
 
   Widget _buildApiKeysTab(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 12),
       children: [
@@ -357,7 +362,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
               Icon(Icons.lock_outline_rounded, size: 16, color: cs.primary),
               const SizedBox(width: 8),
               Expanded(child: Text(
-                'Keys are stored locally on your device and never sent to our servers.',
+                t.trackApiKeysNotice,
                 style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurface, height: 1.4),
               )),
             ]),
@@ -502,7 +507,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Download failed: $e')));
+            SnackBar(content: Text(AppLocalizations.of(context).trackDownloadFailed('$e'))));
       }
     } finally {
       if (mounted) setState(() => _busy.remove(lang.bcpCode));
@@ -517,7 +522,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Delete failed: $e')));
+            SnackBar(content: Text(AppLocalizations.of(context).trackDeleteFailed('$e'))));
       }
     } finally {
       if (mounted) setState(() => _busy.remove(lang.bcpCode));
@@ -527,6 +532,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
   @override
   Widget build(BuildContext context) {
     final cs = widget.cs;
+    final t = AppLocalizations.of(context);
     if (!_supported) {
       return Center(
         child: Padding(
@@ -537,7 +543,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
               Icon(Icons.smartphone_rounded, size: 40, color: cs.outline),
               const SizedBox(height: 12),
               Text(
-                'On-device translation models are available on Android and iOS.',
+                t.trackModelsPlatformOnly,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
               ),
@@ -560,15 +566,13 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(
-            'Download a language to translate it fully offline. Each pack is about '
-            '30 MB and is also fetched automatically the first time you translate '
-            'that language.',
+            t.trackModelsDescription,
             style: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
           ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Text('TRANSLATION LANGUAGES',
+          child: Text(t.trackTranslationLanguages,
               style: GoogleFonts.manrope(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -584,6 +588,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
   Widget _row(ColorScheme cs, String name, TranslateLanguage lang) {
     final installed = _downloaded.contains(lang.bcpCode);
     final busy = _busy.contains(lang.bcpCode);
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
       child: Container(
@@ -599,7 +604,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
               Text(name,
                   style: GoogleFonts.manrope(
                       fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
-              Text(installed ? 'Downloaded — available offline' : 'Not downloaded',
+              Text(installed ? t.trackDownloaded : t.trackNotDownloaded,
                   style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
             ]),
           ),
@@ -612,7 +617,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
           else if (installed)
             IconButton(
               icon: Icon(Icons.delete_outline_rounded, size: 20, color: cs.error),
-              tooltip: 'Delete',
+              tooltip: t.trackDelete,
               onPressed: () => _delete(lang),
             )
           else
@@ -626,7 +631,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.download_rounded, size: 14, color: cs.primary),
                   const SizedBox(width: 4),
-                  Text('Download',
+                  Text(t.trackDownload,
                       style: GoogleFonts.manrope(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,

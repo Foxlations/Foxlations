@@ -11,15 +11,6 @@ back up and restore your library, and read behind Cloudflare‑protected sites.
 > Foxlations is a reader only. It does not host any content — you add your own
 > sources.
 
-## Please note that i do school and work full time, i do see your messages and issues! it just might take me a bit to get to them!
-
-## Reporting an issue
-
-To help me fix things faster, please include **two things** when you open an issue:
-
-1. **Your app version** — shown in **Settings → About** (or the version of the build you downloaded).
-2. **A log from the in-app error log** — open **Settings → Advanced**, reproduce the problem, then copy or share the error log. That log usually shows exactly what went wrong, so it's the single most helpful thing you can attach.
-
 ## Download
 
 From the [**Releases**](../../releases) page, or
@@ -89,6 +80,22 @@ The app only makes network requests you ask it to:
 - **AI translation** — only if you enable it and supply your own API key. The
   page image is sent to the provider you chose. Off by default; on-device text
   recognition needs no network at all.
+
+## Translating
+
+[![Translation status](https://hosted.weblate.org/widget/foxlations/svg-badge.svg)](https://hosted.weblate.org/engage/foxlations/)
+
+Foxlations is translated by the community through **Weblate** — no coding, no
+Git, nothing to download. Help translate the app into your language (or fix a
+wording):
+
+1. Go to **[hosted.weblate.org/engage/foxlations](https://hosted.weblate.org/engage/foxlations/)**.
+2. Sign in and pick your language — or request a new one.
+3. Translate in the browser. Changes sync back here automatically, after review.
+
+The app already speaks English, Spanish, Portuguese, French, German, Italian,
+Japanese, Chinese and Arabic — more are always welcome. Thank you for helping
+make Foxlations readable everywhere.
 
 ## License
 

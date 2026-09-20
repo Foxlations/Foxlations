@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/models/installed_source_model.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../core/providers/vault_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 import 'browse_source_detail_sheet.dart';
@@ -50,6 +51,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return Consumer2<SourceProvider, VaultProvider>(
@@ -153,7 +155,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
                                 child: Row(children: [
                                   Icon(Icons.push_pin_rounded, size: 14, color: cs.primary),
                                   const SizedBox(width: 6),
-                                  Text('PINNED', style: GoogleFonts.manrope(
+                                  Text(t.browsePinned, style: GoogleFonts.manrope(
                                     fontSize: 11, fontWeight: FontWeight.w700,
                                     color: cs.primary, letterSpacing: 1.2)),
                                 ]),
@@ -192,6 +194,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
   }
 
   Widget _buildTypeToggle(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: cs.surfaceContainerHighest)),
@@ -216,10 +219,10 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
                 ),
                 child: Text(
                   type == 'manga'
-                      ? 'Manga'
+                      ? t.browseManga
                       : type == 'anime'
-                          ? 'Anime'
-                          : 'Novels',
+                          ? t.browseAnime
+                          : t.browseNovels,
                   style: GoogleFonts.manrope(
                     fontSize: 13,
                     fontWeight: _typeFilter == type ? FontWeight.w700 : FontWeight.w500,
@@ -234,6 +237,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
   }
 
   Widget _buildLanguageChips(ColorScheme cs, List<String> languages) {
+    final t = AppLocalizations.of(context);
     return SizedBox(
       height: 44,
       child: ListView.separated(
@@ -260,7 +264,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
                 ),
               ),
               child: Text(
-                lang == 'all' ? 'All' : _langDisplayName(lang),
+                lang == 'all' ? t.browseAll : _langDisplayName(lang),
                 style: GoogleFonts.manrope(
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -275,6 +279,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
   }
 
   Widget _buildEmptyState(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -290,7 +295,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No installed sources',
+            t.browseNoInstalledSources,
             style: GoogleFonts.manrope(
               fontSize: 15,
               fontWeight: FontWeight.w700,
@@ -299,7 +304,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Install extensions from the Extensions tab\nto see sources here.',
+            t.browseNoInstalledSourcesDesc,
             textAlign: TextAlign.center,
             style: GoogleFonts.manrope(
               fontSize: 12,
@@ -313,20 +318,21 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
   }
 
   Future<void> _handleRefresh() async {
+    final t = AppLocalizations.of(context);
     final provider = context.read<SourceProvider>();
     try {
       final count = await provider.refreshAllSourceCode();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Updated $count source${count == 1 ? '' : 's'}'),
+          content: Text(t.browseUpdatedSources(count)),
           duration: const Duration(seconds: 2),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Refresh failed: $e')),
+        SnackBar(content: Text(t.browseRefreshFailed(e.toString()))),
       );
     }
   }
@@ -409,6 +415,7 @@ class _SourceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     final source = installedSource.source;
 
@@ -478,7 +485,7 @@ class _SourceRow extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  tooltip: isPinned ? 'Unpin' : 'Pin',
+                  tooltip: isPinned ? t.browseUnpin : t.browsePin,
                   onPressed: onPinToggle,
                 ),
             ],

@@ -196,7 +196,7 @@ class _ChapterListItem extends StatelessWidget {
                     size: 16, color: AppTheme.success),
               if (isCurrent)
                 Padding(
-                  padding: const EdgeInsets.only(left: 4),
+                  padding: const EdgeInsetsDirectional.only(start: 4),
                   child: Icon(Icons.play_arrow_rounded,
                       size: 18, color: cs.primary),
                 ),

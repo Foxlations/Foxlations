@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/models/library_settings.dart';
 import '../../../theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Bottom sheet with the library's Filter / Sort / Display controls.
 ///
@@ -68,6 +69,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         color: cs.surface,
@@ -98,10 +100,10 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
                 fontSize: 13.5, fontWeight: FontWeight.w700),
             unselectedLabelStyle: GoogleFonts.manrope(
                 fontSize: 13.5, fontWeight: FontWeight.w600),
-            tabs: const [
-              Tab(text: 'Filter'),
-              Tab(text: 'Sort'),
-              Tab(text: 'Display'),
+            tabs: [
+              Tab(text: t.libraryTabFilter),
+              Tab(text: t.libraryTabSort),
+              Tab(text: t.libraryTabDisplay),
             ],
           ),
           const Divider(height: 1),
@@ -122,20 +124,21 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
 
   // ── Filter ────────────────────────────────────────────────────────────────
   Widget _filterTab(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        _check(cs, 'Unread', _s.filterUnread,
+        _check(cs, t.libraryUnread, _s.filterUnread,
             (v) => _update(_s.copyWith(filterUnread: v))),
-        _check(cs, 'Completed', _s.filterCompleted,
+        _check(cs, t.libraryCompleted, _s.filterCompleted,
             (v) => _update(_s.copyWith(filterCompleted: v))),
-        _check(cs, 'Downloaded', _s.filterDownloaded,
+        _check(cs, t.libraryDownloaded, _s.filterDownloaded,
             (v) => _update(_s.copyWith(filterDownloaded: v))),
         if (widget.sources.isNotEmpty) ...[
           const Divider(height: 20),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            child: Text('Sources',
+            child: Text(t.librarySources,
                 style: GoogleFonts.manrope(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -189,13 +192,14 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
 
   // ── Sort ──────────────────────────────────────────────────────────────────
   Widget _sortTab(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
         for (final option in LibrarySort.values)
           InkWell(
             onTap: () {
-              // Re-tapping the active sort flips direction, like Mihon.
+              // Re-tapping the active sort flips direction.
               if (_s.sort == option) {
                 _update(_s.copyWith(sortAscending: !_s.sortAscending));
               } else {
@@ -235,13 +239,13 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
           child: Align(
-            alignment: Alignment.centerRight,
+            alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
               onPressed: () async {
                 await LibrarySettings.resetToDefaults();
                 _update(const LibrarySettings());
               },
-              child: Text('Reset to default',
+              child: Text(t.libraryResetToDefault,
                   style: GoogleFonts.manrope(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -255,10 +259,11 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
 
   // ── Display ───────────────────────────────────────────────────────────────
   Widget _displayTab(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
-        _sectionLabel(cs, 'Display Mode'),
+        _sectionLabel(cs, t.libraryDisplayMode),
         for (final mode in LibraryDisplayMode.values)
           InkWell(
             onTap: () => _update(_s.copyWith(displayMode: mode)),
@@ -290,7 +295,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
             child: Row(
               children: [
                 Expanded(
-                  child: Text('Items per row',
+                  child: Text(t.libraryItemsPerRow,
                       style: GoogleFonts.manrope(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w600,
@@ -318,14 +323,14 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
             ),
           ),
         const Divider(height: 20),
-        _sectionLabel(cs, 'Badges'),
-        _check(cs, 'Unread', _s.badgeUnread,
+        _sectionLabel(cs, t.libraryBadges),
+        _check(cs, t.libraryUnread, _s.badgeUnread,
             (v) => _update(_s.copyWith(badgeUnread: v))),
-        _check(cs, 'Downloaded', _s.badgeDownloaded,
+        _check(cs, t.libraryDownloaded, _s.badgeDownloaded,
             (v) => _update(_s.copyWith(badgeDownloaded: v))),
         const Divider(height: 20),
-        _sectionLabel(cs, 'Tabs'),
-        _check(cs, 'Show number of items', _s.showTabCounts,
+        _sectionLabel(cs, t.libraryTabs),
+        _check(cs, t.libraryShowNumberOfItems, _s.showTabCounts,
             (v) => _update(_s.copyWith(showTabCounts: v))),
         const SizedBox(height: 12),
       ],

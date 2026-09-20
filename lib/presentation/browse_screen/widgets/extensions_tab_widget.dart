@@ -5,6 +5,7 @@ import '../../../core/models/source_model.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../core/providers/vault_provider.dart';
 import '../../../core/services/app_logger.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import 'browse_source_detail_sheet.dart';
 import 'source_icon.dart';
@@ -21,15 +22,16 @@ class ExtensionsTabWidget extends StatefulWidget {
 
 class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   final Set<String> _selectedLangs = {}; // empty = all languages
+  final Set<String> _selectedRepos = {}; // empty = all repositories (repo urls)
   String _typeFilter = 'manga';
-  bool _showFilters = false;
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return Consumer2<SourceProvider, VaultProvider>(
-      builder: (_, provider, vault, __) {
+      builder: (_, provider, vault, _) {
         var allSources = provider.allSources;
 
         // Filter by type (manga / anime)
@@ -63,10 +65,32 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
           languages.add(s.lang);
         }
 
+        // Repositories present for this content type (url -> friendly name), for
+        // the filter modal's Repository tab. Built before the lang/repo filters
+        // so each option list reflects the whole type, not the other filter.
+        final repoNames = <String, String>{};
+        for (final s in allSources) {
+          if (s.repoUrl.isNotEmpty) {
+            repoNames[s.repoUrl] =
+                s.repoName.isNotEmpty ? s.repoName : _repoHost(s.repoUrl);
+          }
+        }
+        final repoList = repoNames.entries
+            .map((e) => (url: e.key, name: e.value))
+            .toList()
+          ..sort(
+              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
         // Language filter
         if (_selectedLangs.isNotEmpty) {
           allSources =
               allSources.where((s) => _selectedLangs.contains(s.lang)).toList();
+        }
+        // Repository filter
+        if (_selectedRepos.isNotEmpty) {
+          allSources = allSources
+              .where((s) => _selectedRepos.contains(s.repoUrl))
+              .toList();
         }
 
         // Split into installed / available
@@ -110,8 +134,10 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
             // Manga / Anime type toggle
             _buildTypeToggle(cs),
             // Filter bar
-            if (languages.length > 2) _buildFilterBar(cs, languages.toList(), allSources.length),
-            if (languages.length > 2)
+            if (languages.length > 2 || repoList.length > 1)
+              _buildFilterBar(
+                  cs, languages.toList(), repoList, allSources.length),
+            if (languages.length > 2 || repoList.length > 1)
               Divider(height: 1, color: cs.surfaceContainerHighest),
 
             // Content
@@ -165,7 +191,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                               ],
                               if (installedRest.isNotEmpty) ...[
                                 _SectionHeader(
-                                    title: 'INSTALLED',
+                                    title: t.browseInstalled,
                                     count: installedRest.length),
                                 ...installedRest.map((s) => _ExtensionRow(
                                       source: s,
@@ -180,7 +206,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                               ],
                               if (available.isNotEmpty) ...[
                                 _SectionHeader(
-                                    title: 'AVAILABLE',
+                                    title: t.browseAvailable,
                                     count: available.length),
                                 ...available.map((s) => _ExtensionRow(
                                       source: s,
@@ -207,7 +233,8 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
     final installed =
         context.read<SourceProvider>().getInstalledSource(source.id);
     if (installed == null) {
-      AppTheme.showSnackBar(context, 'Source is not installed');
+      AppTheme.showSnackBar(
+          context, AppLocalizations.of(context).browseSourceNotInstalled);
       return;
     }
     SourceSettingsPage.open(
@@ -218,6 +245,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   }
 
   Widget _buildTypeToggle(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: cs.surfaceContainerHighest)),
@@ -229,6 +257,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
               onTap: () => setState(() {
                 _typeFilter = type;
                 _selectedLangs.clear();
+                _selectedRepos.clear();
               }),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -242,10 +271,10 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                 ),
                 child: Text(
                   type == 'manga'
-                      ? 'Manga'
+                      ? t.browseManga
                       : type == 'anime'
-                          ? 'Anime'
-                          : 'Novels',
+                          ? t.browseAnime
+                          : t.browseNovels,
                   style: GoogleFonts.manrope(
                     fontSize: 13,
                     fontWeight: _typeFilter == type ? FontWeight.w700 : FontWeight.w500,
@@ -259,127 +288,242 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
     );
   }
 
-  Widget _buildFilterBar(ColorScheme cs, List<String> languages, int resultCount) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildFilterBarRow(cs, resultCount),
-        // The toggle used to flip `_showFilters` without anything reading it,
-        // so the button highlighted and nothing else happened. It now reveals
-        // the language picker — the filter `_selectedLang` already backed but
-        // which had no way to be set (only an "active chip" to clear it).
-        if (_showFilters) _buildLanguagePanel(cs, languages),
-      ],
-    );
-  }
-
-  Widget _buildLanguagePanel(ColorScheme cs, List<String> languages) {
-    final ordered = [
-      'all',
-      ...languages.where((l) => l != 'all').toList()..sort(),
-    ];
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          ...ordered.map((lang) {
-            // Multi-select: "All languages" clears the set (empty = all); each
-            // other chip toggles its language in/out.
-            final selected =
-                lang == 'all' ? _selectedLangs.isEmpty : _selectedLangs.contains(lang);
-            return GestureDetector(
-              onTap: () => setState(() {
-                if (lang == 'all') {
-                  _selectedLangs.clear();
-                } else if (!_selectedLangs.remove(lang)) {
-                  _selectedLangs.add(lang);
-                }
-              }),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: selected ? cs.primary : cs.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                ),
-                child: Text(
-                  lang == 'all' ? 'All languages' : lang.toUpperCase(),
-                  style: GoogleFonts.manrope(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: selected ? Colors.white : cs.onSurface,
-                  ),
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterBarRow(ColorScheme cs, int resultCount) {
+  Widget _buildFilterBar(ColorScheme cs, List<String> languages,
+      List<({String url, String name})> repos, int resultCount) {
+    final t = AppLocalizations.of(context);
+    final hasFilters = _selectedLangs.isNotEmpty || _selectedRepos.isNotEmpty;
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // Filter toggle button
+          // Filter button — opens a scrollable, tabbed Language / Repository sheet.
           GestureDetector(
-            onTap: () => setState(() => _showFilters = !_showFilters),
+            onTap: () => _openFilterModal(languages, repos),
             child: AnimatedContainer(
               duration: AppTheme.fastMicro,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: _showFilters ? cs.primary : cs.surfaceContainerHighest,
+                color: hasFilters ? cs.primary : cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppTheme.radiusFull),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.filter_list_rounded,
-                    size: 14,
-                    color: _showFilters ? Colors.white : cs.onSurface,
-                  ),
+                  Icon(Icons.filter_list_rounded,
+                      size: 14,
+                      color: hasFilters ? Colors.white : cs.onSurface),
                   const SizedBox(width: 4),
-                  Text(
-                    'Filter',
-                    style: GoogleFonts.manrope(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _showFilters ? Colors.white : cs.onSurface,
-                    ),
-                  ),
+                  Text(t.browseFilter,
+                      style: GoogleFonts.manrope(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: hasFilters ? Colors.white : cs.onSurface,
+                      )),
                 ],
               ),
             ),
           ),
-          // Active filter chip (summarises the selected languages)
           if (_selectedLangs.isNotEmpty) ...[
             const SizedBox(width: 8),
             _ActiveFilterChip(
               label: _selectedLangs.length <= 2
                   ? _selectedLangs.map((l) => l.toUpperCase()).join(', ')
-                  : '${_selectedLangs.length} languages',
+                  : t.browseLanguagesCount(_selectedLangs.length),
               onRemove: () => setState(() => _selectedLangs.clear()),
             ),
           ],
+          if (_selectedRepos.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            _ActiveFilterChip(
+              label: _repoChipLabel(t, repos),
+              onRemove: () => setState(() => _selectedRepos.clear()),
+            ),
+          ],
           const Spacer(),
-          // Results count
-          Text(
-            '$resultCount result${resultCount == 1 ? '' : 's'}',
-            style: GoogleFonts.manrope(fontSize: 11, color: cs.outline),
-          ),
+          Text(t.browseResultCount(resultCount),
+              style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
         ],
       ),
     );
   }
 
+  String _repoHost(String url) {
+    final u = Uri.tryParse(url);
+    return (u != null && u.host.isNotEmpty) ? u.host : url;
+  }
+
+  String _repoChipLabel(
+      AppLocalizations t, List<({String url, String name})> repos) {
+    if (_selectedRepos.length == 1) {
+      final url = _selectedRepos.first;
+      final match = repos.where((r) => r.url == url);
+      return match.isNotEmpty ? match.first.name : _repoHost(url);
+    }
+    return t.browseReposCount(_selectedRepos.length);
+  }
+
+  /// A centered floating dialog with Language + Repository tabs, each a
+  /// scrollable multi-select chip list.
+  void _openFilterModal(
+      List<String> languages, List<({String url, String name})> repos) {
+    final t = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final langs = [
+      'all',
+      ...languages.where((l) => l != 'all').toList()..sort(),
+    ];
+    showDialog<void>(
+      context: context,
+      builder: (dctx) {
+        return DefaultTabController(
+          length: 2,
+          child: StatefulBuilder(
+            builder: (dctx, setModal) {
+              void refresh() {
+                setModal(() {});
+                setState(() {});
+              }
+
+              Widget langTab() => SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 8,
+                      children: [
+                        for (final lang in langs)
+                          _filterChip(
+                            cs,
+                            label: lang == 'all'
+                                ? t.browseAllLanguages
+                                : lang.toUpperCase(),
+                            selected: lang == 'all'
+                                ? _selectedLangs.isEmpty
+                                : _selectedLangs.contains(lang),
+                            onTap: () {
+                              if (lang == 'all') {
+                                _selectedLangs.clear();
+                              } else if (!_selectedLangs.remove(lang)) {
+                                _selectedLangs.add(lang);
+                              }
+                              refresh();
+                            },
+                          ),
+                      ],
+                    ),
+                  );
+
+              Widget repoTab() => SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 8,
+                      children: [
+                        _filterChip(
+                          cs,
+                          label: t.browseAllRepositories,
+                          selected: _selectedRepos.isEmpty,
+                          onTap: () {
+                            _selectedRepos.clear();
+                            refresh();
+                          },
+                        ),
+                        for (final r in repos)
+                          _filterChip(
+                            cs,
+                            label: r.name,
+                            selected: _selectedRepos.contains(r.url),
+                            onTap: () {
+                              if (!_selectedRepos.remove(r.url)) {
+                                _selectedRepos.add(r.url);
+                              }
+                              refresh();
+                            },
+                          ),
+                      ],
+                    ),
+                  );
+
+              return Dialog(
+                insetPadding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 64),
+                backgroundColor: cs.surface,
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                child: SizedBox(
+                  width: 400,
+                  height: (MediaQuery.of(dctx).size.height * 0.6)
+                      .clamp(340.0, 560.0),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 8, 0),
+                        child: Row(
+                          children: [
+                            Text(t.browseFilter,
+                                style: GoogleFonts.manrope(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: cs.onSurface)),
+                            const Spacer(),
+                            IconButton(
+                              icon:
+                                  Icon(Icons.close_rounded, color: cs.outline),
+                              onPressed: () => Navigator.pop(dctx),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TabBar(
+                        labelColor: cs.primary,
+                        unselectedLabelColor: cs.outline,
+                        indicatorColor: cs.primary,
+                        tabs: [
+                          Tab(text: t.settingsLanguageTitle),
+                          Tab(text: t.browseFilterRepository),
+                        ],
+                      ),
+                      Expanded(
+                        child: TabBarView(children: [langTab(), repoTab()]),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _filterChip(ColorScheme cs,
+      {required String label,
+      required bool selected,
+      required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? cs.primary : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.manrope(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : cs.onSurface,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -387,7 +531,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
           Icon(Icons.extension_rounded, size: 56, color: cs.outline),
           const SizedBox(height: 16),
           Text(
-            'No extensions yet',
+            t.browseNoExtensions,
             style: GoogleFonts.manrope(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -396,7 +540,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Add a repository using the settings\nbutton above to browse extensions.',
+            t.browseNoExtensionsDesc,
             textAlign: TextAlign.center,
             style: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
           ),
@@ -407,11 +551,12 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
 
   Future<void> _updateAll(
       BuildContext context, SourceProvider provider, List<String> ids) async {
+    final t = AppLocalizations.of(context);
     final n = await provider.updateAll(ids);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Updated $n source${n == 1 ? '' : 's'}'),
+        content: Text(t.browseUpdatedSources(n)),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -422,11 +567,12 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   /// so a failing install just silently did nothing while "Update all" appeared to work.
   Future<void> _updateOne(
       BuildContext context, SourceProvider provider, String id) async {
+    final t = AppLocalizations.of(context);
     try {
       final ok = await provider.updateSource(id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(ok ? 'Source updated' : 'No update available'),
+        content: Text(ok ? t.browseSourceUpdated : t.browseNoUpdateAvailable),
         duration: const Duration(seconds: 2),
       ));
     } catch (e, st) {
@@ -434,13 +580,14 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
           category: LogCategory.install, detail: st.toString());
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Update failed: $e'),
+        content: Text(t.browseUpdateFailed(e.toString())),
         duration: const Duration(seconds: 3),
       ));
     }
   }
 
   Future<void> _handleRefresh() async {
+    final t = AppLocalizations.of(context);
     final provider = context.read<SourceProvider>();
     // Refresh repo indexes to pick up metadata changes, then re-download
     // cached extension code for all installed sources.
@@ -450,14 +597,14 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Updated $count source${count == 1 ? '' : 's'}'),
+          content: Text(t.browseUpdatedSources(count)),
           duration: const Duration(seconds: 2),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Refresh failed: $e')),
+        SnackBar(content: Text(t.browseRefreshFailed(e.toString()))),
       );
     }
   }
@@ -509,6 +656,7 @@ class _UpdatesHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 12, 6),
@@ -518,7 +666,7 @@ class _UpdatesHeader extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              'UPDATES AVAILABLE ($count)',
+              t.browseUpdatesAvailable(count),
               style: GoogleFonts.manrope(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
@@ -534,7 +682,7 @@ class _UpdatesHeader extends StatelessWidget {
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: Text('Update all',
+            child: Text(t.browseUpdateAll,
                 style: GoogleFonts.manrope(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
@@ -567,6 +715,7 @@ class _ExtensionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return Material(
@@ -674,7 +823,7 @@ class _ExtensionRow extends StatelessWidget {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   onPressed: onUpdate,
-                  child: Text('Update',
+                  child: Text(t.browseUpdate,
                       style: GoogleFonts.manrope(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
@@ -704,6 +853,7 @@ class _InstallButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final color = Theme.of(context).colorScheme.primary;
 
     return GestureDetector(
@@ -721,7 +871,7 @@ class _InstallButton extends StatelessWidget {
           ),
         ),
         child: Text(
-          isInstalled ? 'Settings' : 'Install',
+          isInstalled ? t.browseSettings : t.browseInstall,
           style: GoogleFonts.manrope(
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -744,7 +894,7 @@ class _ActiveFilterChip extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.only(left: 10, right: 4, top: 4, bottom: 4),
+      padding: const EdgeInsetsDirectional.only(start: 10, end: 4, top: 4, bottom: 4),
       decoration: BoxDecoration(
         color: cs.primary.withAlpha(20),
         borderRadius: BorderRadius.circular(AppTheme.radiusFull),

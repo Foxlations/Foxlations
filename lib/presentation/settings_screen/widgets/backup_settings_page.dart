@@ -7,6 +7,7 @@ import '../../../core/providers/library_provider.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 
 class BackupSettingsPage extends StatefulWidget {
   const BackupSettingsPage({super.key});
@@ -58,6 +59,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
   }
 
   Future<void> _restorePath(String path, {required bool tachiyomi}) async {
+    final t = AppLocalizations.of(context);
     setState(() => _busy = true);
     try {
       if (tachiyomi) {
@@ -69,17 +71,17 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
         };
         final n = await _service.restoreTachiyomiBackup(path,
             installedSources: installed);
-        if (mounted) AppTheme.showSnackBar(context, 'Imported $n manga');
+        if (mounted) AppTheme.showSnackBar(context, t.setxBackupImportedManga(n));
       } else {
         await _service.restoreBackup(path);
-        if (mounted) AppTheme.showSnackBar(context, 'Restore complete');
+        if (mounted) AppTheme.showSnackBar(context, t.setxBackupRestoreComplete);
       }
       if (mounted) {
         await context.read<LibraryProvider>().reload();
         await context.read<SourceProvider>().refreshRepos();
       }
     } catch (e) {
-      if (mounted) AppTheme.showSnackBar(context, 'Restore failed: $e');
+      if (mounted) AppTheme.showSnackBar(context, t.setxBackupRestoreFailed(e.toString()));
     }
     if (mounted) setState(() => _busy = false);
     await _refresh();
@@ -107,21 +109,23 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
   }
 
   String _freqLabel(BackupFrequency f) {
+    final t = AppLocalizations.of(context);
     switch (f) {
       case BackupFrequency.off:
-        return 'Off';
+        return t.setxBackupFreqOff;
       case BackupFrequency.daily:
-        return 'Daily';
+        return t.setxBackupFreqDaily;
       case BackupFrequency.weekly:
-        return 'Weekly';
+        return t.setxBackupFreqWeekly;
       case BackupFrequency.monthly:
-        return 'Monthly';
+        return t.setxBackupFreqMonthly;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -131,44 +135,44 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             icon: Icon(Icons.arrow_back_ios_new_rounded,
                 color: cs.onSurface, size: 20),
             onPressed: () => Navigator.pop(context)),
-        title: Text('Backup & Restore',
+        title: Text(t.setxBackupTitle,
             style: GoogleFonts.manrope(
                 fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: Stack(children: [
         ListView(padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom), children: [
-          _header('Foxlations backup', cs),
-          _action(Icons.save_rounded, 'Create backup',
-              'Save your library, categories, read progress, sources and tracking',
+          _header(t.setxBackupSectionFoxlations, cs),
+          _action(Icons.save_rounded, t.setxBackupCreateTitle,
+              t.setxBackupCreateSubtitle,
               cs, () => _run(_service.createBackup, 'Backup')),
-          _action(Icons.restore_rounded, 'Restore backup',
-              'Restore from a Foxlations .fxbackup file', cs,
+          _action(Icons.restore_rounded, t.setxBackupRestoreTitle,
+              t.setxBackupRestoreSubtitle, cs,
               () => _restoreFrom(tachiyomi: false)),
-          _header('Tachiyomi / Mihon & forks', cs),
-          _action(Icons.ios_share_rounded, 'Create compatible backup',
-              'Export a .tachibk you can import into Tachiyomi, Mihon and forks',
+          _header(t.setxBackupSectionTachiyomi, cs),
+          _action(Icons.ios_share_rounded, t.setxBackupCreateCompatTitle,
+              t.setxBackupCreateCompatSubtitle,
               cs, () => _run(_service.createTachiyomiBackup, 'Export')),
-          _action(Icons.download_rounded, 'Restore from Tachiyomi/Mihon',
-              'Import a .tachibk / .tmb / .proto.gz backup (matches sources by name)',
+          _action(Icons.download_rounded, t.setxBackupRestoreTachiyomiTitle,
+              t.setxBackupRestoreTachiyomiSubtitle,
               cs, () => _restoreFrom(tachiyomi: true)),
-          _header('Automatic backup', cs),
+          _header(t.setxBackupSectionAutomatic, cs),
           ListTile(
             leading: _iconBox(Icons.schedule_rounded, cs),
-            title: Text('Frequency',
+            title: Text(t.setxBackupFrequency,
                 style: GoogleFonts.manrope(
                     fontSize: 14, fontWeight: FontWeight.w600)),
-            subtitle: Text('Auto-create a backup ${_freqLabel(_frequency).toLowerCase()}',
+            subtitle: Text(t.setxBackupAutoSubtitle(_freqLabel(_frequency).toLowerCase()),
                 style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
             trailing: Text(_freqLabel(_frequency),
                 style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700, color: cs.primary)),
             onTap: _pickFrequency,
           ),
-          _header('Backups (${_backups.length})', cs),
+          _header(t.setxBackupSectionBackups(_backups.length), cs),
           if (_backups.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-              child: Text('No backups yet.',
+              child: Text(t.setxBackupNone,
                   style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
             )
           else
@@ -216,6 +220,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
       );
 
   Widget _backupRow(BackupFile b, ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     final kb = (b.sizeBytes / 1024).toStringAsFixed(0);
     return ListTile(
       leading: Icon(
@@ -239,9 +244,9 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             _service.deleteBackup(b.path).then((_) => _refresh());
           }
         },
-        itemBuilder: (_) => const [
-          PopupMenuItem(value: 'restore', child: Text('Restore')),
-          PopupMenuItem(value: 'delete', child: Text('Delete')),
+        itemBuilder: (_) => [
+          PopupMenuItem(value: 'restore', child: Text(t.setxBackupMenuRestore)),
+          PopupMenuItem(value: 'delete', child: Text(t.setxBackupMenuDelete)),
         ],
       ),
     );

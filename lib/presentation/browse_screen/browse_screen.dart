@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/source_provider.dart';
 import '../../eval/kotlin/jvm_bridge.dart';
+import '../../l10n/app_localizations.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import 'widgets/sources_tab_widget.dart';
@@ -74,6 +75,7 @@ class _BrowseScreenState extends State<BrowseScreen>
   }
 
   Widget _buildAppBar(BuildContext context, ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Container(
       color: cs.surface,
       child: SafeArea(
@@ -96,9 +98,9 @@ class _BrowseScreenState extends State<BrowseScreen>
                           ? _buildSearchField(cs)
                           : Align(
                               key: const ValueKey('title'),
-                              alignment: Alignment.centerLeft,
+                              alignment: AlignmentDirectional.centerStart,
                               child: Text(
-                                'Browse',
+                                t.browseTitle,
                                 style: GoogleFonts.manrope(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
@@ -115,7 +117,7 @@ class _BrowseScreenState extends State<BrowseScreen>
                       color: cs.primary,
                       onTap: () => Navigator.pushNamed(
                           context, AppRoutes.globalSearch),
-                      tooltip: 'Global search',
+                      tooltip: t.browseGlobalSearch,
                     ),
                   if (_tabController.index == 1)
                     _buildActionButton(
@@ -123,9 +125,9 @@ class _BrowseScreenState extends State<BrowseScreen>
                       color: cs.primary,
                       onTap: () {
                         context.read<SourceProvider>().refreshRepos();
-                        AppTheme.showSnackBar(context, 'Refreshing repos...');
+                        AppTheme.showSnackBar(context, t.browseRefreshingRepos);
                       },
-                      tooltip: 'Refresh repos',
+                      tooltip: t.browseRefreshRepos,
                     ),
                   _buildActionButton(
                     icon: _isSearchActive
@@ -141,7 +143,7 @@ class _BrowseScreenState extends State<BrowseScreen>
                         }
                       });
                     },
-                    tooltip: 'Search',
+                    tooltip: t.browseSearch,
                   ),
                   if (_tabController.index == 1)
                     _buildActionButton(
@@ -153,14 +155,14 @@ class _BrowseScreenState extends State<BrowseScreen>
                             context, AppRoutes.repoForgeHub);
                         provider.refreshRepos();
                       },
-                      tooltip: 'RepoForge — build & manage sources',
+                      tooltip: t.browseRepoForgeTooltip,
                     ),
                   if (_tabController.index == 1)
                     _buildActionButton(
                       icon: Icons.add_rounded,
                       color: cs.onSurface,
                       onTap: () => _showRepoSettings(context),
-                      tooltip: 'Add repo',
+                      tooltip: t.browseAddRepo,
                     ),
                   const SizedBox(width: 8),
                 ],
@@ -182,10 +184,10 @@ class _BrowseScreenState extends State<BrowseScreen>
                 fontWeight: FontWeight.w500,
               ),
               dividerColor: cs.surfaceContainerHighest,
-              tabs: const [
-                Tab(text: 'Sources'),
-                Tab(text: 'Extensions'),
-                Tab(text: 'Local'),
+              tabs: [
+                Tab(text: t.browseTabSources),
+                Tab(text: t.browseTabExtensions),
+                Tab(text: t.browseTabLocal),
               ],
             ),
           ],
@@ -195,6 +197,7 @@ class _BrowseScreenState extends State<BrowseScreen>
   }
 
   Widget _buildSearchField(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Container(
       key: const ValueKey('search'),
       height: 38,
@@ -221,7 +224,7 @@ class _BrowseScreenState extends State<BrowseScreen>
               style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface),
               textAlignVertical: TextAlignVertical.center,
               decoration: InputDecoration(
-                hintText: 'Search extensions & sources...',
+                hintText: t.browseSearchHint,
                 hintStyle:
                     GoogleFonts.manrope(fontSize: 13, color: cs.outline),
                 border: InputBorder.none,

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../discovery/metadata_discovery.dart';
 import '../tracking/tracker.dart';
 import '../tracking/tracker_models.dart';
 import '../tracking/tracking_service.dart';
@@ -20,6 +21,9 @@ class TrackingProvider extends ChangeNotifier {
 
   List<Tracker> get trackers => _service.all;
   Tracker? tracker(String id) => _service.tracker(id);
+
+  /// Metadata sources that can power the Discover feed right now.
+  List<MetadataDiscovery> get discoverySources => _service.discoverySources;
   List<Tracker> get connected =>
       _service.all.where((t) => t.isAuthenticated).toList();
   bool isConnected(String id) => _service.tracker(id)?.isAuthenticated ?? false;

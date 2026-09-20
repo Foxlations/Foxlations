@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/services/local_source_service.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
 
@@ -40,12 +41,11 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
   bool _warnIfFoldersUnsupported() {
     if (!Platform.isIOS) return false;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text(
-          'iOS does not allow apps to keep access to a folder. '
-          'Use "Import File" to add .cbz/.cbr/.zip/.epub/.pdf instead.',
+          AppLocalizations.of(context).browseIosFolderWarning,
         ),
-        duration: Duration(seconds: 5),
+        duration: const Duration(seconds: 5),
       ),
     );
     return true;
@@ -83,14 +83,15 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
     AppTheme.showSnackBar(
       context,
       imported > 0
-          ? 'Imported $imported file${imported == 1 ? '' : 's'}'
-          : 'Nothing imported (unsupported or unreadable)',
+          ? AppLocalizations.of(context).browseImportedFiles(imported)
+          : AppLocalizations.of(context).browseNothingImported,
     );
     _load();
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
 
     // Filter by search
@@ -115,30 +116,30 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
         child: Row(children: [
           Icon(Icons.folder_rounded, size: 16, color: cs.primary),
           const SizedBox(width: 8),
-          Text('${_folders.length} folder${_folders.length == 1 ? '' : 's'}',
+          Text(t.browseFolderCount(_folders.length),
               style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600, color: cs.onSurface)),
           const Spacer(),
           IconButton(
             icon: Icon(Icons.settings_rounded, size: 18, color: cs.outline),
-            tooltip: 'Manage folders',
+            tooltip: t.browseManageFolders,
             visualDensity: VisualDensity.compact,
             onPressed: () => _showFolderManager(context),
           ),
           IconButton(
             icon: Icon(Icons.note_add_rounded, size: 19, color: cs.primary),
-            tooltip: 'Import file (CBZ/ZIP/EPUB/PDF)',
+            tooltip: t.browseImportFileTooltip,
             visualDensity: VisualDensity.compact,
             onPressed: _importFile,
           ),
           IconButton(
             icon: Icon(Icons.add_rounded, size: 20, color: cs.primary),
-            tooltip: 'Add folder',
+            tooltip: t.browseAddFolder,
             visualDensity: VisualDensity.compact,
             onPressed: _addFolder,
           ),
           IconButton(
             icon: Icon(Icons.refresh_rounded, size: 18, color: cs.outline),
-            tooltip: 'Rescan',
+            tooltip: t.browseRescan,
             visualDensity: VisualDensity.compact,
             onPressed: _load,
           ),
@@ -151,7 +152,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
         child: filtered.isEmpty
             // Local imports can be manga, comics or novels (.epub/.pdf), so
             // stay neutral here.
-            ? Center(child: Text('Nothing imported yet',
+            ? Center(child: Text(t.browseNothingImportedYet,
                 style: GoogleFonts.manrope(fontSize: 14, color: cs.outline)))
             : GridView.builder(
                 padding: const EdgeInsets.all(12),
@@ -180,6 +181,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
   }
 
   Widget _buildEmptyState(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -192,18 +194,18 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
             child: Icon(Icons.folder_open_rounded, size: 36, color: cs.outline),
           ),
           const SizedBox(height: 20),
-          Text('No local sources',
+          Text(t.browseNoLocalSources,
               style: GoogleFonts.manrope(fontSize: 17, fontWeight: FontWeight.w700, color: cs.onSurface)),
           const SizedBox(height: 8),
           Text(
-            'Add a folder of manga, or import a single file.\nSupported: images (JPG, PNG, WebP, GIF), CBZ/ZIP, EPUB and PDF.\n(CBR/RAR only if the file is actually ZIP-packed — true RAR isn\'t supported.)',
+            t.browseLocalSourcesDesc,
             textAlign: TextAlign.center,
             style: GoogleFonts.manrope(fontSize: 13, color: cs.outline, height: 1.5)),
           const SizedBox(height: 20),
           Row(mainAxisSize: MainAxisSize.min, children: [
             FilledButton.icon(
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text('Add Folder', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+              label: Text(t.browseAddFolderButton, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
               style: FilledButton.styleFrom(
                 backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10)),
@@ -212,7 +214,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
             const SizedBox(width: 10),
             OutlinedButton.icon(
               icon: const Icon(Icons.note_add_rounded, size: 18),
-              label: Text('Import File', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+              label: Text(t.browseImportFile, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: cs.primary,
                 side: BorderSide(color: cs.primary.withAlpha(80)),
@@ -226,6 +228,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
   }
 
   void _showFolderManager(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     showModalBottomSheet(
       context: context,
@@ -239,13 +242,13 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
             Container(width: 36, height: 4,
                 decoration: BoxDecoration(color: cs.outline, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
-            Text('Local Source Folders',
+            Text(t.browseLocalSourceFolders,
                 style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
             const SizedBox(height: 12),
             if (_folders.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text('No folders added', style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                child: Text(t.browseNoFoldersAdded, style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
               ),
             ..._folders.map((f) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -268,7 +271,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
             const SizedBox(height: 12),
             SizedBox(width: double.infinity, child: OutlinedButton.icon(
               icon: const Icon(Icons.add_rounded, size: 16),
-              label: Text('Add Folder', style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13)),
+              label: Text(t.browseAddFolderButton, style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: cs.primary,
                 side: BorderSide(color: cs.primary.withAlpha(80)),
@@ -299,6 +302,7 @@ class _LocalMangaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
 
     return GestureDetector(
@@ -318,7 +322,7 @@ class _LocalMangaCard extends StatelessWidget {
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(Icons.book_rounded, color: cs.outline, size: 32),
                 const SizedBox(height: 4),
-                Text('${manga.chapters.length} ch',
+                Text(t.browseChaptersAbbrev(manga.chapters.length),
                     style: GoogleFonts.manrope(fontSize: 10, color: cs.outline)),
               ]),
             ),

@@ -1,13 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../discovery/discovery_models.dart';
+import '../discovery/metadata_discovery.dart';
 import 'tracker.dart';
 import 'tracker_models.dart';
 
 /// AniList (anilist.co) — GraphQL API, OAuth2 **implicit grant** (no client
 /// secret). The user authorizes at [authorizeUrl]; the pin page shows an access
 /// token they paste back via [authenticateWithToken]. Token is valid ~1 year.
-class AniListTracker extends Tracker {
+///
+/// Also powers the Discover feed via [MetadataDiscovery]: AniList's GraphQL is
+/// public, so trending/genre queries work with no login.
+class AniListTracker extends Tracker implements MetadataDiscovery {
   static const _graphql = 'https://graphql.anilist.co';
 
   String? _token;
@@ -156,6 +161,240 @@ mutation ($id: Int, $status: MediaListStatus, $progress: Int, $score: Float) {
       'score': r.score,
     });
     return data?['SaveMediaListEntry'] != null;
+  }
+
+  // ── discovery (MetadataDiscovery) ──────────────────────────────────────────
+
+  @override
+  String get discoveryId => id;
+
+  @override
+  String get discoveryName => name;
+
+  /// AniList's public GraphQL serves trending/genre queries without a token, so
+  /// Discover works before the user links anything.
+  @override
+  bool get isAvailable => true;
+
+  @override
+  bool get supportsGenreFilter => true;
+
+  /// "Because you read X" needs the user's own list, which requires a token.
+  @override
+  bool get supportsPersonalization => isAuthenticated;
+
+  List<String>? _genreCache;
+
+  @override
+  Future<List<String>> genres(DiscoverKind kind) async {
+    // AniList has one shared genre collection across media types.
+    if (_genreCache != null) return _genreCache!;
+    final data = await _query('query { GenreCollection }', const {});
+    final list = (data?['GenreCollection'] as List?)
+            ?.map((e) => e.toString())
+            .where((e) => e.isNotEmpty)
+            .toList() ??
+        const <String>[];
+    if (list.isNotEmpty) _genreCache = list;
+    return list;
+  }
+
+  @override
+  Future<List<DiscoverItem>> feed({
+    required DiscoverKind kind,
+    List<String> genres = const [],
+    DiscoverSort sort = DiscoverSort.trending,
+    int page = 1,
+  }) async {
+    // AniList lumps light novels under type MANGA (format NOVEL); split them out
+    // so the manga lane never shows novels and vice-versa. Build the media()
+    // args WITHOUT any null filter: AniList reads an explicit `format: null` as
+    // "format IS null" (matches nothing), which silently emptied the manga lane
+    // when it was passed alongside format_not.
+    final type = kind == DiscoverKind.anime ? 'ANIME' : 'MANGA';
+    final args = StringBuffer(r'type: $type, sort: $sort, isAdult: false');
+    if (kind == DiscoverKind.novel) {
+      args.write(', format: NOVEL');
+    } else if (kind == DiscoverKind.manga) {
+      args.write(', format_not: NOVEL');
+    }
+    if (genres.isNotEmpty) args.write(r', genre_in: $genres');
+    final q = '''
+query (\$page: Int, \$type: MediaType, \$sort: [MediaSort]${genres.isNotEmpty ? r', $genres: [String]' : ''}) {
+  Page(page: \$page, perPage: 30) {
+    media($args) {
+      id
+      title { romaji english }
+      coverImage { extraLarge large }
+      description(asHtml: false)
+      genres
+      averageScore
+      siteUrl
+    }
+  }
+}''';
+    final data = await _query(q, {
+      'page': page,
+      'type': type,
+      'sort':
+          sort == DiscoverSort.trending ? ['TRENDING_DESC'] : ['POPULARITY_DESC'],
+      if (genres.isNotEmpty) 'genres': genres,
+    });
+    final media = (data?['Page']?['media'] as List?) ?? const [];
+    return media.map((raw) {
+      final m = raw as Map<String, dynamic>;
+      final title =
+          (m['title']?['english'] ?? m['title']?['romaji'] ?? 'Unknown')
+              .toString();
+      return DiscoverItem(
+        origin: id,
+        id: m['id'].toString(),
+        title: title,
+        kind: kind,
+        coverUrl:
+            (m['coverImage']?['extraLarge'] ?? m['coverImage']?['large'] ?? '')
+                .toString(),
+        summary: (m['description'] ?? '')
+            .toString()
+            .replaceAll(RegExp(r'<[^>]+>'), '')
+            .trim(),
+        genres:
+            (m['genres'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        score: ((m['averageScore'] as num?)?.toDouble() ?? 0) / 10.0,
+        url: (m['siteUrl'] ?? '').toString(),
+      );
+    }).toList();
+  }
+
+  @override
+  Future<List<DiscoverItem>> personalized({
+    required DiscoverKind kind,
+    int page = 1,
+  }) async {
+    if (!isAuthenticated || _username == null) return const [];
+    final type = kind == DiscoverKind.anime ? 'ANIME' : 'MANGA';
+
+    // 1) The user's list → candidate seeds + the set of media they already have
+    //    (so recommendations never suggest something already on their list).
+    const listQ = r'''
+query ($user: String, $type: MediaType) {
+  MediaListCollection(userName: $user, type: $type) {
+    lists {
+      entries {
+        score(format: POINT_100)
+        media { id format title { romaji english } }
+      }
+    }
+  }
+}''';
+    final listData = await _query(listQ, {'user': _username, 'type': type});
+    final lists =
+        (listData?['MediaListCollection']?['lists'] as List?) ?? const [];
+    final owned = <int>{};
+    final seeds = <({int id, String title, double score})>[];
+    for (final l in lists) {
+      final entries = ((l as Map)['entries'] as List?) ?? const [];
+      for (final e in entries) {
+        final media = ((e as Map)['media'] as Map?);
+        if (media == null) continue;
+        if (!_formatMatchesKind(kind, media['format']?.toString())) continue;
+        final mid = (media['id'] as num?)?.toInt();
+        if (mid == null) continue;
+        owned.add(mid);
+        final title =
+            (media['title']?['english'] ?? media['title']?['romaji'] ?? '')
+                .toString();
+        if (title.isEmpty) continue;
+        seeds.add((
+          id: mid,
+          title: title,
+          score: (e['score'] as num?)?.toDouble() ?? 0,
+        ));
+      }
+    }
+    if (seeds.isEmpty) return const [];
+    // Seed from their highest-rated titles.
+    seeds.sort((a, b) => b.score.compareTo(a.score));
+    final topSeeds = seeds.take(8).toList();
+
+    // 2) Recommendations for those seeds, in one query (id_in).
+    const recQ = r'''
+query ($ids: [Int], $type: MediaType) {
+  Page(perPage: 50) {
+    media(id_in: $ids, type: $type) {
+      id
+      recommendations(sort: RATING_DESC, perPage: 6) {
+        nodes {
+          mediaRecommendation {
+            id
+            title { romaji english }
+            coverImage { extraLarge large }
+            description(asHtml: false)
+            genres
+            averageScore
+            siteUrl
+            format
+          }
+        }
+      }
+    }
+  }
+}''';
+    final recData = await _query(
+        recQ, {'ids': topSeeds.map((s) => s.id).toList(), 'type': type});
+    final media = (recData?['Page']?['media'] as List?) ?? const [];
+    final seedTitleById = {for (final s in topSeeds) s.id: s.title};
+
+    final out = <DiscoverItem>[];
+    final picked = <int>{};
+    for (final raw in media) {
+      final seedId = ((raw as Map)['id'] as num?)?.toInt();
+      final seedTitle = seedTitleById[seedId] ?? '';
+      final nodes = (raw['recommendations']?['nodes'] as List?) ?? const [];
+      for (final n in nodes) {
+        final rm = ((n as Map)['mediaRecommendation'] as Map?);
+        if (rm == null) continue;
+        final rid = (rm['id'] as num?)?.toInt();
+        if (rid == null || owned.contains(rid) || !picked.add(rid)) continue;
+        if (!_formatMatchesKind(kind, rm['format']?.toString())) continue;
+        final title =
+            (rm['title']?['english'] ?? rm['title']?['romaji'] ?? 'Unknown')
+                .toString();
+        out.add(DiscoverItem(
+          origin: id,
+          id: rid.toString(),
+          title: title,
+          kind: kind,
+          coverUrl:
+              (rm['coverImage']?['extraLarge'] ?? rm['coverImage']?['large'] ?? '')
+                  .toString(),
+          summary: (rm['description'] ?? '')
+              .toString()
+              .replaceAll(RegExp(r'<[^>]+>'), '')
+              .trim(),
+          genres: (rm['genres'] as List?)?.map((e) => e.toString()).toList() ??
+              const [],
+          score: ((rm['averageScore'] as num?)?.toDouble() ?? 0) / 10.0,
+          url: (rm['siteUrl'] ?? '').toString(),
+          reason: seedTitle,
+        ));
+      }
+    }
+    out.shuffle();
+    return out;
+  }
+
+  /// AniList type MANGA covers both manga and light novels (format NOVEL); keep
+  /// each Discover lane pure. Anime is already scoped by type ANIME.
+  bool _formatMatchesKind(DiscoverKind kind, String? format) {
+    switch (kind) {
+      case DiscoverKind.anime:
+        return true;
+      case DiscoverKind.novel:
+        return format == 'NOVEL';
+      case DiscoverKind.manga:
+        return format != 'NOVEL';
+    }
   }
 
   String _toAniStatus(TrackStatus s) {

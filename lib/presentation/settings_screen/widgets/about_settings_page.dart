@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../../theme/app_theme.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../widgets/update_prompt.dart';
 import 'vault_settings_page.dart';
 
@@ -70,13 +71,15 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
   Future<void> _copyLink(BuildContext context, String url, String label) async {
     await Clipboard.setData(ClipboardData(text: url));
     if (context.mounted) {
-      AppTheme.showSnackBar(context, '$label link copied to clipboard');
+      AppTheme.showSnackBar(
+          context, AppLocalizations.of(context).setxAboutLinkCopied(label));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -90,7 +93,7 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'About',
+          t.setxAboutTitle,
           style: GoogleFonts.manrope(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -146,15 +149,15 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          _SectionHeader(title: 'App'),
+          _SectionHeader(title: t.setxAboutSectionApp),
           _ActionTile(
             icon: Icons.new_releases_rounded,
             iconColor: cs.primary,
             iconBg: isDark
                 ? const Color(0xFF3D1A10)
                 : const Color(0xFFFFEDE8),
-            title: "What's New",
-            subtitle: 'Changelog and release notes',
+            title: t.setxAboutWhatsNewTitle,
+            subtitle: t.setxAboutWhatsNewSubtitle,
             onTap: () => _showChangelog(context),
           ),
           _ActionTile(
@@ -163,23 +166,23 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
             iconBg: isDark
                 ? const Color(0xFF0D2E1E)
                 : const Color(0xFFE6F7EF),
-            title: 'Check for Updates',
-            subtitle: 'See if a newer build has been released',
+            title: t.setxAboutCheckUpdatesTitle,
+            subtitle: t.setxAboutCheckUpdatesSubtitle,
             // Previously this always claimed "Already on the latest version"
             // without checking anything. It now reads the same latest.json the
             // download page uses, so the app and site can't disagree.
             onTap: () => UpdatePrompt.maybeShow(context, force: true),
           ),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Legal'),
+          _SectionHeader(title: t.setxAboutSectionLegal),
           _ActionTile(
             icon: Icons.description_rounded,
             iconColor: AppTheme.secondary,
             iconBg: isDark
                 ? const Color(0xFF1A1640)
                 : const Color(0xFFEEEDFF),
-            title: 'Licenses',
-            subtitle: 'Open source licenses',
+            title: t.setxAboutLicensesTitle,
+            subtitle: t.setxAboutLicensesSubtitle,
             onTap: () => showLicensePage(
               context: context,
               applicationName: 'Foxlations',
@@ -187,14 +190,14 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
             ),
           ),
           const SizedBox(height: 8),
-          _SectionHeader(title: 'Links'),
+          _SectionHeader(title: t.setxAboutSectionLinks),
           _ActionTile(
             icon: Icons.code_rounded,
             iconColor: cs.outline,
             iconBg: cs.surfaceContainerHighest,
-            title: 'Source Code',
-            subtitle: 'Tap to copy GitHub URL',
-            onTap: () => _copyLink(context, _sourceCodeUrl, 'Source code'),
+            title: t.setxAboutSourceCodeTitle,
+            subtitle: t.setxAboutSourceCodeSubtitle,
+            onTap: () => _copyLink(context, _sourceCodeUrl, t.setxAboutSourceCodeLabel),
           ),
           _ActionTile(
             icon: Icons.bug_report_rounded,
@@ -202,9 +205,9 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
             iconBg: isDark
                 ? const Color(0xFF2E0A0A)
                 : const Color(0xFFFFEEEE),
-            title: 'Report a Bug',
-            subtitle: 'Tap to copy issue tracker URL',
-            onTap: () => _copyLink(context, _bugReportUrl, 'Bug report'),
+            title: t.setxAboutReportBugTitle,
+            subtitle: t.setxAboutReportBugSubtitle,
+            onTap: () => _copyLink(context, _bugReportUrl, t.setxAboutBugReportLabel),
           ),
           const SizedBox(height: 24),
         ],
@@ -213,7 +216,10 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
   }
 
   void _showChangelog(BuildContext context) {
-    final versionTitle = _version.isNotEmpty ? "What's New in v$_version" : "What's New";
+    final t = AppLocalizations.of(context);
+    final versionTitle = _version.isNotEmpty
+        ? t.setxAboutWhatsNewVersioned(_version)
+        : t.setxAboutWhatsNewTitle;
     final cs = Theme.of(context).colorScheme;
     showDialog(
       context: context,
@@ -240,6 +246,32 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _ChangelogItem('Discover new series. A new Discover tab suggests manga, '
+                'anime and light novels one at a time — tap Next for another, add it '
+                'to your library when one of your sources carries it, or save it for '
+                'later. Filter by genre, and link a tracker for picks based on what '
+                'you have already read.'),
+            _ChangelogItem('One-tap source install. On a source site, its "add to '
+                'app" button now opens Foxlations and adds the repo for you — just '
+                'confirm, no copy-pasting URLs.'),
+            _ChangelogItem('Faster, lighter source lists. Large source repos now load '
+                'from a compact index that is a fraction of the size, so adding and '
+                'refreshing them is quicker on mobile data.'),
+            _ChangelogItem('Filter Browse by language and repository. The filter is now '
+                'a pop-up with Language and Repository tabs — pick any combination to '
+                'narrow a long source list, and it scrolls.'),
+            _ChangelogItem('Nine languages, and growing. The whole app is translated '
+                'into English, Spanish, Portuguese, French, German, Italian, Japanese, '
+                'Chinese and Arabic — pick yours in Settings > Language, or follow your '
+                'device. More can now be added by the community.'),
+            _ChangelogItem('Right-to-left layouts. Arabic and other right-to-left '
+                'languages now mirror the whole interface correctly.'),
+            _ChangelogItem('Manga, anime and novels are their own thing. Each type now '
+                'keeps its own progress — a manga page, an episode time, or a novel '
+                'scroll position — so Continue lands in the right place for each.'),
+            _ChangelogItem('Fixes. Manga now reliably continues from your saved page; '
+                'moving titles in and out of the vault works again and keeps your '
+                'progress; and you can no longer install the same extension twice.'),
             _ChangelogItem('Foxlations 1.0.0 — the first official release. The '
                 'headline: it now runs on-device extensions for manga, manhwa, '
                 'manhua, light novels and anime, right on your device, and video '
@@ -325,7 +357,7 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              'Close',
+              t.setxAboutClose,
               style: GoogleFonts.manrope(
                 fontWeight: FontWeight.w700,
                 color: cs.primary,
@@ -353,7 +385,7 @@ class _ChangelogItem extends StatelessWidget {
           Container(
             width: 6,
             height: 6,
-            margin: const EdgeInsets.only(top: 6, right: 10),
+            margin: const EdgeInsetsDirectional.only(top: 6, end: 10),
             decoration: BoxDecoration(
               color: cs.primary,
               shape: BoxShape.circle,

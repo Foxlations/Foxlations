@@ -6,7 +6,7 @@ package okhttp3
  * `CompressionInterceptor(Brotli, Gzip, Zstd)` and add to their client. The class lives in
  * the `okhttp3` package (to reach OkHttp internals in the real impl) and is compiled
  * `compileOnly` in extensions, so the host must supply it at runtime. Suwayomi bundles it
- * (iOS/desktop), but the Mihon-style ApkBridge runtime does not — without it the source
+ * (iOS/desktop), but the ApkBridge runtime does not — without it the source
  * fails to construct (`ClassNotFoundException: okhttp3.CompressionInterceptor`).
  *
  * We provide a **pass-through**: it does not advertise br/zstd, so OkHttp's own transparent

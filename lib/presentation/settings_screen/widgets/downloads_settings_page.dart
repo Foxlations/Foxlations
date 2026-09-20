@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/providers/download_provider.dart';
 import '../../../core/services/download_service.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 class DownloadsSettingsPage extends StatefulWidget {
@@ -21,6 +22,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -33,7 +35,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Downloads',
+          t.setdDownloadsTitle,
           style: GoogleFonts.manrope(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -46,45 +48,45 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
           padding: EdgeInsets.only(
               top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
           children: [
-            _SectionHeader(title: 'Automatic Downloads'),
+            _SectionHeader(title: t.setdDownloadsSectionAutomatic),
             _SwitchTile(
               icon: Icons.download_rounded,
               iconColor: cs.primary,
-              title: 'Download New Chapters',
-              subtitle: 'Automatically download new chapters',
+              title: t.setdDownloadsNewChapters,
+              subtitle: t.setdDownloadsNewChaptersDesc,
               value: dl.autoDownload,
               onChanged: (v) => dl.saveSetting('dl_auto', v),
             ),
             _SwitchTile(
               icon: Icons.wifi_rounded,
               iconColor: cs.primary,
-              title: 'Wi-Fi Only',
-              subtitle: 'Only download on Wi-Fi',
+              title: t.setdDownloadsWifiOnly,
+              subtitle: t.setdDownloadsWifiOnlyDesc,
               value: dl.wifiOnly,
               onChanged: (v) => dl.saveSetting('dl_wifi_only', v),
             ),
             _SwitchTile(
               icon: Icons.battery_charging_full_rounded,
               iconColor: cs.primary,
-              title: 'Charging Only',
-              subtitle: 'Only download while plugged in',
+              title: t.setdDownloadsChargingOnly,
+              subtitle: t.setdDownloadsChargingOnlyDesc,
               value: dl.onlyWhenCharging,
               onChanged: (v) => dl.saveSetting('dl_only_charging', v),
             ),
             _SwitchTile(
               icon: Icons.play_circle_outline_rounded,
               iconColor: cs.primary,
-              title: 'Download Ahead While Reading',
-              subtitle: 'Pre-download next chapter as you read',
+              title: t.setdDownloadsAhead,
+              subtitle: t.setdDownloadsAheadDesc,
               value: dl.downloadWhileReading,
               onChanged: (v) => dl.saveSetting('dl_while_reading', v),
             ),
             const SizedBox(height: 8),
-            _SectionHeader(title: 'Download Queue'),
+            _SectionHeader(title: t.setdDownloadsSectionQueue),
             _ChoiceTile(
               icon: Icons.queue_rounded,
               iconColor: const Color(0xFF4CAF82),
-              title: 'Simultaneous Downloads',
+              title: t.setdDownloadsSimultaneous,
               value: dl.simultaneousDownloads,
               choices: const ['1', '2', '3', '5', '10'],
               onChanged: (v) => dl.saveStringSetting('dl_simultaneous', v),
@@ -92,33 +94,33 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
             _ChoiceTile(
               icon: Icons.high_quality_rounded,
               iconColor: const Color(0xFF4CAF82),
-              title: 'Download Quality',
+              title: t.setdDownloadsQuality,
               value: dl.downloadQuality,
               choices: const ['Original', 'High', 'Medium', 'Low'],
               onChanged: (v) => dl.saveStringSetting('dl_quality', v),
             ),
             const SizedBox(height: 8),
-            _SectionHeader(title: 'Delete Downloaded Chapters'),
+            _SectionHeader(title: t.setdDownloadsSectionDelete),
             _SwitchTile(
               icon: Icons.auto_delete_rounded,
               iconColor: AppTheme.secondary,
-              title: 'After Reading',
-              subtitle: 'Delete chapters after they are read',
+              title: t.setdDownloadsAfterReading,
+              subtitle: t.setdDownloadsAfterReadingDesc,
               value: dl.deleteAfterRead,
               onChanged: (v) => dl.saveSetting('dl_delete_after_read', v),
             ),
             _SwitchTile(
               icon: Icons.bookmark_remove_rounded,
               iconColor: AppTheme.secondary,
-              title: 'Include Bookmarked Chapters',
-              subtitle: 'Delete bookmarked chapters along with the rest',
+              title: t.setdDownloadsIncludeBookmarked,
+              subtitle: t.setdDownloadsIncludeBookmarkedDesc,
               value: dl.removeBookmarked,
               onChanged: (v) => dl.saveSetting('dl_remove_bookmarked', v),
             ),
             _ChoiceTile(
               icon: Icons.history_toggle_off_rounded,
               iconColor: AppTheme.secondary,
-              title: 'Auto-Delete Read Chapters',
+              title: t.setdDownloadsAutoDelete,
               value: dl.autoDeleteAfter,
               choices: const [
                 'Disabled',
@@ -130,25 +132,25 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               onChanged: (v) => dl.saveStringSetting('dl_auto_delete', v),
             ),
             const SizedBox(height: 8),
-            _SectionHeader(title: 'Format'),
+            _SectionHeader(title: t.setdDownloadsSectionFormat),
             _SwitchTile(
               icon: Icons.archive_rounded,
               iconColor: AppTheme.secondary,
-              title: 'Save as CBZ',
-              subtitle: 'Archive chapters as CBZ files with metadata',
+              title: t.setdDownloadsSaveCbz,
+              subtitle: t.setdDownloadsSaveCbzDesc,
               value: dl.saveAsCbz,
               onChanged: (v) => dl.saveSetting('dl_save_cbz', v),
             ),
             _SwitchTile(
               icon: Icons.picture_as_pdf_rounded,
               iconColor: AppTheme.secondary,
-              title: 'Save as PDF',
-              subtitle: 'Package chapters as a single PDF (one image per page)',
+              title: t.setdDownloadsSavePdf,
+              subtitle: t.setdDownloadsSavePdfDesc,
               value: dl.saveAsPdf,
               onChanged: (v) => dl.saveSetting('dl_save_pdf', v),
             ),
             const SizedBox(height: 8),
-            _SectionHeader(title: 'Download Location'),
+            _SectionHeader(title: t.setdDownloadsSectionLocation),
             FutureBuilder<List<String>>(
               key: ValueKey(_rebuildKey),
               future: Future.wait([
@@ -180,7 +182,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                       Expanded(child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(custom.isEmpty ? 'Default Location' : 'Custom Location',
+                          Text(custom.isEmpty ? t.setdDownloadsDefaultLocation : t.setdDownloadsCustomLocation,
                               style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
                           Text(current, style: GoogleFonts.manrope(fontSize: 11, color: cs.outline),
                               maxLines: 2, overflow: TextOverflow.ellipsis),
@@ -191,7 +193,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                     Row(children: [
                       Expanded(child: OutlinedButton.icon(
                         icon: const Icon(Icons.folder_open_rounded, size: 16),
-                        label: Text('Choose Folder', style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600)),
+                        label: Text(t.setdDownloadsChooseFolder, style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: cs.primary,
                           side: BorderSide(color: cs.primary.withAlpha(80)),
@@ -204,13 +206,9 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                           // the default location.
                           if (Platform.isIOS) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'iOS does not allow apps to keep access to a '
-                                  'folder. Downloads stay in the app\'s folder, '
-                                  'reachable via Files › On My iPhone › Foxlations.',
-                                ),
-                                duration: Duration(seconds: 5),
+                              SnackBar(
+                                content: Text(t.setdDownloadsIosFolderWarning),
+                                duration: const Duration(seconds: 5),
                               ),
                             );
                             return;
@@ -225,7 +223,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                       if (custom.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         OutlinedButton(
-                          child: Text('Reset', style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600)),
+                          child: Text(t.setdDownloadsReset, style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: cs.outline,
                             side: BorderSide(color: cs.outlineVariant),
@@ -243,7 +241,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               },
             ),
             const SizedBox(height: 8),
-            _SectionHeader(title: 'Storage'),
+            _SectionHeader(title: t.setdDownloadsSectionStorage),
             FutureBuilder<List<int>>(
               future: Future.wait([
                 DownloadService().getTotalSize(isVault: false),
@@ -258,9 +256,9 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Total: $totalMb MB', style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface, fontWeight: FontWeight.w600)),
+                    Text(t.setdDownloadsTotalSize(totalMb), style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
-                    Text('Library: $libMb MB  |  Vault: $vaultMb MB',
+                    Text(t.setdDownloadsLibraryVaultSize(libMb, vaultMb),
                         style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
                   ]),
                 );

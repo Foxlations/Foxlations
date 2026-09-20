@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 enum TranslationProvider { claude, openai, gemini, deepl, huggingFace, googleTranslate, mlkit }
@@ -98,6 +99,7 @@ class _State extends State<ReaderTranslationProviderSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return GestureDetector(
       onTap: () => Navigator.pop(context),
@@ -124,16 +126,16 @@ class _State extends State<ReaderTranslationProviderSheet> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Row(children: [
-                  Expanded(child: _TabChip(label: 'Provider', isSelected: _page == 0, cs: cs,
+                  Expanded(child: _TabChip(label: t.readerTabProvider, isSelected: _page == 0, cs: cs,
                       onTap: () => setState(() => _page = 0))),
                   const SizedBox(width: 6),
-                  Expanded(child: _TabChip(label: 'Target', isSelected: _page == 1, cs: cs,
+                  Expanded(child: _TabChip(label: t.readerTabTarget, isSelected: _page == 1, cs: cs,
                       onTap: () => setState(() => _page = 1))),
                   const SizedBox(width: 6),
-                  Expanded(child: _TabChip(label: 'Source', isSelected: _page == 2, cs: cs,
+                  Expanded(child: _TabChip(label: t.readerTabSource, isSelected: _page == 2, cs: cs,
                       onTap: () => setState(() => _page = 2))),
                   const SizedBox(width: 6),
-                  Expanded(child: _TabChip(label: 'Font', isSelected: _page == 3, cs: cs,
+                  Expanded(child: _TabChip(label: t.readerTabFont, isSelected: _page == 3, cs: cs,
                       onTap: () => setState(() => _page = 3))),
                 ]),
               ),
@@ -205,9 +207,10 @@ class _State extends State<ReaderTranslationProviderSheet> {
   }
 
   Widget _buildFontPage(ColorScheme cs, ScrollController controller) {
+    final t = AppLocalizations.of(context);
     final fonts = [
-      {'id': 'manrope', 'name': 'Normal', 'desc': 'Clean sans-serif', 'sample': 'Hello World'},
-      {'id': 'bangers', 'name': 'Manga', 'desc': 'Bold comic style', 'sample': 'Hello World'},
+      {'id': 'manrope', 'name': t.readerFontNormal, 'desc': t.readerFontNormalDesc, 'sample': t.readerFontSample},
+      {'id': 'bangers', 'name': t.readerFontManga, 'desc': t.readerFontMangaDesc, 'sample': t.readerFontSample},
     ];
     return ListView(controller: controller, padding: const EdgeInsets.all(12), children: [
       ...fonts.map((f) {

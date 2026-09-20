@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/app_navigator.dart';
 import '../../core/services/webview_service.dart';
+import '../../l10n/app_localizations.dart';
 
 /// In-progress interactive solves, keyed by domain, so concurrent extension
 /// requests to the same site don't stack multiple challenge screens.
@@ -76,9 +77,10 @@ class _CfChallengeScreenState extends State<CfChallengeScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Verify you are human',
+        title: Text(t.miscVerifyHuman,
             style:
                 GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
         leading: IconButton(
@@ -92,8 +94,7 @@ class _CfChallengeScreenState extends State<CfChallengeScreen> {
           color: cs.surfaceContainerHighest,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Text(
-            'Complete the site’s check below. It closes automatically and won’t '
-            'ask again while the verification lasts.',
+            t.miscCfInstructions,
             style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurfaceVariant),
           ),
         ),

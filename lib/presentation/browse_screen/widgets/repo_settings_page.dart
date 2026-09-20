@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/source_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
 class RepoSettingsPage extends StatefulWidget {
@@ -24,6 +25,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final isKeyboardOpen = keyboardHeight > 0;
@@ -78,7 +80,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'Extension Repositories',
+                        t.miscExtensionRepositories,
                         style: GoogleFonts.manrope(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -113,7 +115,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                             style: GoogleFonts.manrope(
                                 fontSize: 13, color: cs.onSurface),
                             decoration: InputDecoration(
-                              hintText: 'Repository URL (index.json)',
+                              hintText: t.miscRepositoryUrlHint,
                               hintStyle: GoogleFonts.manrope(
                                   fontSize: 13, color: cs.outline),
                               border: InputBorder.none,
@@ -146,7 +148,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                                     ),
                                   )
                                 : Text(
-                                    'Add',
+                                    t.miscAdd,
                                     style: GoogleFonts.manrope(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
@@ -170,7 +172,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                   child: Row(
                     children: [
                       Text(
-                        'REPOSITORIES',
+                        t.miscRepositoriesHeader,
                         style: GoogleFonts.manrope(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
@@ -216,7 +218,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                                   size: 32, color: cs.outline),
                               const SizedBox(height: 8),
                               Text(
-                                'No repos added yet',
+                                t.miscNoReposYet,
                                 style: GoogleFonts.manrope(
                                   fontSize: 13,
                                   color: cs.outline,
@@ -253,6 +255,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
   }
 
   Future<void> _addRepo() async {
+    final t = AppLocalizations.of(context);
     final url = _urlController.text.trim();
     if (url.isEmpty) return;
 
@@ -263,7 +266,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add repo: $e')),
+          SnackBar(content: Text(t.miscFailedToAddRepo(e.toString()))),
         );
       }
     }

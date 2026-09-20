@@ -6,6 +6,7 @@ import '../../core/providers/tracking_provider.dart';
 import '../../core/tracking/tracker.dart';
 import '../../core/tracking/tracker_models.dart';
 import '../../theme/app_theme.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Bottom sheet for linking a manga to tracking services and editing its
 /// status / chapter progress / score per service.
@@ -29,6 +30,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final tp = context.watch<TrackingProvider>();
     final connected = tp.connected;
     final bindings = {for (final b in tp.bindingsFor(widget.mangaKey)) b.trackerId: b};
@@ -52,7 +54,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
           Row(children: [
             Icon(Icons.sync_rounded, color: cs.primary, size: 20),
             const SizedBox(width: 8),
-            Text('Tracking',
+            Text(t.trackTitle,
                 style: GoogleFonts.manrope(
                     fontSize: 16, fontWeight: FontWeight.w800)),
           ]),
@@ -69,22 +71,27 @@ class _TrackingSheetState extends State<TrackingSheet> {
     );
   }
 
-  Widget _notConnected(ColorScheme cs) => Padding(
+  Widget _notConnected(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
+    return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(children: [
           Icon(Icons.link_off_rounded, color: cs.outline, size: 36),
           const SizedBox(height: 10),
-          Text('No tracker connected',
+          Text(t.trackNoTrackerConnected,
               style: GoogleFonts.manrope(
                   fontSize: 14, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text('Connect AniList, MyAnimeList, or Kitsu in Settings › Tracking.',
+          Text(t.trackConnectHint,
               textAlign: TextAlign.center,
               style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
         ]),
       );
+  }
 
-  Widget _unboundCard(Tracker t, ColorScheme cs) => Container(
+  Widget _unboundCard(Tracker t, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context);
+    return Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -95,7 +102,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
           Icon(_iconFor(t.id), color: Color(t.colorValue), size: 20),
           const SizedBox(width: 12),
           Expanded(
-            child: Text('Not linked on ${t.name}',
+            child: Text(l10n.trackNotLinkedOn(t.name),
                 style: GoogleFonts.manrope(
                     fontSize: 13, fontWeight: FontWeight.w600)),
           ),
@@ -103,12 +110,14 @@ class _TrackingSheetState extends State<TrackingSheet> {
             onPressed: () => _linkFlow(t),
             style: FilledButton.styleFrom(
                 visualDensity: VisualDensity.compact),
-            child: const Text('Link'),
+            child: Text(l10n.trackLink),
           ),
         ]),
       );
+  }
 
   Widget _boundCard(Tracker t, TrackRecord r, ColorScheme cs) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -129,7 +138,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
                     fontSize: 13.5, fontWeight: FontWeight.w700)),
           ),
           IconButton(
-            tooltip: 'Unlink',
+            tooltip: l10n.trackUnlink,
             visualDensity: VisualDensity.compact,
             icon: Icon(Icons.link_off_rounded, size: 18, color: cs.outline),
             onPressed: () =>
@@ -141,7 +150,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
         Row(children: [
           SizedBox(
               width: 70,
-              child: Text('Status',
+              child: Text(l10n.trackStatus,
                   style: GoogleFonts.manrope(fontSize: 12, color: cs.outline))),
           Expanded(
             child: DropdownButton<TrackStatus>(
@@ -167,7 +176,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
         Row(children: [
           SizedBox(
               width: 70,
-              child: Text('Chapters',
+              child: Text(l10n.trackChapters,
                   style: GoogleFonts.manrope(fontSize: 12, color: cs.outline))),
           IconButton(
             visualDensity: VisualDensity.compact,
@@ -195,7 +204,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
         Row(children: [
           SizedBox(
               width: 70,
-              child: Text('Score',
+              child: Text(l10n.trackScore,
                   style: GoogleFonts.manrope(fontSize: 12, color: cs.outline))),
           Expanded(
             child: Slider(
@@ -239,7 +248,8 @@ class _TrackingSheetState extends State<TrackingSheet> {
           localProgress: widget.localProgress,
         );
     if (mounted) {
-      AppTheme.showSnackBar(context, 'Linked to ${t.name}');
+      AppTheme.showSnackBar(
+          context, AppLocalizations.of(context).trackLinkedTo(t.name));
     }
   }
 
@@ -293,6 +303,7 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -302,7 +313,7 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
       child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.7,
         child: Column(children: [
-          Text('Link on ${widget.tracker.name}',
+          Text(t.trackLinkOn(widget.tracker.name),
               style: GoogleFonts.manrope(
                   fontSize: 15, fontWeight: FontWeight.w800)),
           const SizedBox(height: 10),
@@ -312,7 +323,7 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
                 controller: _ctl,
                 autofocus: false,
                 decoration: InputDecoration(
-                  hintText: 'Search title',
+                  hintText: t.trackSearchTitleHint,
                   isDense: true,
                   border: OutlineInputBorder(
                       borderRadius:
@@ -324,7 +335,7 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
             const SizedBox(width: 8),
             FilledButton(
                 onPressed: _loading ? null : _search,
-                child: const Text('Search')),
+                child: Text(t.trackSearch)),
           ]),
           const SizedBox(height: 10),
           Expanded(
@@ -332,7 +343,7 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
                 ? const Center(child: CircularProgressIndicator())
                 : _results.isEmpty
                     ? Center(
-                        child: Text('No results',
+                        child: Text(t.trackNoResults,
                             style: GoogleFonts.manrope(color: cs.outline)))
                     : ListView.builder(
                         itemCount: _results.length,
@@ -357,7 +368,7 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600)),
                             subtitle: r.totalChapters > 0
-                                ? Text('${r.totalChapters} ch',
+                                ? Text(t.trackChaptersShort(r.totalChapters),
                                     style: GoogleFonts.manrope(
                                         fontSize: 11, color: cs.outline))
                                 : null,

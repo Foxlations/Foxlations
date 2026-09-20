@@ -14,6 +14,7 @@ import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/manga_image.dart';
 import 'widgets/migration_options_dialog.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Migration screen — search all sources for the same manga and transfer read progress.
 class MigrateScreen extends StatefulWidget {
@@ -171,6 +172,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
   }
 
   Future<void> _migrate(_SearchResult target) async {
+    final t = AppLocalizations.of(context);
     final choice = await showMigrationOptions(
       context,
       targetSourceName: target.sourceName,
@@ -211,7 +213,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
       if (mounted) {
         setState(() => _migrating = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Manga not found in library')));
+          SnackBar(content: Text(t.detailMangaNotFound)));
       }
       return;
     }
@@ -307,8 +309,8 @@ class _MigrateScreenState extends State<MigrateScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(isCopy
-              ? 'Copied to ${target.sourceName}'
-              : 'Migrated to ${target.sourceName}'),
+              ? t.detailCopiedTo(target.sourceName)
+              : t.detailMigratedTo(target.sourceName)),
           duration: const Duration(seconds: 2)));
       // Return `true` so a bulk queue knows this entry finished (vs. Back,
       // which pops with null and cancels the batch).
@@ -335,6 +337,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -349,7 +352,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Migrate',
+            Text(t.detailMigrate,
                 style: GoogleFonts.manrope(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
@@ -374,7 +377,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
             controller: _searchController,
             style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
             decoration: InputDecoration(
-              hintText: 'Search manga title...',
+              hintText: t.detailSearchHint,
               hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
               prefixIcon: Icon(Icons.search_rounded, size: 20, color: cs.outline),
               suffixIcon: IconButton(
@@ -397,7 +400,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
             Icon(Icons.info_outline_rounded, size: 14, color: cs.outline),
             const SizedBox(width: 6),
             Expanded(child: Text(
-              'Select the same manga from a different source. Read progress will be transferred.',
+              t.detailMigrateInfo,
               style: GoogleFonts.manrope(fontSize: 11, color: cs.outline),
             )),
           ]),
@@ -417,7 +420,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
         Expanded(
             child: _results.isEmpty
                 ? Center(child: Text(
-                    _searching ? 'Searching sources…' : 'No results found',
+                    _searching ? t.detailSearchingSources : t.detailNoResults,
                     style: GoogleFonts.manrope(fontSize: 14, color: cs.outline)))
                 : ListView(
                     padding: EdgeInsets.only(
@@ -457,7 +460,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
           ),
         ]),
         if (_migrating)
-          const Positioned.fill(
+          Positioned.fill(
             child: ColoredBox(
               color: Colors.black54,
               child: Center(
@@ -466,7 +469,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
                   children: [
                     CircularProgressIndicator(),
                     SizedBox(height: 12),
-                    Text('Migrating…',
+                    Text(t.detailMigrating,
                         style: TextStyle(
                             color: Colors.white, fontWeight: FontWeight.w600)),
                   ],

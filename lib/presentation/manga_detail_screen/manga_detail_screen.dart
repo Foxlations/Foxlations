@@ -20,6 +20,7 @@ import '../../eval/model/m_chapter.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import '../../core/utils/date_format.dart';
+import '../../l10n/app_localizations.dart';
 
 class MangaDetailScreen extends StatefulWidget {
   final String mangaUrl;
@@ -196,6 +197,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     final chapterUrl = chapter.url ?? '';
     if (chapterUrl.isEmpty) return;
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final isBookmarked = _bookmarkedChapterUrls.contains(chapterUrl);
     final isRead = lib.isChapterRead(widget.sourceId, chapterUrl);
     final isDl = context.read<DownloadProvider>()
@@ -210,7 +212,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Text(chapter.name ?? 'Chapter',
+            child: Text(chapter.name ?? t.detailChapterFallback,
                 style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 15),
                 maxLines: 2, overflow: TextOverflow.ellipsis),
           ),
@@ -218,13 +220,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             leading: Icon(isBookmarked
                 ? Icons.bookmark_remove_rounded
                 : Icons.bookmark_add_rounded, color: cs.primary),
-            title: Text(isBookmarked ? 'Remove bookmark' : 'Bookmark',
+            title: Text(isBookmarked ? t.detailRemoveBookmark : t.detailBookmark,
                 style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
             onTap: () { Navigator.pop(sheetCtx); _toggleBookmark(chapterUrl); },
           ),
           ListTile(
             leading: Icon(Icons.done_all_rounded, color: cs.primary),
-            title: Text('Mark all below as read',
+            title: Text(t.detailMarkAllBelowRead,
                 style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
             onTap: () { Navigator.pop(sheetCtx); _markBelowRead(chapterUrl, lib); },
           ),
@@ -232,7 +234,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             leading: Icon(isRead
                 ? Icons.visibility_off_rounded
                 : Icons.check_circle_rounded, color: cs.primary),
-            title: Text(isRead ? 'Mark as unread' : 'Mark chapter as read',
+            title: Text(isRead ? t.detailMarkAsUnread : t.detailMarkChapterAsRead,
                 style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
             onTap: () async {
               Navigator.pop(sheetCtx);
@@ -243,7 +245,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             leading: Icon(isDl
                 ? Icons.download_done_rounded
                 : Icons.download_rounded, color: cs.primary),
-            title: Text(isDl ? 'Downloaded' : 'Download',
+            title: Text(isDl ? t.detailDownloaded : t.detailDownload,
                 style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
             enabled: !isDl,
             onTap: isDl ? null : () {
@@ -360,30 +362,31 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   // ── Notes ───────────────────────────────────────────────────
   void _showNotesDialog(BuildContext context) {
     final controller = TextEditingController(text: _note);
+    final t = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (dCtx) => AlertDialog(
-        title: const Text('Notes'),
+        title: Text(t.detailNotes),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLines: 6,
           minLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'Add a note for this title…',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: t.detailAddNoteHint,
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(dCtx),
-              child: const Text('Cancel')),
+              child: Text(t.detailCancel)),
           FilledButton(
             onPressed: () {
               _saveNote(controller.text);
               Navigator.pop(dCtx);
             },
-            child: const Text('Save'),
+            child: Text(t.detailSave),
           ),
         ],
       ),
@@ -392,19 +395,20 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   Future<void> _confirmRemoveFromLibrary(
       BuildContext context, LibraryProvider lib) async {
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (dCtx) => AlertDialog(
-        title: const Text('Remove from library?'),
+        title: Text(t.detailRemoveFromLibraryTitle),
         content: Text(
             'Remove "${_manga?.name ?? widget.title ?? 'this title'}" from your library?'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(dCtx, false),
-              child: const Text('Cancel')),
+              child: Text(t.detailCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(dCtx, true),
-              child: const Text('Remove')),
+              child: Text(t.detailRemove)),
         ],
       ),
     );
@@ -416,6 +420,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   Widget _buildSelectionBar(BuildContext context, LibraryProvider lib) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final count = _selectedChapterUrls.length;
     final disabled = count == 0;
     final selected = _selectedChapterUrls;
@@ -467,15 +472,15 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             child: Row(children: [
               IconButton(
                 icon: const Icon(Icons.close_rounded),
-                tooltip: 'Done',
+                tooltip: t.detailDone,
                 onPressed: _exitSelectionMode,
               ),
-              Text('$count selected',
+              Text(t.detailCountSelected(count),
                   style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
               const Spacer(),
               TextButton(
                 onPressed: () => _selectAllChapters(lib),
-                child: const Text('Select all'),
+                child: Text(t.detailSelectAll),
               ),
             ]),
           ),
@@ -484,20 +489,20 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 allBookmarked
                     ? Icons.bookmark_remove_rounded
                     : Icons.bookmark_add_rounded,
-                allBookmarked ? 'Unbookmark' : 'Bookmark',
+                allBookmarked ? t.detailUnbookmark : t.detailBookmark,
                 _bulkBookmark),
             action(
                 allBelowRead ? Icons.remove_done_rounded : Icons.done_all_rounded,
-                allBelowRead ? 'Below unread' : 'Below read',
+                allBelowRead ? t.detailBelowUnread : t.detailBelowRead,
                 () => _bulkMarkBelow(lib, read: !allBelowRead),
                 enabled: hasBelow),
             action(
                 allSelectedRead
                     ? Icons.visibility_off_rounded
                     : Icons.check_circle_rounded,
-                allSelectedRead ? 'Mark unread' : 'Mark read',
+                allSelectedRead ? t.detailMarkUnread : t.detailMarkRead,
                 () => _bulkSetRead(!allSelectedRead, lib)),
-            action(Icons.download_rounded, 'Download', () => _bulkDownload(lib)),
+            action(Icons.download_rounded, t.detailDownload, () => _bulkDownload(lib)),
           ]),
         ]),
       ),
@@ -613,6 +618,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final coverUrl = _manga?.imageUrl ?? widget.coverUrl;
     final title = _manga?.name ?? widget.title ?? '';
     final libraryProvider = context.watch<LibraryProvider>();
@@ -641,14 +647,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
               // Download menu
               PopupMenuButton<String>(
                 icon: const Icon(Icons.download_rounded),
-                tooltip: 'Download',
+                tooltip: t.detailDownload,
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'dl_next_1', child: Text('Next chapter')),
-                  const PopupMenuItem(value: 'dl_next_5', child: Text('Next 5 chapters')),
-                  const PopupMenuItem(value: 'dl_next_10', child: Text('Next 10 chapters')),
+                  PopupMenuItem(value: 'dl_next_1', child: Text(t.detailDownloadNextChapter)),
+                  PopupMenuItem(value: 'dl_next_5', child: Text(t.detailDownloadNext5)),
+                  PopupMenuItem(value: 'dl_next_10', child: Text(t.detailDownloadNext10)),
                   const PopupMenuDivider(),
-                  const PopupMenuItem(value: 'dl_unread', child: Text('All unread')),
-                  const PopupMenuItem(value: 'dl_all', child: Text('All chapters')),
+                  PopupMenuItem(value: 'dl_unread', child: Text(t.detailDownloadAllUnread)),
+                  PopupMenuItem(value: 'dl_all', child: Text(t.detailDownloadAllChapters)),
                 ],
                 onSelected: (v) => _handleBulkDownload(v, context, libraryProvider),
               ),
@@ -657,17 +663,17 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 icon: const Icon(Icons.more_vert_rounded),
                 itemBuilder: (_) => [
                   if (inLibrary) ...[
-                    const PopupMenuItem(value: 'edit_category', child: Text('Edit categories')),
-                    const PopupMenuItem(value: 'notes', child: Text('Notes')),
-                    const PopupMenuItem(value: 'migrate', child: Text('Migrate')),
+                    PopupMenuItem(value: 'edit_category', child: Text(t.detailEditCategories)),
+                    PopupMenuItem(value: 'notes', child: Text(t.detailNotes)),
+                    PopupMenuItem(value: 'migrate', child: Text(t.detailMigrate)),
                   ],
-                  const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
+                  PopupMenuItem(value: 'refresh', child: Text(t.detailRefresh)),
                   if ((_manga?.chapters?.isNotEmpty ?? false))
-                    const PopupMenuItem(value: 'select', child: Text('Select chapters')),
+                    PopupMenuItem(value: 'select', child: Text(t.detailSelectChapters)),
                   if (inLibrary)
-                    const PopupMenuItem(value: 'remove', child: Text('Remove from library')),
+                    PopupMenuItem(value: 'remove', child: Text(t.detailRemoveFromLibrary)),
                   const PopupMenuDivider(),
-                  const PopupMenuItem(value: 'webview', child: Text('Open in browser')),
+                  PopupMenuItem(value: 'webview', child: Text(t.detailOpenInBrowser)),
                 ],
                 onSelected: (v) {
                   if (v == 'webview') {
@@ -721,7 +727,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 Text(_error!, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 16),
-                FilledButton(onPressed: _loadDetail, child: const Text('Retry')),
+                FilledButton(onPressed: _loadDetail, child: Text(t.detailRetry)),
               ],
             )))
           else ...[
@@ -742,7 +748,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 Row(children: [
                   Icon(Icons.schedule_rounded, size: 14, color: cs.outline),
                   const SizedBox(width: 4),
-                  Text(_statusText(_manga?.status ?? MangaStatus.unknown),
+                  Text(_statusLabel(t, _manga?.status ?? MangaStatus.unknown),
                       style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
                 ]),
               ]),
@@ -755,7 +761,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 // Library button
                 Expanded(child: _ActionButton(
                   icon: inLibrary ? Icons.favorite_rounded : Icons.favorite_border,
-                  label: inLibrary ? 'Remove' : 'Add',
+                  label: inLibrary ? t.detailRemove : t.detailAdd,
                   active: inLibrary,
                   cs: cs,
                   onTap: () {
@@ -770,7 +776,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 // Tracking button
                 Expanded(child: _ActionButton(
                   icon: Icons.sync_rounded,
-                  label: 'Tracking',
+                  label: t.detailTracking,
                   active: context.watch<TrackingProvider>()
                       .bindingsFor('${widget.sourceId}_${widget.mangaUrl}')
                       .isNotEmpty,
@@ -800,7 +806,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 // WebView button
                 Expanded(child: _ActionButton(
                   icon: Icons.public_rounded,
-                  label: 'WebView',
+                  label: t.detailWebView,
                   active: false,
                   cs: cs,
                   onTap: () => Navigator.pushNamed(context, AppRoutes.webview,
@@ -878,7 +884,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         autofocus: true,
                         style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
                         decoration: InputDecoration(
-                          hintText: 'Search chapters...',
+                          hintText: t.detailSearchChaptersHint,
                           hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -901,12 +907,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                       ),
                     ])
                   : Row(children: [
-                      Text('${_manga?.chapters?.length ?? 0} ${_isAnime ? 'Episodes' : 'Chapters'}',
+                      Text(_isAnime ? t.detailEpisodeCount(_manga?.chapters?.length ?? 0) : t.detailChapterCount(_manga?.chapters?.length ?? 0),
                           style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w800, color: cs.onSurface)),
                       const Spacer(),
                       IconButton(
                         icon: Icon(Icons.search_rounded, size: 20, color: cs.outline),
-                        tooltip: _isAnime ? 'Search episodes' : 'Search chapters',
+                        tooltip: _isAnime ? t.detailSearchEpisodes : t.detailSearchChapters,
                         visualDensity: VisualDensity.compact,
                         onPressed: () => setState(() => _chapterSearchActive = true),
                       ),
@@ -914,22 +920,22 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         icon: Icon(
                           _sortAscending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
                           size: 20, color: cs.outline),
-                        tooltip: _sortAscending ? 'Oldest first' : 'Newest first',
+                        tooltip: _sortAscending ? t.detailOldestFirst : t.detailNewestFirst,
                         visualDensity: VisualDensity.compact,
                         onPressed: () => setState(() => _sortAscending = !_sortAscending),
                       ),
                       PopupMenuButton<String>(
                         icon: Icon(Icons.filter_list_rounded, size: 20,
                             color: (_filterUnread || _filterBookmarked) ? cs.primary : cs.outline),
-                        tooltip: 'Filter',
+                        tooltip: t.detailFilter,
                         itemBuilder: (_) => [
                           CheckedPopupMenuItem<String>(
                             value: 'unread', checked: _filterUnread,
-                            child: Text('Unread', style: GoogleFonts.manrope(fontSize: 14)),
+                            child: Text(t.detailUnread, style: GoogleFonts.manrope(fontSize: 14)),
                           ),
                           CheckedPopupMenuItem<String>(
                             value: 'bookmarked', checked: _filterBookmarked,
-                            child: Text('Bookmarked', style: GoogleFonts.manrope(fontSize: 14)),
+                            child: Text(t.detailBookmarked, style: GoogleFonts.manrope(fontSize: 14)),
                           ),
                           const PopupMenuDivider(),
                           PopupMenuItem<String>(
@@ -937,7 +943,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                             child: Row(children: [
                               Icon(Icons.done_all_rounded, size: 18, color: cs.onSurface),
                               const SizedBox(width: 8),
-                              Text('Mark all as read', style: GoogleFonts.manrope(fontSize: 14)),
+                              Text(t.detailMarkAllAsRead, style: GoogleFonts.manrope(fontSize: 14)),
                             ]),
                           ),
                           PopupMenuItem<String>(
@@ -945,7 +951,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                             child: Row(children: [
                               Icon(Icons.remove_done_rounded, size: 18, color: cs.onSurface),
                               const SizedBox(width: 8),
-                              Text('Mark all as unread', style: GoogleFonts.manrope(fontSize: 14)),
+                              Text(t.detailMarkAllAsUnread, style: GoogleFonts.manrope(fontSize: 14)),
                             ]),
                           ),
                         ],
@@ -985,20 +991,20 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                       Icon(hasLogin ? Icons.lock_outline_rounded : Icons.menu_book_outlined,
                           size: 32, color: cs.outline),
                       const SizedBox(height: 8),
-                      Text('No chapters found',
+                      Text(t.detailNoChaptersFound,
                           style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
                       const SizedBox(height: 4),
                       Text(
                           hasLogin
-                              ? 'Nothing loaded for this title. Try again — or, for this source, logging in can sometimes unlock more.'
-                              : 'Nothing loaded for this title. It may have none yet, or the source had trouble loading them. Try again.',
+                              ? t.detailNoChaptersLoginHint
+                              : t.detailNoChaptersRetryHint,
                           style: GoogleFonts.manrope(fontSize: 12, color: cs.outline), textAlign: TextAlign.center),
                       const SizedBox(height: 12),
                       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         if (hasLogin) ...[
                           FilledButton.icon(
                             icon: const Icon(Icons.login_rounded, size: 16),
-                            label: Text('Log in',
+                            label: Text(t.detailLogIn,
                                 style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 12)),
                             style: FilledButton.styleFrom(
                               backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
@@ -1015,7 +1021,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           onPressed: _loadDetail,
                           style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
-                          child: Text('Retry', style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 12)),
+                          child: Text(t.detailRetry, style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 12)),
                         ),
                       ]),
                     ]),
@@ -1045,7 +1051,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
               backgroundColor: cs.primary,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text('Resume', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+              label: Text(t.detailResume, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
               onPressed: () {
                 final chapters = _manga!.chapters!;
                 final lastUrl = libraryManga!.lastReadChapterUrl!;
@@ -1064,7 +1070,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     'mangaTitle': title,
                     'chapters': chapterMaps,
                     'currentIndex': idx >= 0 ? idx : 0,
-                    'startOffset': libraryManga.lastReadPage,
+                    'startOffset': libraryManga.novelOffsetOr,
+                    'startFraction': libraryManga.novelProgressFraction,
                   });
                 } else if (isAnime) {
                   Navigator.pushNamed(context, AppRoutes.player, arguments: {
@@ -1110,6 +1117,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       LibraryProvider libraryProvider, LibraryManga? libraryManga,
       List<Map<String, dynamic>> allChapters) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final chapterUrl = chapter.url ?? '';
     final isRead = libraryProvider.isChapterRead(widget.sourceId, chapterUrl);
     final isBookmarked = _bookmarkedChapterUrls.contains(chapterUrl);
@@ -1181,7 +1189,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           // Selection checkbox (only in multi-select mode)
           if (_selectionMode)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsetsDirectional.only(end: 8),
               child: Icon(
                   isSelected
                       ? Icons.check_circle_rounded
@@ -1192,13 +1200,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           // Bookmark indicator (left edge)
           if (isBookmarked && !_selectionMode)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsetsDirectional.only(end: 8),
               child: Icon(Icons.bookmark_rounded, size: 16, color: cs.primary),
             ),
           // Chapter info
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
-              chapter.name ?? 'Chapter',
+              chapter.name ?? t.detailChapterFallback,
               style: GoogleFonts.manrope(
                 fontSize: 14,
                 fontWeight: isLastRead ? FontWeight.w700 : FontWeight.w500,
@@ -1217,10 +1225,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     style: GoogleFonts.manrope(fontSize: 11, color: subColor)),
                 Text(
                     _isAnime
-                        ? _fmtWatchTime(libraryManga.lastReadPage)
+                        ? _fmtWatchTime(libraryManga.watchSecondsOr)
                         : _isNovel
-                            ? 'In progress'
-                            : 'Page ${libraryManga.lastReadPage + 1}',
+                            ? t.detailInProgress
+                            : t.detailPage(libraryManga.lastReadPage + 1),
                     style: GoogleFonts.manrope(fontSize: 11, color: cs.primary, fontWeight: FontWeight.w600)),
               ],
             ]),
@@ -1251,7 +1259,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              tooltip: isDl ? 'Delete download' : 'Download',
+              tooltip: isDl ? t.detailDeleteDownload : t.detailDownload,
               onPressed: () {
                 final title = _manga?.name ?? widget.title ?? 'Unknown';
                 if (isDl) {
@@ -1287,6 +1295,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   }
 
   void _handleBulkDownload(String action, BuildContext context, LibraryProvider libraryProvider) {
+    final t = AppLocalizations.of(context);
     final chapters = _manga?.chapters;
     if (chapters == null || chapters.isEmpty) return;
 
@@ -1332,7 +1341,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
     if (toDownload.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nothing to download'), duration: Duration(seconds: 1)),
+        SnackBar(content: Text(t.detailNothingToDownload), duration: const Duration(seconds: 1)),
       );
       return;
     }
@@ -1362,7 +1371,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Downloading ${toDownload.length} chapter${toDownload.length == 1 ? '' : 's'}'),
+        content: Text(AppLocalizations.of(context).detailDownloadingChapters(toDownload.length)),
         duration: const Duration(seconds: 2)),
     );
   }
@@ -1388,6 +1397,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         status: _statusText(manga.status ?? MangaStatus.unknown),
         totalChapters: manga.chapters?.length ?? 0,
         categories: categories,
+        // Stamp the durable content type at add-time so the entry knows what it
+        // is even if the source lookup is later unavailable (fixes novel/anime
+        // entries defaulting to the manga reader/category).
+        contentType: _isNovel ? 'novel' : (_isAnime ? 'anime' : 'manga'),
       );
     }
 
@@ -1425,6 +1438,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   void _showCategoryPicker(
       BuildContext context, List<String> categories, ValueChanged<List<String>> onConfirm) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final selected = <String>{};
 
     showModalBottomSheet(
@@ -1447,7 +1461,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 Container(width: 36, height: 4,
                     decoration: BoxDecoration(color: cs.outline, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 16),
-                Text('Add to Category',
+                Text(t.detailAddToCategory,
                     style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
                 const SizedBox(height: 12),
                 Flexible(
@@ -1483,7 +1497,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
                     padding: const EdgeInsets.symmetric(vertical: 14)),
-                  child: Text(selected.isEmpty ? 'Add without Category' : 'Add to Library',
+                  child: Text(selected.isEmpty ? t.detailAddWithoutCategory : t.detailAddToLibrary,
                       style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14)),
                 )),
               ]),
@@ -1509,6 +1523,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     if (manga == null || catNames.isEmpty) return;
 
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final selected = Set<String>.from(manga.categories);
 
     showModalBottomSheet(
@@ -1531,7 +1546,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 Container(width: 36, height: 4,
                     decoration: BoxDecoration(color: cs.outline, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 16),
-                Text('Edit Categories',
+                Text(t.detailEditCategoriesTitle,
                     style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
                 const SizedBox(height: 12),
                 // Scrolls when there are more categories than fit.
@@ -1573,7 +1588,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
                     padding: const EdgeInsets.symmetric(vertical: 14)),
-                  child: Text('Save', style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14)),
+                  child: Text(t.detailSave, style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14)),
                 )),
               ]),
             ),
@@ -1590,6 +1605,18 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     MangaStatus.canceled => 'Canceled',
     MangaStatus.publishingFinished => 'Finished',
     MangaStatus.unknown => 'Unknown',
+  };
+
+  // Localized status label for DISPLAY only. The canonical English _statusText
+  // above is still used when persisting LibraryManga.status (stored value stays
+  // language-independent).
+  String _statusLabel(AppLocalizations t, MangaStatus status) => switch (status) {
+    MangaStatus.ongoing => t.detailStatusOngoing,
+    MangaStatus.completed => t.detailStatusCompleted,
+    MangaStatus.onHiatus => t.detailStatusHiatus,
+    MangaStatus.canceled => t.detailStatusCanceled,
+    MangaStatus.publishingFinished => t.detailStatusFinished,
+    MangaStatus.unknown => t.detailStatusUnknown,
   };
 }
 

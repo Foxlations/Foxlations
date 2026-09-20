@@ -32,6 +32,21 @@ class LibraryChapter extends HiveObject {
   });
 
   String get uniqueKey => '${sourceId}_$chapterUrl';
+
+  /// A detached copy (not bound to any Hive box) — see [LibraryManga.clone].
+  LibraryChapter clone() => LibraryChapter(
+        sourceId: sourceId,
+        mangaUrl: mangaUrl,
+        chapterUrl: chapterUrl,
+        title: title,
+        chapterNumber: chapterNumber,
+        scanlator: scanlator,
+        dateUpload: dateUpload,
+        isRead: isRead,
+        lastPageRead: lastPageRead,
+        readAt: readAt,
+        sourceIndex: sourceIndex,
+      );
 }
 
 class LibraryChapterAdapter extends TypeAdapter<LibraryChapter> {

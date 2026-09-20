@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/repoforge/mangayomi_js_generator.dart';
 import '../../core/repoforge/selector_knowledge_base.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 
 /// What RepoForge can build: the supported frameworks + a "is this site covered?"
@@ -40,6 +41,7 @@ class _RepoForgeCoverageScreenState extends State<RepoForgeCoverageScreen> {
   }
 
   Future<void> _check() async {
+    final t = AppLocalizations.of(context);
     final raw = _checkCtl.text.trim();
     if (raw.isEmpty) return;
     final url = raw.startsWith('http') ? raw : 'https://$raw';
@@ -52,29 +54,28 @@ class _RepoForgeCoverageScreenState extends State<RepoForgeCoverageScreen> {
       final fw = (novel['framework'] as String?) ?? 'Custom';
       r = _CoverageResult(
         covered: fw != 'Custom',
-        title: 'Known light-novel site',
+        title: t.repoKnownNovelSite,
         detail: fw == 'Custom'
-            ? 'Recognized as a novel site — generated with the generic novel body (browse may need selector tuning).'
-            : 'Generated as a Novel source using the $fw body — browsing + reader work out of the box.',
+            ? t.repoNovelGenericDetail
+            : t.repoNovelFrameworkDetail(fw),
       );
     } else if (manga != null) {
       final theme = (manga['theme'] as String?);
       final isApi = manga['api'] == true;
       r = _CoverageResult(
         covered: true,
-        title: 'Known manga site',
+        title: t.repoKnownMangaSite,
         detail: isApi
-            ? 'Community-verified API source — RepoForge builds it from the site’s API.'
+            ? t.repoMangaApiDetail
             : theme != null
-                ? 'Community-verified theme: $theme — selectors are known.'
-                : 'Community-verified custom selectors are on file for this site.',
+                ? t.repoMangaThemeDetail(theme)
+                : t.repoMangaCustomDetail,
       );
     } else {
       r = _CoverageResult(
         covered: false,
-        title: 'Not in the knowledge base',
-        detail: 'RepoForge will detect its framework live when you add it, then '
-            'fall back to heuristic “what-is-what” scraping if it’s bespoke.',
+        title: t.repoNotInKb,
+        detail: t.repoNotInKbDetail,
       );
     }
     setState(() {
@@ -85,6 +86,7 @@ class _RepoForgeCoverageScreenState extends State<RepoForgeCoverageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
     // group frameworks by their 'group'
     final groups = <String, List<Map<String, dynamic>>>{};
@@ -93,7 +95,7 @@ class _RepoForgeCoverageScreenState extends State<RepoForgeCoverageScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text('Coverage',
+        title: Text(t.repoCoverage,
             style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
       ),
       body: ListView(
@@ -102,7 +104,7 @@ class _RepoForgeCoverageScreenState extends State<RepoForgeCoverageScreen> {
         children: [
           _statsRow(cs),
           const SizedBox(height: 20),
-          _label('Check a site', cs),
+          _label(t.repoCheckASite, cs),
           Row(children: [
             Expanded(
               child: TextField(
@@ -110,7 +112,7 @@ class _RepoForgeCoverageScreenState extends State<RepoForgeCoverageScreen> {
                 autocorrect: false,
                 keyboardType: TextInputType.url,
                 decoration: InputDecoration(
-                  hintText: 'paste a site URL',
+                  hintText: t.repoPasteSiteUrlHint,
                   isDense: true,
                   border: OutlineInputBorder(
                       borderRadius:
@@ -129,7 +131,7 @@ class _RepoForgeCoverageScreenState extends State<RepoForgeCoverageScreen> {
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Check'),
+                  : Text(t.repoCheck),
             ),
           ]),
           if (_result != null) ...[
@@ -137,7 +139,7 @@ class _RepoForgeCoverageScreenState extends State<RepoForgeCoverageScreen> {
             _resultCard(_result!, cs),
           ],
           const SizedBox(height: 24),
-          _label('Supported frameworks', cs),
+          _label(t.repoSupportedFrameworks, cs),
           const SizedBox(height: 4),
           for (final entry in groups.entries) ...[
             Padding(
@@ -156,17 +158,20 @@ class _RepoForgeCoverageScreenState extends State<RepoForgeCoverageScreen> {
     );
   }
 
-  Widget _statsRow(ColorScheme cs) => Row(children: [
-        Expanded(child: _statCard('$_mangaKb', 'manga sites', cs)),
+  Widget _statsRow(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
+    return Row(children: [
+        Expanded(child: _statCard('$_mangaKb', t.repoMangaSites, cs)),
         const SizedBox(width: 12),
-        Expanded(child: _statCard('$_novelKb', 'novel sites', cs)),
+        Expanded(child: _statCard('$_novelKb', t.repoNovelSites, cs)),
         const SizedBox(width: 12),
         Expanded(
             child: _statCard(
                 '${MangayomiJsGenerator.supportedFrameworks.length}',
-                'frameworks',
+                t.repoFrameworks,
                 cs)),
       ]);
+  }
 
   Widget _statCard(String value, String label, ColorScheme cs) => Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),

@@ -1,4 +1,4 @@
-name: Android build (Mihon-style)
+name: Android build
 
 on:
   workflow_dispatch:
