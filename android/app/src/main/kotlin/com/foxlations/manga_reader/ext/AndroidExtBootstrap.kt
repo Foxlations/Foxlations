@@ -58,6 +58,11 @@ object AndroidExtBootstrap {
                 f.isAccessible = true
                 val cur = f.get(nh) as? OkHttpClient ?: return@runCatching
                 val b = cur.newBuilder()
+                // DNS-over-HTTPS (Advanced settings). FoxDoh is a shared mutable
+                // Dns, so flipping it later is picked up in place by this client
+                // AND every source's derived newBuilder() client (they copy the
+                // dns REFERENCE), with no rebuild needed. Off by default → system DNS.
+                b.dns(FoxDoh)
                 // Builder.interceptors/networkInterceptors are internal props — use the
                 // public interceptors()/networkInterceptors() accessors (they return the
                 // live MutableList).

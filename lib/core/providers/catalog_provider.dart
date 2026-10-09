@@ -81,8 +81,10 @@ class CatalogProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _categories = await _service?.getCategories() ?? [];
-    } catch (e) {
+    } catch (e, s) {
       debugPrint('[Catalog] getCategories failed: $e');
+      await logger.error('Loading source categories failed',
+          category: LogCategory.extension, detail: '$e\n$s');
     }
     _isLoading[CatalogTab.categories] = false;
     notifyListeners();

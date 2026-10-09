@@ -271,6 +271,20 @@ object SourceRunner {
             // first real source call doesn't pay the (one-time) bootstrap cost. bootstrap()
             // already ran above; just acknowledge.
             if (method == "warmup") return "{\"ok\":true}"
+            // DNS-over-HTTPS endpoint (Advanced > DNS provider). The JVM-wide DoH
+            // resolver (foxtensions.net.DohResolver, which makes DNS work at all on
+            // the iOS Zero VM) is set reflectively — it's registered via ServiceLoader
+            // and not on this jar's compile classpath. Must be a literal-IP URL; a
+            // bad value is ignored there so DNS never breaks.
+            if (method == "setDoh") {
+                val url = req.str("dohUrl", "")
+                runCatching {
+                    Class.forName("foxtensions.net.DohResolver")
+                        .getMethod("setEndpoint", String::class.java)
+                        .invoke(null, url)
+                }
+                return "{\"ok\":true}"
+            }
             // APK import: convert a user-added extension APK (Aniyomi anime, or any dex-only
             // extension) to a loadable jar and read its entry class from the (binary)
             // manifest — no source is loaded here. Keiyoushi manga/novel already ship jars,
@@ -306,7 +320,28 @@ object SourceRunner {
         "getDetail" -> detailJson(cat, req.str("url", ""))
         "getPageList" -> pageListJson(cat, req.str("url", ""))
         "getHtmlContent" -> htmlContentJson(cat, req.str("url", ""))
+        "getWebUrl" -> webUrlJson(cat, req.str("url", ""))
         else -> errJson("unknown method: $method")
+    }
+
+    // The source's own browsable page URL for an item ("Open in browser"). Only the
+    // source knows how to turn its stored url into the readable page — e.g. AsuraScans
+    // stores "/series/<slug>" but getMangaUrl returns "$baseUrl/comics/<slug>" — so we
+    // run getMangaUrl on the live source rather than guess baseUrl+url. The stub carries
+    // the url + the item's memo (the random-slug cache etc.), and ALWAYS a memo object so
+    // a source that reads manga.memo[...] can't throw on an unset lateinit. Reflected +
+    // guarded (getMangaUrl is a HttpSource member, not on CatalogueSource).
+    private fun webUrlJson(cat: CatalogueSource, url: String): String {
+        val stub = SManga.create().apply {
+            this.url = relativize(url, cat)
+            this.memo = mangaMemoCache[url] ?: buildJsonObject {}
+            this.title = mangaTitleCache[url] ?: ""
+        }
+        val web = runCatching {
+            cat.javaClass.getMethod("getMangaUrl", SManga::class.java)
+                .invoke(cat, stub) as? String
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+        return buildJsonObject { put("url", web ?: relativize(url, cat)) }.toString()
     }
 
     private fun animeInvoke(method: String, cat: AnimeCatalogueSource, req: JsonObject): String = when (method) {
@@ -317,7 +352,125 @@ object SourceRunner {
         })
         "getDetail" -> animeDetailJson(cat, req.str("url", ""))
         "getVideoList" -> videoListJson(cat, req.str("url", ""))
+        "getWebUrl" -> animeWebUrlJson(cat, req.str("url", ""))
+        // Browse "Categories" tab: derive categories from the source's genre filter(s),
+        // and list a chosen one by applying that filter to a search.
+        "getCategories" -> categoriesJson(runCatching { cat.getFilterList() }.getOrNull())
+        "getListing" -> animesPageJson(runBlocking(Dispatchers.Default) {
+            cat.getSearchAnime(req.int("page", 1), "",
+                applyCategory(cat.getFilterList(), req.str("url", "")))
+        })
         else -> errJson("unknown anime method: $method")
+    }
+
+    /// Anime equivalent of [webUrlJson]: the source's getAnimeUrl for the item page.
+    private fun animeWebUrlJson(cat: AnimeCatalogueSource, url: String): String {
+        val stub = SAnime.create().apply { this.url = relativize(url, cat) }
+        val web = runCatching {
+            cat.javaClass.getMethod("getAnimeUrl", SAnime::class.java)
+                .invoke(cat, stub) as? String
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+        return buildJsonObject { put("url", web ?: relativize(url, cat)) }.toString()
+    }
+
+    // ── Browse categories (from genre-style filters) ─────────────────────────────
+    // A "category" is one option of a genre/tag/type filter. getCategories returns
+    // [{name, link}] where link = "sel:<filterIdx>:<optIdx>" (a Select/dropdown option)
+    // or "grp:<filterIdx>:<optIdx>" (a checkbox/tri-state inside a Group). getListing
+    // (here, via applyCategory) rebuilds a FRESH filter list and turns that one option on.
+    // Reflection-based so it works for both AnimeFilter and the manga Filter shapes.
+    private val categoryNameRe =
+        Regex("genre|categor|tag|theme|type|format|kind", RegexOption.IGNORE_CASE)
+
+    private fun reflectStr(obj: Any?, method: String): String? =
+        runCatching { obj?.javaClass?.getMethod(method)?.invoke(obj)?.toString() }.getOrNull()
+
+    private fun isRealCategory(label: String): Boolean {
+        val l = label.trim()
+        return l.isNotEmpty() &&
+            !l.equals("all", true) && !l.equals("any", true) &&
+            !l.equals("none", true) && l != "-" && l != "—"
+    }
+
+    /** Serialize genre-style filter options as browse categories. */
+    private fun categoriesJson(filterList: Any?): String {
+        val filters = filterList as? List<*> ?: emptyList<Any?>()
+        data class Cand(val fi: Int, val f: Any, val isSelect: Boolean, val name: String)
+        val cands = ArrayList<Cand>()
+        filters.forEachIndexed { fi, f ->
+            if (f == null) return@forEachIndexed
+            val values = runCatching { f.javaClass.getMethod("getValues").invoke(f) }.getOrNull()
+            val state = runCatching { f.javaClass.getMethod("getState").invoke(f) }.getOrNull()
+            val nm = reflectStr(f, "getName") ?: ""
+            when {
+                values is Array<*> -> cands.add(Cand(fi, f, true, nm))
+                state is List<*> -> cands.add(Cand(fi, f, false, nm))
+            }
+        }
+        // Prefer filters that look like genres/categories; otherwise fall back to the first.
+        val chosen = cands.filter { categoryNameRe.containsMatchIn(it.name) }
+            .ifEmpty { cands.take(1) }
+        val multi = chosen.size > 1
+        val arr = buildJsonArray {
+            for (c in chosen) {
+                if (c.isSelect) {
+                    val values = c.f.javaClass.getMethod("getValues").invoke(c.f) as Array<*>
+                    values.forEachIndexed { oi, v ->
+                        val label = v?.toString() ?: ""
+                        if (isRealCategory(label)) add(categoryObj(label, c.name, multi, "sel:${c.fi}:$oi"))
+                    }
+                } else {
+                    val state = c.f.javaClass.getMethod("getState").invoke(c.f) as List<*>
+                    state.forEachIndexed { oi, item ->
+                        val label = reflectStr(item, "getName") ?: ""
+                        if (isRealCategory(label)) add(categoryObj(label, c.name, multi, "grp:${c.fi}:$oi"))
+                    }
+                }
+            }
+        }
+        return arr.toString()
+    }
+
+    private fun categoryObj(label: String, group: String, multi: Boolean, link: String) =
+        buildJsonObject {
+            put("name", if (multi && group.isNotBlank()) "$group: $label" else label)
+            put("link", link)
+        }
+
+    /** Turn the one option encoded in [link] on, in a fresh filter list, for getSearchAnime. */
+    private fun <T> applyCategory(filterList: T, link: String): T {
+        val filters = filterList as? List<*> ?: return filterList
+        val parts = link.split(":")
+        if (parts.size != 3) return filterList
+        val fi = parts[1].toIntOrNull() ?: return filterList
+        val oi = parts[2].toIntOrNull() ?: return filterList
+        val f = filters.getOrNull(fi) ?: return filterList
+        runCatching {
+            if (parts[0] == "sel") {
+                setState(f, oi) // Select.state = index
+            } else {
+                val state = f.javaClass.getMethod("getState").invoke(f) as? List<*>
+                state?.getOrNull(oi)?.let { setStateOn(it) } // CheckBox=true / TriState=include(1)
+            }
+        }
+        return filterList
+    }
+
+    private fun setState(obj: Any, intValue: Int) {
+        val m = obj.javaClass.methods.firstOrNull { it.name == "setState" && it.parameterCount == 1 }
+            ?: return
+        m.invoke(obj, intValue)
+    }
+
+    private fun setStateOn(obj: Any) {
+        val m = obj.javaClass.methods.firstOrNull { it.name == "setState" && it.parameterCount == 1 }
+            ?: return
+        val pt = m.parameterTypes[0]
+        when {
+            pt == Boolean::class.javaPrimitiveType || pt == java.lang.Boolean::class.java ->
+                m.invoke(obj, true)
+            else -> m.invoke(obj, 1) // TriState: 1 = include
+        }
     }
 
     // Convert a downloaded extension APK to a loadable jar (Suwayomi's own dex→jar, no
@@ -349,7 +502,15 @@ object SourceRunner {
             isFactory = k.endsWith(".factory")
             break
         }
-        if (outJar.isNotBlank()) PackageTools.dex2jar(java.io.File(apk).toPath(), java.io.File(outJar).toPath())
+        if (outJar.isNotBlank()) {
+            PackageTools.dex2jar(java.io.File(apk).toPath(), java.io.File(outJar).toPath())
+            // dex2jar emits frame-less bytecode; the embedded JVM's verifier (which, unlike
+            // desktop HotSpot, does NOT honour -Xverify:none on iOS) then rejects every method
+            // with a branch: "VerifyError: Expecting a stackmap frame". Reprocess each class
+            // through ASM COMPUTE_FRAMES to generate a valid StackMapTable + correct maxs so
+            // the classes verify cleanly. This is the anime/APK path only.
+            runCatching { sanitizeDexJar(outJar) }
+        }
         return buildJsonObject {
             put("ok", true)
             put("jar", outJar)
@@ -363,6 +524,70 @@ object SourceRunner {
         }.toString()
     }
 
+    // Regenerate StackMapTable frames (and recompute maxs) for every class in a dex2jar'd jar
+    // via ASM COMPUTE_FRAMES, so the frame-less dex2jar output verifies on the embedded JVM.
+    // CRITICAL: the ClassWriter must NOT be constructed with the ClassReader — that enables
+    // ASM's verbatim method-copy optimization, which copies the original (frame-less) method
+    // bodies and skips COMPUTE_FRAMES entirely. getCommonSuperClass resolves against the
+    // extension jar + host classpath; unresolved types fall back to Object (a safe common
+    // super). Best-effort per class: if ASM throws, the original bytes are kept.
+    private fun sanitizeDexJar(jarPath: String) {
+        val src = File(jarPath)
+        if (!src.exists()) return
+        val cl = URLClassLoader(arrayOf(src.toURI().toURL()), SourceRunner::class.java.classLoader)
+        val tmp = File(jarPath + ".fix.tmp")
+        java.util.zip.ZipFile(src).use { zf ->
+            java.util.zip.ZipOutputStream(tmp.outputStream().buffered()).use { zout ->
+                val entries = zf.entries()
+                while (entries.hasMoreElements()) {
+                    val e = entries.nextElement()
+                    var bytes = zf.getInputStream(e).readBytes()
+                    if (e.name.endsWith(".class")) {
+                        bytes = runCatching {
+                            val reader = org.objectweb.asm.ClassReader(bytes)
+                            val writer = object : org.objectweb.asm.ClassWriter(
+                                org.objectweb.asm.ClassWriter.COMPUTE_FRAMES
+                            ) {
+                                override fun getClassLoader(): ClassLoader = cl
+                                override fun getCommonSuperClass(t1: String, t2: String): String =
+                                    try { super.getCommonSuperClass(t1, t2) }
+                                    catch (_: Throwable) { "java/lang/Object" }
+                            }
+                            reader.accept(writer, org.objectweb.asm.ClassReader.SKIP_FRAMES)
+                            writer.toByteArray()
+                        }.getOrDefault(bytes)
+                    }
+                    zout.putNextEntry(java.util.zip.ZipEntry(e.name))
+                    zout.write(bytes)
+                    zout.closeEntry()
+                }
+                // Marker so ensureSanitized() can tell a frame-fixed jar from a stale one.
+                zout.putNextEntry(java.util.zip.ZipEntry(SANITIZED_MARKER))
+                zout.closeEntry()
+            }
+        }
+        if (tmp.exists() && tmp.length() > 0L) { src.delete(); tmp.renameTo(src) }
+    }
+
+    private const val SANITIZED_MARKER = "FOX_SANITIZED"
+
+    // Self-heal: anime jars converted BEFORE the ASM-frames fix (build 109) are still
+    // frame-less on disk, and the app reuses the stored jar (no re-convert on a repo
+    // refresh), so they'd keep failing with VerifyError until a reinstall. Re-sanitize such
+    // a jar once, on first load after the update. A dex2jar (anime) jar has no
+    // AndroidManifest.xml; a manga/novel jar (already proper bytecode) does, so it's skipped.
+    // The marker makes it one-time.
+    private fun ensureSanitized(jarPath: String) {
+        val f = File(jarPath)
+        if (!f.exists()) return
+        val (marked, hasManifest) = runCatching {
+            java.util.zip.ZipFile(f).use { zf ->
+                Pair(zf.getEntry(SANITIZED_MARKER) != null, zf.getEntry("AndroidManifest.xml") != null)
+            }
+        }.getOrDefault(Pair(true, true)) // on any read error, leave the jar untouched
+        if (!marked && !hasManifest) runCatching { sanitizeDexJar(jarPath) }
+    }
+
     private fun resolveJar(jar: String): String {
         val f = File(jar)
         if (f.isAbsolute && f.exists()) return jar
@@ -373,6 +598,9 @@ object SourceRunner {
     private fun loadSource(jarPath: String, lang: String?, entry: String): Any {
         val key = "$jarPath|$lang"
         sourceCache[key]?.let { return it }
+        // Re-frame a stale (pre-build-109) anime jar in place if needed, so existing
+        // installs load without a reinstall. No-op for already-fixed or manga jars.
+        ensureSanitized(jarPath)
         val ej = File(jarPath)
         // Manga/novel jars ship a plaintext AndroidManifest we can read the entry class from;
         // anime jars come from dex2jar (which drops the manifest), so the app decodes the
@@ -471,6 +699,14 @@ object SourceRunner {
     // reopen/refresh the chapter list, which repopulates the cache.
     private val mangaMemoCache = java.util.concurrent.ConcurrentHashMap<String, JsonObject>()
     private val chapterMemoCache = java.util.concurrent.ConcurrentHashMap<String, JsonObject>()
+    // SManga.title is a Tachiyomi `lateinit var`. getDetail builds a bare stub (only url is
+    // known) and hands it to the source's getMangaUpdate; a source whose mangaDetailsParse
+    // reads `manga.title` (e.g. to build a request or log) hits the uninitialized lateinit and
+    // throws UninitializedPropertyAccessException before it ever sets a title. Remember the
+    // title the source gave at browse time, keyed by the url the app sends back to getDetail,
+    // so the stub is never title-less. (iOS Suwayomi's SMangaImpl.title is lateinit and throws;
+    // Android's is a plain `var = ""` which is why Android never crashed here.)
+    private val mangaTitleCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     // memo may be a lateinit/uninitialized field on the host impl; never let a read throw.
     private fun SManga.memoOrNull(): JsonObject? = runCatching { this.memo }.getOrNull()
@@ -504,7 +740,8 @@ object SourceRunner {
     }
 
     private fun mangaJson(m: SManga, link: String? = null): JsonObject = buildJsonObject {
-        put("name", m.title)
+        // title is lateinit; a source that returned a manga without setting it would throw here.
+        put("name", runCatching { m.title }.getOrNull() ?: "")
         put("link", link ?: m.url)
         put("imageUrl", m.thumbnail_url)
         put("description", m.description)
@@ -522,6 +759,10 @@ object SourceRunner {
                 // Remember any memo the source attached at browse time (some read it back in
                 // mangaDetailsRequest); keyed by the url the app will send to getDetail.
                 m.memoOrNull()?.let { runCatching { mangaMemoCache[m.url] = it } }
+                // Remember the browse-time title so getDetail's stub can carry it (see
+                // mangaTitleCache) and never hands the source a title-less lateinit.
+                runCatching { m.title }.getOrNull()?.takeIf { it.isNotBlank() }
+                    ?.let { mangaTitleCache[m.url] = it }
                 add(mangaJson(m))
             }
         })
@@ -565,6 +806,10 @@ object SourceRunner {
             // keep the original (possibly absolute) url so the app's stored url is stable.
             this.url = relativize(url, cat)
             mangaMemoCache[url]?.let { this.memo = it }
+            // Seed the lateinit title (from browse) so a source that reads manga.title inside
+            // its own mangaDetailsParse doesn't throw UninitializedPropertyAccessException. ""
+            // is a safe placeholder; getMangaUpdate overwrites it with the parsed title.
+            this.title = mangaTitleCache[url] ?: ""
         }
         // Details first, THEN chapters using the populated manga. The combined call runs
         // both concurrently, which can leave chapters empty for rate-limited/paginated
@@ -574,6 +819,11 @@ object SourceRunner {
         // unset (common for older 1.4 novel sources) throws UninitializedPropertyAccessException
         // the moment we read it. Guard the read and fall back to the request url.
         if (runCatching { details.url }.getOrNull().isNullOrBlank()) details.url = url
+        // Same lateinit hazard for title: a 1.4-era source that never sets it leaves the stub's
+        // (possibly "") value, and a brand-new SManga from the source would throw on read. Fall
+        // back to the cached browse title, then the stub's.
+        if (runCatching { details.title }.getOrNull().isNullOrBlank())
+            details.title = mangaTitleCache[url] ?: runCatching { stub.title }.getOrNull() ?: ""
         if (details.memoOrNull() == null) stub.memoOrNull()?.let { details.memo = it }
         var chapters: List<SChapter> = emptyList()
         var chErr: String? = null
@@ -591,10 +841,20 @@ object SourceRunner {
             ch.memoOrNull()?.let { runCatching { chapterMemoCache[ch.url] = it; cachedAny = true } }
         }
         if (cachedAny) persistMemo()
+        // The source's own browsable page URL ("Open in browser"). getMangaUrl is a
+        // HttpSource member (not on CatalogueSource), and sources that fetch details
+        // from an API override it to point at the real web page — so baseUrl+url would
+        // 404. Reflected + guarded so a source/platform without it just omits webUrl
+        // and the app falls back to joining the url onto the base.
+        val webUrl = runCatching {
+            cat.javaClass.getMethod("getMangaUrl", SManga::class.java)
+                .invoke(cat, details) as? String
+        }.getOrNull()?.takeIf { it.isNotBlank() }
         return buildJsonObject {
             mangaJson(details, link = url).forEach { (k, v) -> put(k, v) }
             put("chapters", buildJsonArray { chapters.forEach { add(chapterJson(it)) } })
             put("_detailUrl", details.url)
+            if (webUrl != null) put("webUrl", webUrl)
             if (chErr != null) put("_chaptersError", chErr)
         }.toString()
     }
@@ -726,10 +986,16 @@ object SourceRunner {
         } catch (t: Throwable) {
             chErr = describe(t)
         }
+        // Source's browsable page URL (see detailJson): getAnimeUrl, reflected + guarded.
+        val webUrl = runCatching {
+            cat.javaClass.getMethod("getAnimeUrl", SAnime::class.java)
+                .invoke(cat, details) as? String
+        }.getOrNull()?.takeIf { it.isNotBlank() }
         return buildJsonObject {
             animeJson(details, link = url).forEach { (k, v) -> put(k, v) }
             put("chapters", buildJsonArray { episodes.forEach { add(episodeJson(it)) } })
             put("_detailUrl", details.url)
+            if (webUrl != null) put("webUrl", webUrl)
             if (chErr != null) put("_chaptersError", chErr)
         }.toString()
     }

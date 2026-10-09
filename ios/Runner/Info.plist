@@ -188,12 +188,14 @@
 	<!-- WKWebView reaches Photos/Camera on its own for <input type="file"> and
 	     long-press "Save Image" on arbitrary source sites. Hitting either
 	     without a usage string is an immediate SIGABRT, not a denial. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Foxlations uses Face ID to unlock the app when App Lock is turned on.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Foxlations needs photo access to import images you choose.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Foxlations needs permission to save manga pages and exported files to your photo library.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Foxlations needs camera access when a website asks you to take a photo.</string>
+	<string>Foxlations uses the camera when a website asks you to take a photo, and, only if you turn on hands-free scrolling, to track your face for gaze-based page scrolling. Face-tracking happens entirely on your device and is never recorded or sent anywhere.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Foxlations needs microphone access when a website asks to record audio.</string>
 	<!-- The Koharu AI translation server usually runs on the user's LAN.

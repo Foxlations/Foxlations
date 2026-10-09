@@ -2,9 +2,15 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
+import '../../../core/providers/beta_provider.dart';
+import '../../../widgets/beta_badge.dart';
+import '../../../core/services/gaze_scroll_service.dart';
+import '../../../core/services/settings_store.dart';
+import '../../../core/services/tilt_scroll_service.dart';
+import '../../reader_screen/widgets/gaze_calibration_screen.dart';
 
 /// Reader preference keys. The reader screen and ReaderProvider read from
 /// these same keys, so toggling here takes effect on the next chapter open.
@@ -12,22 +18,33 @@ class ReaderPrefs {
   // Stored as int (ReadingMode enum index). Same key the reader uses.
   static const readingMode = 'reader_reading_mode';
   static const scaleType = 'reader_scale_type';
-  static const zoomStart = 'reader_zoom_start';
   static const navLayout = 'reader_nav_layout';
   static const bgColor = 'reader_bg_color';
-  static const pageTransition = 'reader_page_transition';
   static const keepScreenOn = 'reader_keep_screen_on';
   static const showPageNumber = 'reader_show_page_num';
   static const fullscreen = 'reader_fullscreen';
-  static const cropBorders = 'reader_crop_borders';
   static const grayscale = 'reader_grayscale';
+  static const warmTint = 'reader_warm_tint';
+  static const brightness = 'reader_brightness';
+  static const dualPage = 'reader_dual_page';
+  static const dualPageSplit = 'reader_dual_page_split';
   static const invertColors = 'reader_invert_colors';
   static const invertTapZones = 'reader_invert_tap';
   static const volumeKeys = 'reader_volume_keys';
   static const volumeScrollSpeed = 'reader_volume_scroll_speed';
+  static const gazeEnabled = 'reader_gaze_enabled';
+  static const gazeMode = 'reader_gaze_mode';
+  static const gazeThreshold = 'reader_gaze_threshold';
+  static const gazeDwell = 'reader_gaze_dwell';
+  static const gazeSmoothing = 'reader_gaze_smoothing';
+  static const tiltEnabled = 'reader_tilt_enabled';
+  static const tiltThreshold = 'reader_tilt_threshold';
+  static const tiltSmoothing = 'reader_tilt_smoothing';
   static const autoPreload = 'reader_auto_preload';
+  static const autoCrop = 'reader_auto_crop';
   static const fontSize = 'reader_font_size';
-  static const imageZoom = 'reader_image_zoom';
+  static const radialEnabled = 'reader_radial_enabled';
+  static const radialSide = 'reader_radial_side';
 }
 
 /// Reading mode labels — kept in sync with [ReadingMode] enum order
@@ -43,22 +60,34 @@ class ReaderSettingsPage extends StatefulWidget {
 class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
   String _readingMode = 'LTR';
   String _scaleType = 'Fit Screen';
-  String _zoomStart = 'Automatic';
   String _navLayout = 'Right & Left';
   String _bgColor = 'Black';
-  String _pageTransition = 'Slide';
   bool _keepScreenOn = true;
   bool _showPageNumber = true;
   bool _fullscreen = true;
-  bool _cropBorders = false;
   bool _grayscale = false;
   bool _invertColors = false;
   bool _invertTapZones = false;
   bool _volumeKeys = false;
   double _volumeScrollSpeed = 600.0;
   bool _autoPreload = true;
+  bool _autoCrop = false;
   double _fontSize = 16.0;
-  double _imageZoom = 1.0;
+  double _warmTint = 0.0;
+  double _brightness = 1.0;
+  bool _dualPage = false;
+  bool _dualPageSplit = false;
+  bool _gazeSupported = false;
+  bool _gazeEnabled = false;
+  String _gazeMode = 'Both';
+  double _gazeThreshold = 0.8;
+  double _gazeDwell = 300;
+  double _gazeSmoothing = 0.25;
+  bool _tiltEnabled = false;
+  double _tiltThreshold = 0.20;
+  double _tiltSmoothing = 0.20;
+  bool _radialEnabled = false;
+  String _radialSide = 'right';
 
   @override
   void initState() {
@@ -67,45 +96,123 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
   }
 
   Future<void> _loadPrefs() async {
-    final p = await SharedPreferences.getInstance();
+    final p = SettingsStore.instance;
     setState(() {
       // ReaderProvider stores reading mode as ReadingMode enum index.
       final modeIdx = (p.getInt(ReaderPrefs.readingMode) ?? 0)
           .clamp(0, _readingModeLabels.length - 1);
       _readingMode = _readingModeLabels[modeIdx];
       _scaleType = p.getString(ReaderPrefs.scaleType) ?? 'Fit Screen';
-      _zoomStart = p.getString(ReaderPrefs.zoomStart) ?? 'Automatic';
       _navLayout = p.getString(ReaderPrefs.navLayout) ?? 'Right & Left';
       _bgColor = p.getString(ReaderPrefs.bgColor) ?? 'Black';
-      _pageTransition = p.getString(ReaderPrefs.pageTransition) ?? 'Slide';
       _keepScreenOn = p.getBool(ReaderPrefs.keepScreenOn) ?? true;
       _showPageNumber = p.getBool(ReaderPrefs.showPageNumber) ?? true;
       _fullscreen = p.getBool(ReaderPrefs.fullscreen) ?? true;
-      _cropBorders = p.getBool(ReaderPrefs.cropBorders) ?? false;
       _grayscale = p.getBool(ReaderPrefs.grayscale) ?? false;
       _invertColors = p.getBool(ReaderPrefs.invertColors) ?? false;
       _invertTapZones = p.getBool(ReaderPrefs.invertTapZones) ?? false;
       _volumeKeys = p.getBool(ReaderPrefs.volumeKeys) ?? false;
       _volumeScrollSpeed = p.getDouble(ReaderPrefs.volumeScrollSpeed) ?? 600.0;
       _autoPreload = p.getBool(ReaderPrefs.autoPreload) ?? true;
+      _autoCrop = p.getBool(ReaderPrefs.autoCrop) ?? false;
       _fontSize = p.getDouble(ReaderPrefs.fontSize) ?? 16.0;
-      _imageZoom = p.getDouble(ReaderPrefs.imageZoom) ?? 1.0;
+      _warmTint = (p.getDouble(ReaderPrefs.warmTint) ?? 0.0).clamp(0.0, 1.0);
+      _brightness = (p.getDouble(ReaderPrefs.brightness) ?? 1.0).clamp(0.15, 1.0);
+      _dualPage = p.getBool(ReaderPrefs.dualPage) ?? false;
+      _dualPageSplit = p.getBool(ReaderPrefs.dualPageSplit) ?? false;
+      _gazeEnabled = p.getBool(ReaderPrefs.gazeEnabled) ?? false;
+      _gazeMode = _nativeToDisplay(p.getString(ReaderPrefs.gazeMode) ?? 'combined');
+      _gazeThreshold = p.getDouble(ReaderPrefs.gazeThreshold) ?? 0.8;
+      _gazeDwell = p.getDouble(ReaderPrefs.gazeDwell) ?? 300;
+      _gazeSmoothing = p.getDouble(ReaderPrefs.gazeSmoothing) ?? 0.25;
+      _tiltEnabled = p.getBool(ReaderPrefs.tiltEnabled) ?? false;
+      _tiltThreshold = p.getDouble(ReaderPrefs.tiltThreshold) ?? 0.20;
+      _tiltSmoothing = p.getDouble(ReaderPrefs.tiltSmoothing) ?? 0.20;
+      _radialEnabled = p.getBool(ReaderPrefs.radialEnabled) ?? false;
+      _radialSide = p.getString(ReaderPrefs.radialSide) ?? 'right';
     });
+    final gazeSupported = await GazeScroll.isSupported();
+    if (mounted) setState(() => _gazeSupported = gazeSupported);
   }
 
   Future<void> _setBool(String key, bool value) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool(key, value);
+    await SettingsStore.instance.setBool(key, value);
   }
 
   Future<void> _setString(String key, String value) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setString(key, value);
+    await SettingsStore.instance.setString(key, value);
   }
 
   Future<void> _setDouble(String key, double value) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setDouble(key, value);
+    await SettingsStore.instance.setDouble(key, value);
+  }
+
+  // Hands-free (gaze) scrolling: display labels map to native mode ids.
+  String _displayToNative(String d) =>
+      d == 'Eyes' ? 'eyesOnly' : (d == 'Head' ? 'headOnly' : 'combined');
+  String _nativeToDisplay(String n) =>
+      n == 'eyesOnly' ? 'Eyes' : (n == 'headOnly' ? 'Head' : 'Both');
+
+  /// Gaze scrolling uses the front camera; warn (camera + battery) before enabling.
+  Future<bool> _confirmIosGaze() async {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(t.readerGazeCameraTitle,
+            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: Text(t.readerGazeCameraWarning,
+            style: GoogleFonts.manrope(fontSize: 13)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(t.readerCancel)),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(t.readerEnable)),
+        ],
+      ),
+    );
+    return ok ?? false;
+  }
+
+  Future<void> _calibrateGaze() async {
+    await GazeScroll.updateSettings(GazeSettings(
+      mode: _displayToNative(_gazeMode),
+      threshold: _gazeThreshold,
+      dwellMs: _gazeDwell.round(),
+      smoothing: _gazeSmoothing,
+    ));
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const GazeCalibrationScreen()));
+  }
+
+  // Volume / tilt / gaze are mutually exclusive scroll inputs — turning one on
+  // turns the others off (state + prefs) so they never fight over the loop.
+  void _selectScrollInput(String on) {
+    setState(() {
+      _volumeKeys = on == 'volume';
+      _tiltEnabled = on == 'tilt';
+      _gazeEnabled = on == 'gaze';
+    });
+    _setBool(ReaderPrefs.volumeKeys, _volumeKeys);
+    _setBool(ReaderPrefs.tiltEnabled, _tiltEnabled);
+    _setBool(ReaderPrefs.gazeEnabled, _gazeEnabled);
+  }
+
+  Future<void> _calibrateTilt() async {
+    final t = AppLocalizations.of(context);
+    TiltScroll.updateSettings(
+        TiltSettings(threshold: _tiltThreshold, smoothing: _tiltSmoothing));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(t.readerTiltCalibrating),
+        duration: const Duration(milliseconds: 1400)));
+    await TiltScroll.calibrate(durationMs: 1200);
   }
 
   /// iOS can't intercept the volume buttons; the workaround watches the system volume
@@ -141,6 +248,7 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppLocalizations.of(context);
+    final beta = context.watch<BetaProvider>().enabled;
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -164,8 +272,7 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
                 setState(() => _readingMode = v);
                 final idx = _readingModeLabels.indexOf(v);
                 if (idx >= 0) {
-                  final p = await SharedPreferences.getInstance();
-                  await p.setInt(ReaderPrefs.readingMode, idx);
+                  await SettingsStore.instance.setInt(ReaderPrefs.readingMode, idx);
                 }
               }),
           _SliderTile(icon: Icons.text_fields_rounded, iconColor: cs.primary,
@@ -173,12 +280,6 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
               onChanged: (v) {
                 setState(() => _fontSize = v);
                 _setDouble(ReaderPrefs.fontSize, v);
-              }),
-          _SliderTile(icon: Icons.zoom_in_rounded, iconColor: cs.primary,
-              title: t.readerImageZoom, value: _imageZoom, min: 1.0, max: 3.0, divisions: 20,
-              onChanged: (v) {
-                setState(() => _imageZoom = v);
-                _setDouble(ReaderPrefs.imageZoom, v);
               }),
           _SwitchTile(icon: Icons.skip_next_rounded, iconColor: cs.primary,
               title: t.readerAutoPreloadNextChapter, subtitle: t.readerAutoPreloadNextChapterSubtitle,
@@ -188,23 +289,38 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
               }),
           const SizedBox(height: 8),
           _SectionHeader(title: t.readerReadingMode),
-          _SwitchTile(icon: Icons.crop_rounded, iconColor: cs.primary,
-              title: t.readerCropBorders, subtitle: t.readerCropBordersSubtitle,
-              value: _cropBorders, onChanged: (v) {
-                setState(() => _cropBorders = v);
-                _setBool(ReaderPrefs.cropBorders, v);
-              }),
           _SwitchTile(icon: Icons.filter_b_and_w_rounded, iconColor: cs.primary,
               title: t.readerGrayscale, subtitle: t.readerGrayscaleSubtitle,
               value: _grayscale, onChanged: (v) {
                 setState(() => _grayscale = v);
                 _setBool(ReaderPrefs.grayscale, v);
               }),
+          if (beta)
+            _SwitchTile(icon: Icons.crop_rounded, iconColor: cs.primary,
+                title: t.readerAutoCrop, subtitle: t.readerAutoCropSubtitle,
+                value: _autoCrop, onChanged: (v) {
+                  setState(() => _autoCrop = v);
+                  _setBool(ReaderPrefs.autoCrop, v);
+                }),
           _SwitchTile(icon: Icons.invert_colors_rounded, iconColor: cs.primary,
               title: t.readerInvertColors, subtitle: t.readerInvertColorsSubtitle,
               value: _invertColors, onChanged: (v) {
                 setState(() => _invertColors = v);
                 _setBool(ReaderPrefs.invertColors, v);
+              }),
+          const SizedBox(height: 8),
+          const _SectionHeader(title: 'Eye comfort'),
+          _SliderTile(icon: Icons.wb_twilight_rounded, iconColor: AppTheme.warning,
+              title: 'Warm filter', value: _warmTint, min: 0, max: 1, divisions: 10,
+              onChanged: (v) {
+                setState(() => _warmTint = v);
+                _setDouble(ReaderPrefs.warmTint, v);
+              }),
+          _SliderTile(icon: Icons.brightness_6_rounded, iconColor: AppTheme.warning,
+              title: 'Brightness', value: _brightness, min: 0.15, max: 1, divisions: 17,
+              onChanged: (v) {
+                setState(() => _brightness = v);
+                _setDouble(ReaderPrefs.brightness, v);
               }),
           const SizedBox(height: 8),
           _SectionHeader(title: t.readerDisplay),
@@ -215,13 +331,6 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
                 setState(() => _scaleType = v);
                 _setString(ReaderPrefs.scaleType, v);
               }),
-          _ChoiceTile(icon: Icons.zoom_out_map_rounded, iconColor: AppTheme.success,
-              title: t.readerZoomStartPosition, value: _zoomStart,
-              options: const ['Automatic', 'Left', 'Right', 'Center'],
-              onChanged: (v) {
-                setState(() => _zoomStart = v);
-                _setString(ReaderPrefs.zoomStart, v);
-              }),
           _ChoiceTile(icon: Icons.format_color_fill_rounded, iconColor: AppTheme.success,
               title: t.readerBackgroundColor, value: _bgColor,
               options: const ['Black', 'Gray', 'White', 'Automatic'],
@@ -229,6 +338,23 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
                 setState(() => _bgColor = v);
                 _setString(ReaderPrefs.bgColor, v);
               }),
+          _SwitchTile(icon: Icons.auto_stories_rounded, iconColor: AppTheme.success,
+              title: 'Double pages',
+              subtitle: 'Show two pages side-by-side when the phone is in '
+                  'landscape (page-by-page modes only)',
+              value: _dualPage, onChanged: (v) {
+                setState(() => _dualPage = v);
+                _setBool(ReaderPrefs.dualPage, v);
+              }),
+          if (_dualPage)
+            _SwitchTile(icon: Icons.open_in_full_rounded, iconColor: AppTheme.success,
+                title: 'Split wide pages',
+                subtitle: 'Give a wide double-page spread its own screen instead '
+                    'of pairing it with another page',
+                value: _dualPageSplit, onChanged: (v) {
+                  setState(() => _dualPageSplit = v);
+                  _setBool(ReaderPrefs.dualPageSplit, v);
+                }),
           _SwitchTile(icon: Icons.brightness_high_rounded, iconColor: AppTheme.success,
               title: t.readerKeepScreenOn, subtitle: t.readerKeepScreenOnSubtitle,
               value: _keepScreenOn, onChanged: (v) {
@@ -262,32 +388,141 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
                 setState(() => _invertTapZones = v);
                 _setBool(ReaderPrefs.invertTapZones, v);
               }),
-          _SwitchTile(icon: Icons.volume_up_rounded, iconColor: AppTheme.secondary,
-              title: t.readerVolumeKeys,
-              subtitle: t.readerVolumeKeysSubtitle,
-              value: _volumeKeys, onChanged: (v) async {
-                // iOS has no real volume-button API — warn before enabling.
-                if (v && Platform.isIOS && !await _confirmIosVolume()) return;
-                setState(() => _volumeKeys = v);
-                _setBool(ReaderPrefs.volumeKeys, v);
+          if (beta) ...[
+            _SwitchTile(icon: Icons.volume_up_rounded, iconColor: AppTheme.secondary,
+                title: t.readerVolumeKeys,
+                subtitle: t.readerVolumeKeysSubtitle,
+                betaTrailing: true,
+                value: _volumeKeys, onChanged: (v) async {
+                  // iOS has no real volume-button API — warn before enabling.
+                  if (v && Platform.isIOS && !await _confirmIosVolume()) return;
+                  _selectScrollInput(v ? 'volume' : 'none');
+                }),
+            if (_volumeKeys)
+              _SliderTile(icon: Icons.speed_rounded, iconColor: AppTheme.secondary,
+                  title: t.readerHoldScrollSpeed, value: _volumeScrollSpeed,
+                  min: 150, max: 2000, divisions: 37,
+                  onChanged: (v) {
+                    setState(() => _volumeScrollSpeed = v);
+                    _setDouble(ReaderPrefs.volumeScrollSpeed, v);
+                  }),
+          ],
+          const SizedBox(height: 8),
+          _SectionHeader(title: t.readerRadialMenu),
+          _SwitchTile(icon: Icons.blur_circular_rounded, iconColor: AppTheme.secondary,
+              title: t.readerRadialMenu, subtitle: t.readerRadialMenuSubtitle,
+              value: _radialEnabled, onChanged: (v) {
+                setState(() => _radialEnabled = v);
+                _setBool(ReaderPrefs.radialEnabled, v);
               }),
-          if (_volumeKeys)
+          if (_radialEnabled)
+            _ChoiceTile(icon: Icons.align_horizontal_right_rounded,
+                iconColor: AppTheme.secondary,
+                title: t.readerRadialCorner,
+                value: _radialSide == 'left' ? 'Left' : 'Right',
+                options: const ['Left', 'Right'],
+                onChanged: (v) {
+                  final side = v == 'Left' ? 'left' : 'right';
+                  setState(() => _radialSide = side);
+                  _setString(ReaderPrefs.radialSide, side);
+                }),
+          if (beta) ...[
+          const SizedBox(height: 8),
+          _SectionHeader(title: t.readerTiltScroll, beta: true),
+          _SwitchTile(icon: Icons.screen_rotation_rounded, iconColor: AppTheme.secondary,
+              title: t.readerTiltScroll, subtitle: t.readerTiltScrollSubtitle,
+              value: _tiltEnabled, onChanged: (v) {
+                _selectScrollInput(v ? 'tilt' : 'none');
+              }),
+          if (_tiltEnabled) ...[
+            _SliderTile(icon: Icons.tune_rounded, iconColor: AppTheme.secondary,
+                title: t.readerGazeSensitivity, value: _tiltThreshold,
+                min: 0.08, max: 0.5, divisions: 21,
+                onChanged: (v) {
+                  setState(() => _tiltThreshold = v);
+                  _setDouble(ReaderPrefs.tiltThreshold, v);
+                }),
+            _SliderTile(icon: Icons.blur_on_rounded, iconColor: AppTheme.secondary,
+                title: t.readerGazeSmoothing, value: _tiltSmoothing,
+                min: 0.05, max: 0.5, divisions: 18,
+                onChanged: (v) {
+                  setState(() => _tiltSmoothing = v);
+                  _setDouble(ReaderPrefs.tiltSmoothing, v);
+                }),
             _SliderTile(icon: Icons.speed_rounded, iconColor: AppTheme.secondary,
-                title: t.readerHoldScrollSpeed, value: _volumeScrollSpeed,
+                title: t.readerScrollSpeed, value: _volumeScrollSpeed,
                 min: 150, max: 2000, divisions: 37,
                 onChanged: (v) {
                   setState(() => _volumeScrollSpeed = v);
                   _setDouble(ReaderPrefs.volumeScrollSpeed, v);
                 }),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.readerTransitions),
-          _ChoiceTile(icon: Icons.animation_rounded, iconColor: AppTheme.warning,
-              title: t.readerPageTransition, value: _pageTransition,
-              options: const ['Slide', 'Fade', 'None'],
-              onChanged: (v) {
-                setState(() => _pageTransition = v);
-                _setString(ReaderPrefs.pageTransition, v);
-              }),
+            ListTile(
+              leading: Icon(Icons.center_focus_strong_rounded,
+                  color: AppTheme.secondary),
+              title: Text(t.readerGazeCalibrate,
+                  style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+              subtitle: Text(t.readerTiltCalibrateSubtitle,
+                  style: GoogleFonts.manrope(fontSize: 12)),
+              onTap: _calibrateTilt,
+            ),
+          ],
+          if (_gazeSupported) ...[
+            const SizedBox(height: 8),
+            _SectionHeader(title: t.readerGazeScroll, beta: true),
+            _SwitchTile(icon: Icons.visibility_rounded, iconColor: AppTheme.secondary,
+                title: t.readerGazeScroll, subtitle: t.readerGazeScrollSubtitle,
+                value: _gazeEnabled, onChanged: (v) async {
+                  if (v && !await _confirmIosGaze()) return;
+                  _selectScrollInput(v ? 'gaze' : 'none');
+                }),
+            if (_gazeEnabled) ...[
+              _ChoiceTile(icon: Icons.control_camera_rounded, iconColor: AppTheme.secondary,
+                  title: t.readerGazeMode, value: _gazeMode,
+                  options: const ['Eyes', 'Head', 'Both'],
+                  onChanged: (v) {
+                    setState(() => _gazeMode = v);
+                    _setString(ReaderPrefs.gazeMode, _displayToNative(v));
+                  }),
+              _SliderTile(icon: Icons.tune_rounded, iconColor: AppTheme.secondary,
+                  title: t.readerGazeSensitivity, value: _gazeThreshold,
+                  min: 0.25, max: 0.9, divisions: 13,
+                  onChanged: (v) {
+                    setState(() => _gazeThreshold = v);
+                    _setDouble(ReaderPrefs.gazeThreshold, v);
+                  }),
+              _SliderTile(icon: Icons.timer_outlined, iconColor: AppTheme.secondary,
+                  title: t.readerGazeHoldTime, value: _gazeDwell,
+                  min: 150, max: 800, divisions: 13,
+                  onChanged: (v) {
+                    setState(() => _gazeDwell = v);
+                    _setDouble(ReaderPrefs.gazeDwell, v);
+                  }),
+              _SliderTile(icon: Icons.blur_on_rounded, iconColor: AppTheme.secondary,
+                  title: t.readerGazeSmoothing, value: _gazeSmoothing,
+                  min: 0.1, max: 0.6, divisions: 25,
+                  onChanged: (v) {
+                    setState(() => _gazeSmoothing = v);
+                    _setDouble(ReaderPrefs.gazeSmoothing, v);
+                  }),
+              _SliderTile(icon: Icons.speed_rounded, iconColor: AppTheme.secondary,
+                  title: t.readerScrollSpeed, value: _volumeScrollSpeed,
+                  min: 150, max: 2000, divisions: 37,
+                  onChanged: (v) {
+                    setState(() => _volumeScrollSpeed = v);
+                    _setDouble(ReaderPrefs.volumeScrollSpeed, v);
+                  }),
+              ListTile(
+                leading: Icon(Icons.center_focus_strong_rounded,
+                    color: AppTheme.secondary),
+                title: Text(t.readerGazeCalibrate,
+                    style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+                subtitle: Text(t.readerGazeCalibrateSubtitle,
+                    style: GoogleFonts.manrope(fontSize: 12)),
+                onTap: _calibrateGaze,
+              ),
+            ],
+          ],
+          ], // end: hands-free (beta)
           const SizedBox(height: 24),
         ],
       ),
@@ -298,22 +533,29 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
 // ── Shared Tile Widgets ──────────────────────────────────────
 class _SectionHeader extends StatelessWidget {
   final String title;
-  const _SectionHeader({required this.title});
+  final bool beta;
+  const _SectionHeader({required this.title, this.beta = false});
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(title.toUpperCase(),
-          style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: cs.primary)));
+      child: Row(children: [
+        Text(title.toUpperCase(),
+            style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: cs.primary)),
+        if (beta) ...[const SizedBox(width: 8), const BetaBadge()],
+      ]),
+    );
   }
 }
 
 class _SwitchTile extends StatelessWidget {
   final IconData icon; final Color iconColor; final String title; final String subtitle;
   final bool value; final ValueChanged<bool> onChanged;
+  final bool betaTrailing;
   const _SwitchTile({required this.icon, required this.iconColor, required this.title,
-      required this.subtitle, required this.value, required this.onChanged});
+      required this.subtitle, required this.value, required this.onChanged,
+      this.betaTrailing = false});
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -329,7 +571,10 @@ class _SwitchTile extends StatelessWidget {
             child: Icon(icon, color: iconColor, size: 18)),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+          Row(children: [
+            Flexible(child: Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface))),
+            if (betaTrailing) ...[const SizedBox(width: 8), const BetaBadge()],
+          ]),
           Text(subtitle, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
         ])),
         Switch(value: value, onChanged: onChanged, activeThumbColor: cs.onPrimary, activeTrackColor: cs.primary),

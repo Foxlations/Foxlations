@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:rhttp/rhttp.dart' as rhttp;
+import 'app_logger.dart';
 import 'cookie_store.dart';
+import 'doh/doh_resolver.dart';
 
 /// Loads images using rhttp (Rust/reqwest) with Chrome-like TLS fingerprint.
 /// This is the same HTTP engine that bypasses Cloudflare.
@@ -15,6 +18,11 @@ class ImageLoader {
   /// Insertion-ordered, so `keys.first` is the oldest entry.
   final Map<String, Uint8List> _cache = {};
   int _cacheBytes = 0;
+  /// In-flight fetches keyed by URL, so two widgets requesting the same image at
+  /// once (e.g. a cover in the grid + the "Continue reading" card, or a widget
+  /// recycled mid-load) share ONE network request instead of each spending a
+  /// concurrency slot on a duplicate GET.
+  final Map<String, Future<Uint8List?>> _inFlight = {};
 
   /// Encoded-image cache budget. Bytes are the real constraint — entry count
   /// is kept only as a secondary guard against pathologically tiny images.
@@ -24,11 +32,20 @@ class ImageLoader {
 
   Future<rhttp.RhttpClient> _getClient() async {
     if (_client != null) return _client!;
-    // Verify TLS — image requests carry per-domain cookies too, and a MITM
-    // that can forge a cert could otherwise swap image bytes or harvest them.
+    // Don't verify TLS certs for image fetches. Manga image CDNs (e.g.
+    // static.mfcdn.cc) routinely serve incomplete/unknown-issuer chains that a
+    // browser papers over by fetching the missing intermediate, but reqwest
+    // (rhttp) does not — so covers and reader pages failed with
+    // InvalidCertificate(UnknownIssuer) even though the DOWNLOAD client already
+    // fetches the same images with verification off. Match it so on-screen
+    // display works too. (Public manga images; integrity risk is low, and
+    // inconsistent behaviour between view and download is worse.)
     _client = await rhttp.RhttpClient.create(
-      settings: const rhttp.ClientSettings(
+      settings: rhttp.ClientSettings(
         throwOnStatusCode: false,
+        tlsSettings: const rhttp.TlsSettings(verifyCertificates: false),
+        // DNS-over-HTTPS when enabled in Advanced settings; null = system DNS.
+        dnsSettings: dohDnsSettingsOrNull(),
       ),
     );
     return _client!;
@@ -38,8 +55,32 @@ class ImageLoader {
   Future<Uint8List?> loadImage(String url,
       {Map<String, String>? headers}) async {
     if (url.isEmpty) return null;
-    if (_cache.containsKey(url)) return _cache[url];
+    // A source can hand back a RELATIVE image URL (e.g. "cover.jpg"), which
+    // failed with "relative URL without a base". Resolve it against the Referer
+    // so it has a base before anything tries to fetch it.
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      final ref = headers?['Referer'];
+      final base = ref != null ? Uri.tryParse(ref) : null;
+      if (base != null && base.hasScheme) {
+        url = base.resolve(url).toString();
+      }
+    }
+    final cached = _cache[url];
+    if (cached != null) return cached;
+    // Collapse duplicate concurrent requests for the same URL to one fetch.
+    final existing = _inFlight[url];
+    if (existing != null) return existing;
+    final future = _loadImageUncached(url, headers);
+    _inFlight[url] = future;
+    try {
+      return await future;
+    } finally {
+      _inFlight.remove(url);
+    }
+  }
 
+  Future<Uint8List?> _loadImageUncached(
+      String url, Map<String, String>? headers) async {
     final imageDomain = Uri.tryParse(url)?.host ?? '';
     if (_blockedDomains.contains(imageDomain)) return null;
 
@@ -84,34 +125,126 @@ class ImageLoader {
       }
     }
 
-    // Try loading with rhttp (Chrome TLS fingerprint)
+    // Fetch behind a small concurrency cap (so we don't hammer a CDN into
+    // 429/503), with retry + backoff on transient/Cloudflare errors.
+    await _acquireSlot();
     try {
-      final client = await _getClient();
-      final response = await client.requestBytes(
-        method: rhttp.HttpMethod.get,
-        url: url,
-        headers: rhttp.HttpHeaders.rawMap(mergedHeaders),
-      );
-
-      if (response.statusCode == 200 && response.body.isNotEmpty) {
-        final bytes = Uint8List.fromList(response.body);
-        _addToCache(url, bytes);
-        debugPrint('[ImageLoader] Loaded ${bytes.length} bytes from $url');
-        return bytes;
-      }
-
-      if (response.statusCode == 403) {
-        // Some CDNs (e.g. fourhoi.com) use Cloudflare Managed Challenge which
-        // can't be bypassed by any automated HTTP client. Block immediately so
-        // we don't waste 30 s per page on a bypass that will always fail.
-        debugPrint('[ImageLoader] 403 for $url — blocking domain $imageDomain');
-        _blockedDomains.add(imageDomain);
-      }
-    } catch (e) {
-      debugPrint('[ImageLoader] Error loading $url: $e');
+      return await _fetchWithRetry(url, mergedHeaders, imageDomain);
+    } finally {
+      _releaseSlot();
     }
+  }
 
+  /// GET with up to 3 attempts. Retries transient origin/Cloudflare failures
+  /// (5xx / 429 / timeouts) with exponential-ish backoff; a 403 is a managed
+  /// challenge we can't beat, so it blocks the domain and gives up immediately.
+  Future<Uint8List?> _fetchWithRetry(
+      String url, Map<String, String> headers, String domain) async {
+    const maxAttempts = 3;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final client = await _getClient();
+        final response = await client
+            .requestBytes(
+              method: rhttp.HttpMethod.get,
+              url: url,
+              headers: rhttp.HttpHeaders.rawMap(headers),
+            )
+            .timeout(const Duration(seconds: 25));
+        final code = response.statusCode;
+        if (code == 200 && response.body.isNotEmpty) {
+          final bytes = Uint8List.fromList(response.body);
+          _addToCache(url, bytes);
+          return bytes;
+        }
+        if (code == 200) {
+          // 200 with an empty body — usually a hotlink/CF block served as a
+          // blank response.
+          await logger.warning('Image load: empty response (HTTP 200)',
+              category: LogCategory.network, detail: url);
+          return null;
+        }
+        if (code == 403) {
+          await logger.warning(
+              'Image blocked by the server (HTTP 403) — $domain',
+              category: LogCategory.network,
+              detail:
+                  '$url\nHotlink protection or Cloudflare. This image domain is '
+                  'skipped for the rest of the session; tap Retry to try it again.');
+          _blockedDomains.add(domain);
+          return null;
+        }
+        if (_isTransient(code) && attempt < maxAttempts) {
+          await Future.delayed(_backoff(attempt));
+          continue;
+        }
+        // Non-transient (404 etc.) or out of retry attempts.
+        await logger.warning('Image load failed (HTTP $code)',
+            category: LogCategory.network, detail: url);
+        return null;
+      } catch (e) {
+        if (attempt < maxAttempts) {
+          await Future.delayed(_backoff(attempt));
+          continue;
+        }
+        await logger.error('Image load error after $maxAttempts attempts',
+            category: LogCategory.network, detail: '$url\n$e');
+      }
+    }
     return null;
+  }
+
+  /// Drop a domain from the session block-list so a user-initiated Retry (or a
+  /// fresh Cloudflare solve) actually re-requests it instead of short-circuiting.
+  void unblockDomainFor(String url) {
+    final host = Uri.tryParse(url)?.host;
+    if (host != null) _blockedDomains.remove(host);
+  }
+
+  /// Drop one URL's cached bytes so it re-downloads next time it's shown. Used
+  /// by "Refresh library covers" so a re-fetched cover isn't served stale from
+  /// the in-memory cache. No-op if the URL isn't cached.
+  void evict(String url) {
+    final bytes = _cache.remove(url);
+    if (bytes != null) _cacheBytes -= bytes.lengthInBytes;
+  }
+
+  static bool _isTransient(int code) =>
+      code == 408 ||
+      code == 425 ||
+      code == 429 ||
+      code == 500 ||
+      code == 502 ||
+      code == 503 ||
+      code == 504 ||
+      (code >= 520 && code <= 524); // Cloudflare origin-side errors
+
+  static Duration _backoff(int attempt) =>
+      Duration(milliseconds: 400 * attempt + 250 * attempt * attempt);
+
+  // ── concurrency cap ──────────────────────────────────────
+  // Too many parallel image GETs is itself what trips rate limits / 503s on a
+  // lot of CDNs, so cap in-flight requests; the rest queue for a freed slot.
+  static const int _maxConcurrent = 5;
+  int _activeRequests = 0;
+  final List<Completer<void>> _slotWaiters = [];
+
+  Future<void> _acquireSlot() async {
+    if (_activeRequests < _maxConcurrent) {
+      _activeRequests++;
+      return;
+    }
+    final c = Completer<void>();
+    _slotWaiters.add(c);
+    await c.future; // slot handed over on release — the count stays with us
+  }
+
+  void _releaseSlot() {
+    if (_slotWaiters.isNotEmpty) {
+      _slotWaiters.removeAt(0).complete();
+    } else {
+      _activeRequests--;
+    }
   }
 
   void unblockDomains() => _blockedDomains.clear();
@@ -141,6 +274,13 @@ class ImageLoader {
     _cache.clear();
     _cacheBytes = 0;
     _blockedDomains.clear();
+    _client?.dispose();
+    _client = null;
+  }
+
+  /// Drop the cached HTTP client so the next request rebuilds it — used when the
+  /// DNS-over-HTTPS setting changes, so it takes effect without an app restart.
+  void resetHttpClient() {
     _client?.dispose();
     _client = null;
   }

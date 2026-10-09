@@ -1,12 +1,18 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'settings_store.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:battery_plus/battery_plus.dart';
 import '../models/manga_model.dart';
 import '../models/source_settings.dart';
 import '../providers/library_provider.dart';
 import '../providers/source_provider.dart';
+import '../providers/download_provider.dart';
+import 'app_logger.dart';
+import 'image_loader.dart';
+import 'notification_service.dart';
 import '../../eval/lib.dart';
 
 /// Record of a new chapter found during update check.
@@ -45,6 +51,39 @@ class MangaUpdate {
   );
 }
 
+/// Outcome of a library-update run: the new chapters found + the per-title
+/// tally, so the UI can show "X completed, X skipped, X failed" and offer to
+/// retry the failed set or force-update the skipped set.
+class LibraryUpdateResult {
+  final List<MangaUpdate> updates;
+  final List<LibraryManga> completedTitles;
+  final List<LibraryManga> skippedTitles;
+  final List<LibraryManga> failedTitles;
+  const LibraryUpdateResult({
+    this.updates = const [],
+    this.completedTitles = const [],
+    this.skippedTitles = const [],
+    this.failedTitles = const [],
+  });
+  int get completed => completedTitles.length;
+  int get skipped => skippedTitles.length;
+  int get failed => failedTitles.length;
+
+  /// The skipped titles worth force-updating: ongoing or hiatus only (a
+  /// completed/finished/cancelled series won't get new chapters).
+  List<LibraryManga> get skippedUpdatable => [
+        for (final m in skippedTitles)
+          if (_isUpdatableStatus(m.status)) m
+      ];
+
+  static bool _isUpdatableStatus(String status) {
+    final s = status.toLowerCase();
+    return s == 'ongoing' || s == 'hiatus';
+  }
+}
+
+enum _Outcome { completed, skipped, failed }
+
 /// Checks all library manga for new chapters.
 class LibraryUpdateService {
   static const _updatesKey = 'manga_updates';
@@ -75,68 +114,151 @@ class LibraryUpdateService {
   ///
   /// [only] restricts the check to a subset — used by "Category Update" so it
   /// checks just the visible category instead of every entry.
-  static Future<List<MangaUpdate>> checkForUpdates({
+  static Future<LibraryUpdateResult> checkForUpdates({
     required LibraryProvider libraryProvider,
     required SourceProvider sourceProvider,
-    void Function(int checked, int total)? onProgress,
+    void Function(int checked, int total, String? currentTitle)? onProgress,
     List<LibraryManga>? only,
+    DownloadProvider? downloadProvider,
+    bool notify = false,
+    // "Update skipped" from the banner: force-update the given titles even
+    // though the skip rules would normally skip them.
+    bool ignoreSkipRules = false,
   }) async {
     final manga = only ?? libraryProvider.manga;
     final newUpdates = <MangaUpdate>[];
+    final completedTitles = <LibraryManga>[];
+    final skippedTitles = <LibraryManga>[];
+    final failedTitles = <LibraryManga>[];
     int checked = 0;
 
     // Settings > Library > "Skip titles you haven't started". readChapters == 0
     // means the user has never opened a chapter, so there's nothing to catch up
     // on — checking it just spends network on titles they may never read.
     final prefs = await SharedPreferences.getInstance();
-    final skipNotStarted = prefs.getBool('lib_skip_not_started') ?? false;
+    final skipNotStarted =
+        SettingsStore.instance.getBool('lib_skip_not_started') ?? false;
+    // Smart-update skip rules — each avoids a source request (anti-ban/battery).
+    final skipHasUnread =
+        SettingsStore.instance.getBool('lib_skip_has_unread') ?? false;
+    final skipCompleted =
+        SettingsStore.instance.getBool('lib_skip_completed') ?? false;
 
-    for (final m in manga) {
+    Future<void> checkOne(LibraryManga m) async {
+      _Outcome outcome = _Outcome.completed;
       try {
-        // Honour the per-source "Skip in library updates" option.
-        if (SourceSettings.cached(m.sourceId).excludeFromUpdates) continue;
-        // Honour the global "Skip not-started titles" option.
-        if (skipNotStarted && m.readChapters <= 0) continue;
-        final installed = sourceProvider.getInstalledSource(m.sourceId);
-        if (installed == null) continue;
-
-        final detail = await withExtensionService(
-          installed.source, installed.sourceCode,
-          (service) => service.getDetail(m.url),
-        );
-
-        if (detail.chapters == null) continue;
-
-        // Get cached chapter URLs to diff against
-        final cached = libraryProvider.getCachedChapters(m.sourceId, m.url);
-        final cachedUrls = cached.map((c) => c.chapterUrl).toSet();
-
-        final now = DateTime.now().toIso8601String();
-        for (final ch in detail.chapters!) {
-          if (ch.url != null && !cachedUrls.contains(ch.url)) {
-            newUpdates.add(MangaUpdate(
-              sourceId: m.sourceId,
-              mangaUrl: m.url,
-              mangaTitle: m.title,
-              coverUrl: m.coverUrl,
-              chapterUrl: ch.url!,
-              chapterName: ch.name ?? 'New Chapter',
-              dateFound: now,
-            ));
+        // Skip rules (per-source exclude + the global smart-update filters),
+        // unless this is a forced "Update skipped" run.
+        final skip = !ignoreSkipRules &&
+            (SourceSettings.cached(m.sourceId).excludeFromUpdates ||
+                (skipNotStarted && m.readChapters <= 0) ||
+                (skipHasUnread && libraryProvider.unreadForManga(m) > 0) ||
+                (skipCompleted && m.status.toLowerCase() == 'completed'));
+        if (skip) {
+          outcome = _Outcome.skipped;
+        } else {
+          final installed = sourceProvider.getInstalledSource(m.sourceId);
+          if (installed == null) {
+            outcome = _Outcome.failed;
+          } else {
+            final detail = await withExtensionService(
+              installed.source, installed.sourceCode,
+              // Lightweight: only the newest chapters are needed to detect new
+              // ones (avoids re-fetching every page of a huge paginated novel).
+              (service) => service.getDetail(m.url, fullChapters: false),
+            );
+            if (detail.chapters == null) {
+              outcome = _Outcome.failed;
+            } else {
+              // Diff against the cached chapter URLs. First sight of a title
+              // seeds the cache WITHOUT reporting its whole back catalogue.
+              final cached =
+                  libraryProvider.getCachedChapters(m.sourceId, m.url);
+              final cachedUrls = cached.map((c) => c.chapterUrl).toSet();
+              final firstSeen = cachedUrls.isEmpty;
+              final now = DateTime.now().toIso8601String();
+              for (final ch in detail.chapters!) {
+                if (!firstSeen &&
+                    ch.url != null &&
+                    !cachedUrls.contains(ch.url)) {
+                  newUpdates.add(MangaUpdate(
+                    sourceId: m.sourceId,
+                    mangaUrl: m.url,
+                    mangaTitle: m.title,
+                    coverUrl: m.coverUrl,
+                    chapterUrl: ch.url!,
+                    chapterName: ch.name ?? 'New Chapter',
+                    dateFound: now,
+                  ));
+                }
+              }
+              if (detail.chapters!.isNotEmpty) {
+                await libraryProvider.cacheChaptersQuiet(m.sourceId, m.url,
+                    detail.chapters!.map((c) => c.toJson()).toList());
+              }
+              outcome = _Outcome.completed;
+            }
           }
         }
-
-        // Update cache
-        if (detail.chapters!.isNotEmpty) {
-          libraryProvider.cacheChapters(m.sourceId, m.url,
-              detail.chapters!.map((c) => c.toJson()).toList());
-        }
       } catch (e) {
-        debugPrint('[Update] Error checking ${m.title}: $e');
+        logger.error('Library update failed for ${m.title}: $e',
+            category: LogCategory.library);
+        outcome = _Outcome.failed;
       }
-
+      switch (outcome) {
+        case _Outcome.completed:
+          completedTitles.add(m);
+        case _Outcome.skipped:
+          skippedTitles.add(m);
+        case _Outcome.failed:
+          failedTitles.add(m);
+      }
       checked++;
-      onProgress?.call(checked, manga.length);
+      onProgress?.call(checked, manga.length, m.title);
+      if (notify) {
+        NotificationService.instance
+            .updateProgress(checked, manga.length, m.title);
+      }
+    }
+
+    // Check several entries at once instead of strictly one-at-a-time — a big
+    // library was spending most of the time blocked on sequential network
+    // round-trips. Android's ART/QuickJS engines are reentrant, so fan out
+    // there. iOS stays sequential: its embedded Zero-JVM shares a process-wide
+    // crash-signal save/restore that isn't concurrency-safe (concurrent source
+    // calls could race it and SIGABRT), and iOS JS already serialises itself —
+    // iOS still wins big from the one-reload change below, just not from fan-out.
+    final concurrency = Platform.isIOS ? 1 : 5;
+    var next = 0;
+    Future<void> worker() async {
+      while (true) {
+        final i = next++;
+        if (i >= manga.length) break;
+        await checkOne(manga[i]);
+      }
+    }
+
+    await Future.wait(
+        List.generate(concurrency, (_) => worker()));
+
+    // One reload+notify for the whole run (the per-entry notify was removed).
+    await libraryProvider.reload();
+
+    // "Auto-download new chapters" (Downloads settings). When on, queue every
+    // newly found chapter for download. DownloadProvider dedups against
+    // in-flight + already-downloaded, so re-runs don't double-enqueue.
+    if (downloadProvider != null &&
+        downloadProvider.autoDownload &&
+        newUpdates.isNotEmpty) {
+      for (final u in newUpdates) {
+        downloadProvider.enqueueChapter(
+          sourceId: u.sourceId,
+          mangaUrl: u.mangaUrl,
+          mangaTitle: u.mangaTitle,
+          chapterUrl: u.chapterUrl,
+          chapterName: u.chapterName,
+        );
+      }
     }
 
     // Save timestamp (reuses the `prefs` opened at the top of this method).
@@ -150,8 +272,86 @@ class LibraryUpdateService {
       await saveUpdates(all);
     }
 
+    final result = LibraryUpdateResult(
+      updates: newUpdates,
+      completedTitles: completedTitles,
+      skippedTitles: skippedTitles,
+      failedTitles: failedTitles,
+    );
+
+    // Replace the live progress notification with the run summary.
+    if (notify) {
+      NotificationService.instance.updateComplete(
+        completed: result.completed,
+        skipped: result.skipped,
+        failed: result.failed,
+        newChapters: newUpdates.length,
+      );
+    }
+
     debugPrint('[Update] Checked ${manga.length} manga, found ${newUpdates.length} new chapters');
-    return newUpdates;
+    return result;
+  }
+
+  /// Re-fetch cover art for every library item from its source ("Refresh library
+  /// covers"). Updates the stored cover URL and evicts the cached image so the
+  /// grid shows the fresh art. A user-set local cover (file://) is left alone.
+  /// Sequential on iOS for the same JVM-signal reason as [checkForUpdates].
+  /// Returns the number of covers that changed.
+  static Future<int> refreshCovers({
+    required SourceProvider sourceProvider,
+    required LibraryProvider libraryProvider,
+    bool Function()? shouldCancel,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final items = List<LibraryManga>.from(libraryProvider.manga);
+    final total = items.length;
+    var done = 0;
+    var changed = 0;
+    final concurrency = Platform.isIOS ? 1 : 5;
+    var next = 0;
+
+    Future<void> work() async {
+      while (true) {
+        if (shouldCancel?.call() == true) return;
+        final i = next++;
+        if (i >= items.length) break;
+        final m = items[i];
+        try {
+          // Don't clobber a user-set local cover.
+          if (!m.coverUrl.startsWith('file://')) {
+            final installed = sourceProvider.resolveInstalled(m.sourceId);
+            if (installed != null) {
+              final detail = await withExtensionService(
+                installed.source, installed.sourceCode,
+                (service) => service.getDetail(m.url, fullChapters: false),
+              );
+              final fresh = detail.imageUrl;
+              if (fresh != null && fresh.isNotEmpty) {
+                // Drop the old bytes so the grid re-downloads. If the source
+                // moved the cover, persist the new URL (and clear any stale
+                // bytes already cached under it).
+                ImageLoader().evict(m.coverUrl);
+                if (fresh != m.coverUrl) {
+                  ImageLoader().evict(fresh);
+                  await libraryProvider.setCoverUrlQuiet(m.sourceId, m.url, fresh);
+                  changed++;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          logger.warning('Refresh covers failed for ${m.title}: $e',
+              category: LogCategory.library);
+        }
+        done++;
+        onProgress?.call(done, total);
+      }
+    }
+
+    await Future.wait(List.generate(concurrency, (_) => work()));
+    await libraryProvider.reload();
+    return changed;
   }
 
   static Future<void> clearUpdates() async {
@@ -190,9 +390,8 @@ class LibraryUpdateService {
   /// doesn't satisfy a required condition, we skip rather than risk updating on
   /// cellular / on battery against the user's wishes.
   static Future<bool> shouldAutoUpdate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final interval =
-        _frequencyInterval(prefs.getString('lib_update_frequency') ?? 'Manual');
+    final interval = _frequencyInterval(
+        SettingsStore.instance.getString('lib_update_frequency') ?? 'Manual');
     if (interval == null) return false; // Manual — never auto-update.
 
     final last = await getLastUpdate();
@@ -200,7 +399,7 @@ class LibraryUpdateService {
       return false; // Checked recently enough.
     }
 
-    if (prefs.getBool('lib_update_wifi_only') ?? true) {
+    if (SettingsStore.instance.getBool('lib_update_wifi_only') ?? true) {
       try {
         final conn = await Connectivity().checkConnectivity();
         final onWifi = conn.contains(ConnectivityResult.wifi) ||
@@ -211,7 +410,7 @@ class LibraryUpdateService {
       }
     }
 
-    if (prefs.getBool('lib_update_charging_only') ?? false) {
+    if (SettingsStore.instance.getBool('lib_update_charging_only') ?? false) {
       try {
         final state = await Battery().batteryState;
         final charging = state == BatteryState.charging ||

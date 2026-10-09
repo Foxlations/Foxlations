@@ -59,4 +59,26 @@ class SecureStore {
       return false;
     }
   }
+
+  /// Generic secret storage (platform keychain). Used e.g. for the vault password
+  /// behind biometric unlock. All swallow keystore errors and return gracefully.
+  static Future<void> writeSecret(String key, String value) async {
+    try {
+      await _storage.write(key: key, value: value);
+    } catch (_) {}
+  }
+
+  static Future<String?> readSecret(String key) async {
+    try {
+      return await _storage.read(key: key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> deleteSecret(String key) async {
+    try {
+      await _storage.delete(key: key);
+    } catch (_) {}
+  }
 }

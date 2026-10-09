@@ -17,7 +17,7 @@ on:
       cache_rev:
         description: 'Cache-buster. Bump to force a full rebuild (e.g. v1 -> v2).'
         required: false
-        default: 'v1'
+        default: 'v2'
       deliver:
         description: 'Also scp the artifact home over Tailscale? (true/false)'
         required: false
@@ -81,6 +81,17 @@ jobs:
           # libjvm.a is dated 2026-08-07). Bump forward only once upstream fixes it.
           ref: c1ed06aaef34c8dccf71e236d1ffa20918a77cfb
           # A SHA fetch still works shallow with checkout@v4.
+
+      - name: Patch Zero VM — implement ucontext_get_pc/set_pc (iOS arm64)
+        if: steps.cache.outputs.cache-hit != 'true'
+        working-directory: mobile
+        # Zero leaves os::Posix::ucontext_get_pc/ucontext_set_pc as
+        # ShouldNotCall() stubs, so HotSpot's crash/signal handler aborts the
+        # whole process (os_bsd_zero.cpp:91 ShouldNotCall()) the instant ANY
+        # signal reaches it on iOS — the recurring reopen-from-background /
+        # normal-execution crash. Implement them against the Darwin/arm64
+        # machine context so signal handling proceeds instead of aborting.
+        run: git apply "$GITHUB_WORKSPACE/ios/jvm/patches/os_bsd_zero_ucontext.patch"
 
       # ── The known unknown: iOS support libs (libffi + cups headers) ──────────
       # configure needs:

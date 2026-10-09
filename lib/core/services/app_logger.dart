@@ -1,10 +1,20 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'settings_store.dart';
 
 enum LogLevel { debug, info, warning, error }
 
-enum LogCategory { repo, extension, network, install, library, general }
+enum LogCategory {
+  repo,
+  extension,
+  network,
+  install,
+  library,
+  download,
+  notification,
+  general
+}
 
 class LogEntry {
   final String id;
@@ -75,6 +85,10 @@ class LogEntry {
         return 'INSTALL';
       case LogCategory.library:
         return 'LIB';
+      case LogCategory.download:
+        return 'DOWNLOAD';
+      case LogCategory.notification:
+        return 'NOTIF';
       case LogCategory.general:
         return 'GENERAL';
     }
@@ -116,12 +130,22 @@ class AppLogger {
     } catch (_) {}
   }
 
+  /// "Verbose logging" (Advanced settings, off by default). When off, debug-level
+  /// entries are dropped so the Debug-logs view stays readable; info/warning/error
+  /// are always kept. Read live so toggling takes effect without a restart.
+  static const verbosePrefsKey = 'adv_verbose_logging';
+
   Future<void> log(
     String message, {
     LogLevel level = LogLevel.info,
     LogCategory category = LogCategory.general,
     String? detail,
   }) async {
+    if (level == LogLevel.debug &&
+        !(SettingsStore.instance.getBool(verbosePrefsKey) ?? false)) {
+      if (kDebugMode) debugPrint('[DEBUG][${category.name}] $message');
+      return;
+    }
     await _ensureLoaded();
     final entry = LogEntry(
       id: '${DateTime.now().millisecondsSinceEpoch}_${logsNotifier.value.length}',

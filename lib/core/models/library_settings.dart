@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/settings_store.dart';
 
 /// How the library list is ordered.
 ///
@@ -128,7 +128,7 @@ class LibrarySettings {
   static const _kTabCounts = 'lib_tab_counts';
 
   static Future<LibrarySettings> load() async {
-    final p = await SharedPreferences.getInstance();
+    final p = SettingsStore.instance;
     T byName<T extends Enum>(List<T> values, String? name, T fallback) =>
         values.firstWhere((v) => v.name == name, orElse: () => fallback);
 
@@ -150,7 +150,7 @@ class LibrarySettings {
   }
 
   Future<void> save() async {
-    final p = await SharedPreferences.getInstance();
+    final p = SettingsStore.instance;
     await p.setBool(_kFilterUnread, filterUnread);
     await p.setBool(_kFilterCompleted, filterCompleted);
     await p.setBool(_kFilterDownloaded, filterDownloaded);
@@ -166,7 +166,7 @@ class LibrarySettings {
 
   /// Clears every stored preference so the next [load] returns the defaults.
   static Future<void> resetToDefaults() async {
-    final p = await SharedPreferences.getInstance();
+    final p = SettingsStore.instance;
     for (final k in const [
       _kFilterUnread, _kFilterCompleted, _kFilterDownloaded, _kFilterSources,
       _kSort, _kSortAsc, _kDisplayMode, _kItemsPerRow, _kBadgeUnread,

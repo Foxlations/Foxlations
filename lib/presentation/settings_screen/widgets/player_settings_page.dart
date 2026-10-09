@@ -106,6 +106,21 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
             await PlayerSettings.setBool(PlayerSettings.kAutoSkipIntro, v);
             setState(() => _s = _copy(autoSkipIntro: v));
           }),
+          _toggle(cs, t.setdPlayerShowSkipButton,
+              t.setdPlayerShowSkipButtonDesc, _s.showIntroSkipButton,
+              (v) async {
+            await PlayerSettings.setBool(PlayerSettings.kShowIntroSkipButton, v);
+            setState(() => _s = _copy(showIntroSkipButton: v));
+          }),
+          if (_s.showIntroSkipButton)
+            _pick(cs, t.miscSkipIntro, '${_s.introSkipSeconds}s', () async {
+              final v = await _pickIntroSeconds(_s.introSkipSeconds);
+              if (v != null) {
+                await PlayerSettings.setInt(
+                    PlayerSettings.kIntroSkipSeconds, v);
+                setState(() => _s = _copy(introSkipSeconds: v));
+              }
+            }),
         ],
         ),
       ),
@@ -196,6 +211,8 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
     bool? autoplayNext,
     double? defaultSpeed,
     bool? autoSkipIntro,
+    bool? showIntroSkipButton,
+    int? introSkipSeconds,
   }) =>
       PlayerSettings(
         seekForwardSeconds: seekForwardSeconds ?? _s.seekForwardSeconds,
@@ -207,5 +224,20 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
         autoplayNext: autoplayNext ?? _s.autoplayNext,
         defaultSpeed: defaultSpeed ?? _s.defaultSpeed,
         autoSkipIntro: autoSkipIntro ?? _s.autoSkipIntro,
+        showIntroSkipButton: showIntroSkipButton ?? _s.showIntroSkipButton,
+        introSkipSeconds: introSkipSeconds ?? _s.introSkipSeconds,
+      );
+
+  Future<int?> _pickIntroSeconds(int current) => showDialog<int>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: Text(AppLocalizations.of(context).setdPlayerSkipAmountTitle,
+              style:
+                  GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
+          children: [
+            for (final s in const [30, 60, 75, 85, 90, 120])
+              _dialogRow(ctx, '${s}s', s, s == current),
+          ],
+        ),
       );
 }

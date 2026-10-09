@@ -24,6 +24,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Required by flutter_local_notifications (uses java.time on older APIs).
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -44,14 +46,20 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // Ship arm64 only. `flutter build --target-platform android-arm64`
-        // constrains Flutter's own engine libs, but plugin AARs (media_kit,
-        // ML Kit, rhttp, …) bundle every ABI, so the APK was carrying
-        // armeabi-v7a (30 MB) and x86_64 (44 MB) it never needs — 74 MB of dead
-        // weight. arm64 covers every device from ~2015 on (Play has required
-        // 64-bit since 2019); x86_64 is emulators only.
-        ndk {
-            abiFilters.add("arm64-v8a")
+        // Ship 32-bit + 64-bit ARM, but never x86_64 (emulators only — plugin
+        // AARs bundle every ABI, so x86_64 was ~44 MB of dead weight). The
+        // arm64-only CI test build (--target-platform android-arm64) still
+        // yields a single arm64 app-release.apk — this filter is a superset.
+        //
+        // SKIP it on a per-ABI split release (scripts/build_android.sh →
+        // --split-per-abi, which passes -Psplit-per-abi=true): newer AGP forbids
+        // ndk abiFilters alongside the split abi filters, and each split APK
+        // already carries only its own ABI, so x86_64 never rides along anyway.
+        if (project.findProperty("split-per-abi") != "true") {
+            ndk {
+                abiFilters.add("armeabi-v7a")
+                abiFilters.add("arm64-v8a")
+            }
         }
     }
 
@@ -95,6 +103,9 @@ flutter {
 }
 
 dependencies {
+    // Backports java.time etc. for flutter_local_notifications (core library desugaring).
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+
     // ML Kit script models for non-Latin text recognition
     implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
     implementation("com.google.mlkit:text-recognition-japanese:16.0.1")

@@ -49,6 +49,11 @@ class LibraryManga extends HiveObject {
   /// text reflows).
   double novelProgressFraction;
 
+  /// The source's browsable page URL ("Open in browser"), cached from the last
+  /// getDetail so a cold-start "Open in WebView" is instant instead of waiting
+  /// for the embedded JVM to boot + re-resolve it (see MManga.webUrl).
+  String? webUrl;
+
   LibraryManga({
     required this.sourceId,
     required this.url,
@@ -71,6 +76,7 @@ class LibraryManga extends HiveObject {
     this.totalSeconds = 0,
     this.novelProgressOffset = 0,
     this.novelProgressFraction = 0.0,
+    this.webUrl,
   }) : addedAt = addedAt ?? DateTime.now();
 
   String get uniqueKey => '${sourceId}_$url';
@@ -151,13 +157,15 @@ class LibraryMangaAdapter extends TypeAdapter<LibraryManga> {
       totalSeconds: fields[18] as int? ?? 0,
       novelProgressOffset: fields[19] as int? ?? 0,
       novelProgressFraction: (fields[20] as num?)?.toDouble() ?? 0.0,
+      // Field 21 — cached browsable URL (post-1.2). Absent on older records.
+      webUrl: fields[21] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, LibraryManga obj) {
     writer
-      ..writeByte(21)
+      ..writeByte(22)
       ..writeByte(0)
       ..write(obj.sourceId)
       ..writeByte(1)
@@ -199,6 +207,8 @@ class LibraryMangaAdapter extends TypeAdapter<LibraryManga> {
       ..writeByte(19)
       ..write(obj.novelProgressOffset)
       ..writeByte(20)
-      ..write(obj.novelProgressFraction);
+      ..write(obj.novelProgressFraction)
+      ..writeByte(21)
+      ..write(obj.webUrl);
   }
 }

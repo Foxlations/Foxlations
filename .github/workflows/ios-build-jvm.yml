@@ -181,7 +181,7 @@ jobs:
         run: |
           flutter config --no-enable-swift-package-manager
           flutter pub get
-          flutter build ios --release --no-codesign --config-only
+          flutter build ios --release --no-codesign --config-only --dart-define=FOX_DEV=${{ inputs.deliver == 'true' && 'false' || 'true' }}
 
       - name: Patch Runner.xcodeproj (add JVM sources + link flags + FOXLATIONS_JVM)
         run: |
@@ -222,7 +222,7 @@ jobs:
           RUBY
 
       - name: Build unsigned iOS app (with JVM linked)
-        run: flutter build ios --release --no-codesign
+        run: flutter build ios --release --no-codesign --dart-define=FOX_DEV=${{ inputs.deliver == 'true' && 'false' || 'true' }}
 
       # ── Stage the JVM runtime into Runner.app, then ad-hoc sign + package ──────
       - name: Bundle JVM runtime into Runner.app

@@ -12,11 +12,18 @@ class RepoIndexResult {
   final String repoName;
   final String repoVersion;
   final List<MangaSource> sources;
+  /// Optional repo metadata parsed from the index when present (not in standard
+  /// Tachiyomi indexes, but some custom repos include them) — used by the repo
+  /// options menu for "Open website" / "Open Discord".
+  final String website;
+  final String discord;
 
   const RepoIndexResult({
     this.repoName = '',
     this.repoVersion = '',
     required this.sources,
+    this.website = '',
+    this.discord = '',
   });
 
   bool get isEmpty => sources.isEmpty;
@@ -298,6 +305,8 @@ class RepoService {
         repoName: result.repoName,
         repoVersion: result.repoVersion,
         sources: allSources,
+        website: result.website,
+        discord: result.discord,
       );
       await logger.info('Parsed ${combined.totalCount} sources '
           '(repo: ${combined.repoName})',
@@ -311,6 +320,8 @@ class RepoService {
       final encoded = jsonEncode({
         'repoName': combined.repoName,
         'repoVersion': combined.repoVersion,
+        'website': combined.website,
+        'discord': combined.discord,
         'sources': allSources.map((s) => s.toJson()).toList(),
       });
       for (final key in {originalUrl, repoUrl}) {
@@ -456,6 +467,8 @@ class RepoService {
         repoName: name,
         repoVersion: data['repoVersion'] as String? ?? '',
         sources: sources,
+        website: (data['website'] ?? '').toString().trim(),
+        discord: (data['discord'] ?? '').toString().trim(),
       );
     }
 
@@ -476,6 +489,12 @@ class RepoService {
       final declared =
           (data is Map ? (data['name'] as String? ?? '') : '').trim();
       final name = declared.isNotEmpty ? declared : _repoNameFromUrl(repoUrl);
+      // Keiyoushi-style `contact: { website, discord }` (also accept top-level keys).
+      final contact = data is Map ? data['contact'] : null;
+      String pick(String k) {
+        final v = (contact is Map ? contact[k] : null) ?? (data is Map ? data[k] : null);
+        return (v ?? '').toString().trim();
+      }
       final sources = nested
           .whereType<Map<String, dynamic>>()
           .expand(_expandSourceRows)
@@ -483,7 +502,11 @@ class RepoService {
               repoName: name, defaultType: dt))
           .where((s) => s.name.isNotEmpty)
           .toList();
-      return RepoIndexResult(repoName: name, sources: sources);
+      return RepoIndexResult(
+          repoName: name,
+          sources: sources,
+          website: pick('website'),
+          discord: pick('discord'));
     }
 
     // Fallback: bare array (Mangayomi / yuzono index.min.json is a top-level array)

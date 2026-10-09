@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 import '../discovery/metadata_discovery.dart';
+import '../services/app_logger.dart';
 import '../tracking/tracker.dart';
 import '../tracking/tracker_models.dart';
 import '../tracking/tracking_service.dart';
+import 'incognito_provider.dart';
 
 /// App-facing tracking state: which services are connected, per-manga bindings,
 /// and the operations the UI calls (connect, search, bind, edit, auto-sync).
@@ -184,6 +186,8 @@ class TrackingProvider extends ChangeNotifier {
   /// never throws into the read path.
   Future<void> syncChapterRead(String mangaKey, int chapterNumber) async {
     if (chapterNumber <= 0) return;
+    // Incognito: don't auto-push progress to trackers.
+    if (IncognitoProvider.active) return;
     final bindings = _service.bindingsFor(mangaKey);
     var changed = false;
     for (final r in bindings) {
@@ -199,7 +203,12 @@ class TrackingProvider extends ChangeNotifier {
         await t.push(r);
         await _service.saveBinding(mangaKey, r);
         changed = true;
-      } catch (_) {}
+      } catch (e, s) {
+        // Non-throwing (never interrupt reading) but no longer silent — a failed
+        // tracker push now surfaces in the log per the all-errors rule.
+        logger.error('Tracker sync failed (${r.trackerId})',
+            category: LogCategory.network, detail: '$e\n$s');
+      }
     }
     if (changed) notifyListeners();
   }

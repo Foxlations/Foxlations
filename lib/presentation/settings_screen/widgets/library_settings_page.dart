@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/providers/library_provider.dart';
+import '../../../core/providers/source_provider.dart';
+import '../../../core/services/library_update_service.dart';
+import '../../../core/services/settings_store.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import 'source_migrate_screen.dart';
@@ -20,6 +22,8 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
   bool _chargingOnly = false;
   String _updateFrequency = 'Manual';
   bool _skipNotStarted = false;
+  bool _skipHasUnread = false;
+  bool _skipCompleted = false;
   bool _showUpdateCount = true;
 
   @override
@@ -29,21 +33,105 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _hideEmptyCategories = prefs.getBool('lib_hide_empty_cats') ?? false;
-      _wifiOnly = prefs.getBool('lib_update_wifi_only') ?? true;
-      _chargingOnly = prefs.getBool('lib_update_charging_only') ?? false;
-      _updateFrequency = prefs.getString('lib_update_frequency') ?? 'Manual';
-      _skipNotStarted = prefs.getBool('lib_skip_not_started') ?? false;
-      _showUpdateCount = prefs.getBool('lib_show_update_count') ?? true;
+      _hideEmptyCategories =
+          SettingsStore.instance.getBool('lib_hide_empty_cats') ?? false;
+      _wifiOnly = SettingsStore.instance.getBool('lib_update_wifi_only') ?? true;
+      _chargingOnly =
+          SettingsStore.instance.getBool('lib_update_charging_only') ?? false;
+      _updateFrequency =
+          SettingsStore.instance.getString('lib_update_frequency') ?? 'Manual';
+      _skipNotStarted =
+          SettingsStore.instance.getBool('lib_skip_not_started') ?? false;
+      _skipHasUnread =
+          SettingsStore.instance.getBool('lib_skip_has_unread') ?? false;
+      _skipCompleted =
+          SettingsStore.instance.getBool('lib_skip_completed') ?? false;
+      _showUpdateCount =
+          SettingsStore.instance.getBool('lib_show_update_count') ?? true;
     });
   }
 
   Future<void> _save(String key, dynamic value) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (value is bool) await prefs.setBool(key, value);
-    if (value is String) await prefs.setString(key, value);
+    if (value is bool) await SettingsStore.instance.setBool(key, value);
+    if (value is String) await SettingsStore.instance.setString(key, value);
+  }
+
+  /// Re-fetch every library item's cover from its source, with a cancellable
+  /// progress dialog (sequential on iOS; see LibraryUpdateService.refreshCovers).
+  Future<void> _refreshCovers() async {
+    final lib = context.read<LibraryProvider>();
+    final src = context.read<SourceProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final total = lib.manga.length;
+    if (total == 0) {
+      messenger.showSnackBar(
+          const SnackBar(content: Text('No library items to refresh')));
+      return;
+    }
+
+    final progress = ValueNotifier<int>(0);
+    var cancelled = false;
+    BuildContext? dialogCtx;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        dialogCtx = ctx;
+        final cs = Theme.of(ctx).colorScheme;
+        return AlertDialog(
+          backgroundColor: cs.surface,
+          title: const Text('Refreshing covers'),
+          content: ValueListenableBuilder<int>(
+            valueListenable: progress,
+            builder: (_, done, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: done / total,
+                    minHeight: 8,
+                    color: cs.primary,
+                    backgroundColor: cs.onSurface.withAlpha(38),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('$done / $total', textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                cancelled = true;
+                Navigator.of(ctx).pop();
+              },
+              child: const Text('Stop'),
+            ),
+          ],
+        );
+      },
+    );
+
+    final changed = await LibraryUpdateService.refreshCovers(
+      sourceProvider: src,
+      libraryProvider: lib,
+      shouldCancel: () => cancelled,
+      onProgress: (done, _) => progress.value = done,
+    );
+    progress.dispose();
+
+    // Close the progress dialog (unless the user already tapped Stop).
+    if (!cancelled && (dialogCtx?.mounted ?? false)) {
+      Navigator.of(dialogCtx!).pop();
+    }
+    messenger.showSnackBar(SnackBar(
+      content: Text(cancelled
+          ? 'Cover refresh stopped'
+          : 'Refreshed $changed ${changed == 1 ? 'cover' : 'covers'}'),
+    ));
   }
 
   @override
@@ -136,6 +224,22 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
             onChanged: (v) { setState(() => _skipNotStarted = v); _save('lib_skip_not_started', v); },
           ),
           _SwitchTile(
+            icon: Icons.mark_email_unread_rounded,
+            iconColor: AppTheme.warning,
+            title: 'Skip titles with unread chapters',
+            subtitle: 'Don\'t check titles you haven\'t caught up on yet',
+            value: _skipHasUnread,
+            onChanged: (v) { setState(() => _skipHasUnread = v); _save('lib_skip_has_unread', v); },
+          ),
+          _SwitchTile(
+            icon: Icons.check_circle_outline_rounded,
+            iconColor: AppTheme.warning,
+            title: 'Skip completed series',
+            subtitle: 'Finished series won\'t get new chapters',
+            value: _skipCompleted,
+            onChanged: (v) { setState(() => _skipCompleted = v); _save('lib_skip_completed', v); },
+          ),
+          _SwitchTile(
             icon: Icons.notifications_active_rounded,
             iconColor: AppTheme.warning,
             title: t.setdLibraryShowUpdateCount,
@@ -154,6 +258,13 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
               context,
               MaterialPageRoute(builder: (_) => const SourceMigrateScreen()),
             ),
+          ),
+          _NavTile(
+            icon: Icons.image_search_rounded,
+            iconColor: cs.primary,
+            title: 'Refresh library covers',
+            subtitle: 'Fetch covers again from source',
+            onTap: _refreshCovers,
           ),
           const SizedBox(height: 24),
         ],

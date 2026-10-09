@@ -81,6 +81,16 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               value: dl.downloadWhileReading,
               onChanged: (v) => dl.saveSetting('dl_while_reading', v),
             ),
+            if (dl.downloadWhileReading)
+              _ChoiceTile(
+                icon: Icons.format_list_numbered_rounded,
+                iconColor: cs.primary,
+                title: 'Chapters ahead',
+                value: '${dl.downloadAheadCount}',
+                choices: const ['1', '2', '3', '5', '10'],
+                onChanged: (v) =>
+                    dl.setDownloadAheadCount(int.tryParse(v) ?? 1),
+              ),
             const SizedBox(height: 8),
             _SectionHeader(title: t.setdDownloadsSectionQueue),
             _ChoiceTile(

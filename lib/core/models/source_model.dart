@@ -232,15 +232,40 @@ class MangaSource {
       return '${repoUrl.substring(0, slash)}/icon/$pkgName.png';
     }
 
+    // LNReader novel plugins: a flat row {id,name,site,lang,version,url(.js),
+    // iconUrl} with none of the app/keiyoushi/mangayomi markers. Detect by shape
+    // so they're categorised as novels and their JS url becomes the code url.
+    final isLNReader = asStr(json['sourceCodeUrl']).isEmpty &&
+        json['apk'] == null &&
+        json['sources'] == null &&
+        json['resources'] == null &&
+        json['itemType'] == null &&
+        json['sourceCodeLanguage'] == null &&
+        json['baseUrl'] == null &&
+        json['site'] != null &&
+        asStr(json['url']).toLowerCase().endsWith('.js');
+
+    // Recover the repo the source came from: an explicitly-passed value wins,
+    // then the persisted json field, then derive a name from the URL (so an
+    // installed source saved before repoName existed still shows its repo, not
+    // the "custom" framework fallback).
+    final effectiveRepoUrl =
+        repoUrl.isNotEmpty ? repoUrl : asStr(json['repoUrl']);
+    var effectiveRepoName =
+        repoName.isNotEmpty ? repoName : asStr(json['repoName']);
+    if (effectiveRepoName.isEmpty) {
+      effectiveRepoName = repoNameFromUrl(effectiveRepoUrl);
+    }
+
     return MangaSource(
       id: resolveId(),
       name: field('name', 'Unknown'),
-      baseUrl: fieldMulti(const ['baseUrl', 'homeUrl']),
+      baseUrl: isLNReader ? asStr(json['site']) : fieldMulti(const ['baseUrl', 'homeUrl']),
       lang: fieldMulti(const ['lang', 'language'], 'en'),
-      framework: asStr(json['framework'] ?? json['typeSource'], 'custom'),
+      framework: isLNReader ? 'LNReader' : asStr(json['framework'] ?? json['typeSource'], 'custom'),
       iconUrl: resolveIconUrl(),
-      sourceCodeUrl: asStr(json['sourceCodeUrl']),
-      sourceCodeLanguage: parseSourceLang(),
+      sourceCodeUrl: isLNReader ? asStr(json['url']) : asStr(json['sourceCodeUrl']),
+      sourceCodeLanguage: isLNReader ? 'js' : parseSourceLang(),
       version: asStr(json['version']).isNotEmpty
           ? asStr(json['version'])
           : asStr(json['versionName'], '0.1.0'),
@@ -254,10 +279,36 @@ class MangaSource {
       appMinVerReq: asStr(json['appMinVerReq'], '0.0.1'),
       config: buildConfig(),
       notes: asStr(json['notes']),
-      repoUrl: repoUrl,
-      repoName: repoName,
-      itemType: parseItemType(),
+      repoUrl: effectiveRepoUrl,
+      repoName: effectiveRepoName,
+      itemType: isLNReader ? 'novel' : parseItemType(),
     );
+  }
+
+  /// A friendly repo name derived from a repo URL — git hosts name the repo
+  /// after its owner (keiyoushi, yuzono, …), which is what users recognise.
+  /// Mirrors RepoService so a source can recover its repo name from the stored
+  /// URL alone (installed sources persisted before repoName was saved otherwise
+  /// fell back to the framework, i.e. "custom").
+  static String repoNameFromUrl(String url) {
+    if (url.isEmpty) return '';
+    try {
+      final uri = Uri.parse(url);
+      final host = uri.host.toLowerCase();
+      if (host.isEmpty) return '';
+      const gitHosts = {
+        'raw.githubusercontent.com',
+        'github.com',
+        'gitlab.com',
+        'codeberg.org',
+      };
+      if (gitHosts.contains(host) && uri.pathSegments.isNotEmpty) {
+        return uri.pathSegments.first;
+      }
+      return host.startsWith('www.') ? host.substring(4) : host;
+    } catch (_) {
+      return '';
+    }
   }
 
   Map<String, dynamic> toJson() => {
@@ -279,6 +330,8 @@ class MangaSource {
         'config': config,
         'notes': notes,
         'itemType': itemType,
+        'repoUrl': repoUrl,
+        'repoName': repoName,
       };
 
   MangaSource copyWith({

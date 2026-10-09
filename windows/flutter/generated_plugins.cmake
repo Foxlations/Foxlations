@@ -9,16 +9,22 @@ list(APPEND FLUTTER_PLUGIN_LIST
   flutter_inappwebview_windows
   flutter_js
   flutter_secure_storage_windows
+  flutter_tts
   flutter_volume_controller
+  gal
+  local_auth_windows
   media_kit_libs_windows_video
   media_kit_video
   printing
+  share_plus
+  url_launcher_windows
   volume_controller
   webview_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
   rhttp
+  sherpa_onnx_windows
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

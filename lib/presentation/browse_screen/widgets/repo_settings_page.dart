@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/providers/source_provider.dart';
+import '../../../core/services/repo_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
@@ -239,7 +242,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                             url: url,
                             name: index?.repoName,
                             sourceCount: index?.totalCount ?? 0,
-                            onRemove: () => provider.removeRepo(url),
+                            onTap: () => _showRepoOptions(url, index),
                           );
                         },
                       );
@@ -272,19 +275,172 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
     }
     if (mounted) setState(() => _isAdding = false);
   }
+
+  void _showRepoOptions(String url, RepoIndexResult? index) {
+    final cs = Theme.of(context).colorScheme;
+    final name = (index?.repoName.isNotEmpty ?? false)
+        ? index!.repoName
+        : (Uri.tryParse(url)?.host ?? url);
+    final gh = _githubPage(url);
+    final website = index?.website ?? '';
+    final discord = index?.discord ?? '';
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cs.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        Widget tile(IconData icon, String label, VoidCallback onTap,
+                {Color? color}) =>
+            ListTile(
+              leading: Icon(icon, size: 20, color: color ?? cs.onSurface),
+              title: Text(label,
+                  style: GoogleFonts.manrope(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: color ?? cs.onSurface)),
+              onTap: () {
+                Navigator.pop(ctx);
+                onTap();
+              },
+            );
+        return SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(children: [
+                Icon(Icons.folder_rounded, size: 18, color: cs.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: cs.onSurface)),
+                ),
+              ]),
+            ),
+            Divider(height: 1, color: cs.surfaceContainerHighest),
+            tile(Icons.refresh_rounded, 'Reinstall sources',
+                () => _reinstallRepo(url)),
+            tile(Icons.copy_rounded, 'Copy repo URL', () => _copyUrl(url)),
+            if (gh != null)
+              tile(Icons.open_in_new_rounded, 'Open GitHub page',
+                  () => _open(gh)),
+            if (website.isNotEmpty && website != gh)
+              tile(Icons.language_rounded, 'Open website', () => _open(website)),
+            if (discord.isNotEmpty)
+              tile(Icons.forum_rounded, 'Open Discord', () => _open(discord)),
+            tile(Icons.delete_outline_rounded, 'Delete repo',
+                () => _confirmDelete(url, name),
+                color: AppTheme.error),
+            const SizedBox(height: 8),
+          ]),
+        );
+      },
+    );
+  }
+
+  /// Best-effort GitHub repo page from a raw/pages index URL. Null if not GitHub.
+  String? _githubPage(String url) {
+    final u = Uri.tryParse(url);
+    if (u == null) return null;
+    final host = u.host;
+    final segs = u.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (host == 'raw.githubusercontent.com' || host == 'github.com') {
+      if (segs.length >= 2) return 'https://github.com/${segs[0]}/${segs[1]}';
+    }
+    if (host.endsWith('.github.io')) {
+      final owner = host.substring(0, host.length - '.github.io'.length);
+      return segs.isNotEmpty
+          ? 'https://github.com/$owner/${segs[0]}'
+          : 'https://github.com/$owner';
+    }
+    return null;
+  }
+
+  Future<void> _open(String url) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final ok =
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Couldn\'t open $url')));
+      }
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Couldn\'t open $url')));
+      }
+    }
+  }
+
+  void _copyUrl(String url) {
+    Clipboard.setData(ClipboardData(text: url));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              AppLocalizations.of(context).setxAdvancedCopiedToClipboard)));
+    }
+  }
+
+  Future<void> _reinstallRepo(String url) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+        .showSnackBar(const SnackBar(content: Text('Reinstalling sources…')));
+    try {
+      final n = await context.read<SourceProvider>().reinstallRepo(url);
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(
+          content: Text(n == 0
+              ? 'Repo refreshed'
+              : 'Reinstalled $n source${n == 1 ? '' : 's'}')));
+    } catch (e) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Reinstall failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _confirmDelete(String url, String name) async {
+    final cs = Theme.of(context).colorScheme;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surfaceContainerHighest,
+        title: Text('Delete repo?',
+            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: Text('Remove "$name" and uninstall its sources?',
+            style: GoogleFonts.manrope(fontSize: 13)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      await context.read<SourceProvider>().removeRepo(url);
+    }
+  }
 }
 
 class _RepoItem extends StatelessWidget {
   final String url;
   final String? name;
   final int sourceCount;
-  final VoidCallback onRemove;
+  final VoidCallback onTap;
 
   const _RepoItem({
     required this.url,
     this.name,
     required this.sourceCount,
-    required this.onRemove,
+    required this.onTap,
   });
 
   @override
@@ -296,7 +452,7 @@ class _RepoItem extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {},
+        onTap: onTap,
         splashColor: cs.primary.withAlpha(15),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -339,18 +495,7 @@ class _RepoItem extends StatelessWidget {
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: onRemove,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.error.withAlpha(20),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-                  ),
-                  child: Icon(Icons.delete_outline_rounded,
-                      size: 18, color: AppTheme.error),
-                ),
-              ),
+              Icon(Icons.more_vert_rounded, size: 20, color: cs.outline),
             ],
           ),
         ),

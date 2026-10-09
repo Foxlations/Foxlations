@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/vault_provider.dart';
 import '../../../core/providers/source_provider.dart';
+import '../../../core/services/settings_store.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import 'vault_contents_page.dart';
@@ -65,6 +66,67 @@ class VaultSettingsPage extends StatelessWidget {
                     : t.setdVaultPasswordUnsetDesc,
                 onTap: () => _showPasswordDialog(context, vault),
               ),
+              if (vault.hasPassword)
+                _NavTile(
+                  icon: Icons.theater_comedy_rounded,
+                  iconColor: AppTheme.warning,
+                  title: vault.hasDecoyPassword
+                      ? 'Change decoy password'
+                      : 'Set decoy password',
+                  subtitle:
+                      'A second password that opens a separate, empty-looking vault',
+                  onTap: () => _showDecoyDialog(context, vault),
+                ),
+              if (vault.hasPassword)
+                FutureBuilder<bool>(
+                  future: vault.deviceSupportsBiometric(),
+                  builder: (ctx, snap) {
+                    if (snap.data != true) return const SizedBox.shrink();
+                    return StatefulBuilder(
+                      builder: (ctx, setLocal) => _SwitchTile(
+                        icon: Icons.fingerprint_rounded,
+                        iconColor: cs.primary,
+                        title: 'Unlock with biometrics',
+                        subtitle: 'Use Face ID / fingerprint to open the vault',
+                        value: vault.biometricEnabled,
+                        onChanged: (v) async {
+                          if (v) {
+                            final pw = await _promptPassword(
+                                context, 'Confirm vault password');
+                            if (pw == null) return;
+                            final ok = await vault.enableBiometric(pw);
+                            if (context.mounted) {
+                              AppTheme.showSnackBar(
+                                  context,
+                                  ok
+                                      ? 'Biometric unlock enabled'
+                                      : 'Wrong password');
+                            }
+                          } else {
+                            await vault.disableBiometric();
+                          }
+                          setLocal(() {});
+                        },
+                      ),
+                    );
+                  },
+                ),
+              if (vault.vaultEnabled)
+                StatefulBuilder(
+                  builder: (ctx, setLocal) => _SwitchTile(
+                    icon: Icons.vibration_rounded,
+                    iconColor: AppTheme.warning,
+                    title: 'Shake to exit',
+                    subtitle:
+                        'While in the vault, shake the phone to instantly leave it',
+                    value:
+                        SettingsStore.instance.getBool('vault_panic_shake') ?? false,
+                    onChanged: (v) {
+                      SettingsStore.instance.setBool('vault_panic_shake', v);
+                      setLocal(() {});
+                    },
+                  ),
+                ),
               const SizedBox(height: 8),
               _SectionHeader(title: t.setdVaultSectionCategories),
               _NavTile(
@@ -99,6 +161,24 @@ class VaultSettingsPage extends StatelessWidget {
                   );
                 },
               ),
+              if (vault.vaultEnabled)
+                StatefulBuilder(
+                  builder: (ctx, setLocal) => _SwitchTile(
+                    icon: Icons.drive_file_move_rounded,
+                    iconColor: cs.primary,
+                    title: 'Move-to-vault in library',
+                    subtitle:
+                        'Add a "Move to vault" action when selecting titles in your library',
+                    value: SettingsStore.instance
+                            .getBool('vault_show_library_move') ??
+                        false,
+                    onChanged: (v) {
+                      SettingsStore.instance
+                          .setBool('vault_show_library_move', v);
+                      setLocal(() {});
+                    },
+                  ),
+                ),
               const SizedBox(height: 8),
               _SectionHeader(title: t.setdVaultSectionHiddenSources),
               _NavTile(
@@ -147,6 +227,116 @@ class VaultSettingsPage extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// Simple obscured-password prompt; returns the entered text or null if cancelled.
+  Future<String?> _promptPassword(BuildContext context, String title) {
+    final controller = TextEditingController();
+    final cs = Theme.of(context).colorScheme;
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
+        title: Text(title,
+            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          autofocus: true,
+          style: GoogleFonts.manrope(fontSize: 14),
+          decoration: InputDecoration(
+            hintText: 'Password',
+            filled: true,
+            fillColor: cs.surfaceContainerHighest,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none),
+            prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, v),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text),
+              child: const Text('Confirm')),
+        ],
+      ),
+    );
+  }
+
+  void _showDecoyDialog(BuildContext context, VaultProvider vault) {
+    final controller = TextEditingController();
+    final cs = Theme.of(context).colorScheme;
+    String? error;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setD) => AlertDialog(
+          backgroundColor: cs.surface,
+          title: Text(
+              vault.hasDecoyPassword ? 'Decoy password' : 'Set decoy password',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(
+                'Entering this instead of your real password opens a separate, '
+                'isolated vault — so you can hand over the phone without revealing '
+                'your real content.',
+                style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurfaceVariant)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              obscureText: true,
+              autofocus: true,
+              style: GoogleFonts.manrope(fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Decoy password',
+                errorText: error,
+                filled: true,
+                fillColor: cs.surfaceContainerHighest,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none),
+                prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+              ),
+            ),
+          ]),
+          actions: [
+            if (vault.hasDecoyPassword)
+              TextButton(
+                onPressed: () async {
+                  await vault.setDecoyPassword(null);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: Text('Remove',
+                    style: GoogleFonts.manrope(color: AppTheme.error)),
+              ),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                if (controller.text.isEmpty) {
+                  setD(() => error = 'Enter a password');
+                  return;
+                }
+                final ok = await vault.setDecoyPassword(controller.text);
+                if (!ctx.mounted) return;
+                if (ok) {
+                  Navigator.pop(ctx);
+                  AppTheme.showSnackBar(context, 'Decoy password set');
+                } else {
+                  setD(() => error = 'Must differ from your real password');
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }

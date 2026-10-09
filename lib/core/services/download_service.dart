@@ -7,9 +7,12 @@ import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rhttp/rhttp.dart' as rhttp;
+import 'app_logger.dart';
 import 'cookie_store.dart';
+import 'doh/doh_resolver.dart';
+import 'local_source_service.dart';
+import 'settings_store.dart';
 
 /// Downloads manga chapter images to local storage.
 ///
@@ -27,18 +30,25 @@ class DownloadService {
   Future<rhttp.RhttpClient> _getClient() async {
     if (_client != null) return _client!;
     _client = await rhttp.RhttpClient.create(
-      settings: const rhttp.ClientSettings(
+      settings: rhttp.ClientSettings(
         throwOnStatusCode: false,
-        tlsSettings: rhttp.TlsSettings(verifyCertificates: false),
+        tlsSettings: const rhttp.TlsSettings(verifyCertificates: false),
+        dnsSettings: dohDnsSettingsOrNull(),
       ),
     );
     return _client!;
   }
 
+  /// Drop the cached HTTP client so the next download rebuilds it — used when
+  /// the DNS-over-HTTPS setting changes (applies without an app restart).
+  void resetHttpClient() {
+    _client?.dispose();
+    _client = null;
+  }
+
   /// Get the base download directory. Uses custom path if set, otherwise app documents.
   Future<String> getBasePath() async {
-    final prefs = await SharedPreferences.getInstance();
-    final custom = prefs.getString(_downloadPathKey);
+    final custom = SettingsStore.instance.getString(_downloadPathKey);
     if (custom != null && custom.isNotEmpty && await Directory(custom).exists()) {
       return custom;
     }
@@ -52,20 +62,17 @@ class DownloadService {
 
   /// Set a custom download directory.
   Future<void> setDownloadPath(String path) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_downloadPathKey, path);
+    await SettingsStore.instance.setString(_downloadPathKey, path);
   }
 
   /// Clear custom download path (revert to default).
   Future<void> clearDownloadPath() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_downloadPathKey);
+    await SettingsStore.instance.remove(_downloadPathKey);
   }
 
   /// Get the current download path setting (empty = default).
   Future<String> getDownloadPathSetting() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_downloadPathKey) ?? '';
+    return SettingsStore.instance.getString(_downloadPathKey) ?? '';
   }
 
   /// Sanitize a string for use as a directory name.
@@ -88,31 +95,127 @@ class DownloadService {
     return '$base/$section/$sourceId/$sanitizedManga/$sanitizedChapter';
   }
 
-  /// Check if a chapter is fully downloaded.
+  /// Check if a chapter is fully downloaded (loose images OR a packed CBZ/PDF).
   Future<bool> isChapterDownloaded(
       String sourceId, String mangaTitle, String chapterName,
       {bool isVault = false}) async {
     final dir = await getChapterDir(sourceId, mangaTitle, chapterName, isVault: isVault);
     final d = Directory(dir);
-    if (!await d.exists()) return false;
-    final count = await d.list().where((f) => f.path.endsWith('.jpg')).length;
-    return count > 0;
+    if (await d.exists()) {
+      final count = await d.list().where((f) => f.path.endsWith('.jpg')).length;
+      if (count > 0) return true;
+    }
+    // "Save as CBZ/PDF" archives the images into a sibling file and deletes the
+    // folder — so a packed chapter has no loose images but is still downloaded.
+    return await _packedChapterFile(dir) != null;
   }
 
-  /// Get local image paths for a downloaded chapter (sorted).
+  /// Get local image paths for a downloaded chapter (sorted). Falls back to
+  /// unpacking a sibling CBZ/PDF (converted download) so those read offline too.
   Future<List<String>> getLocalPages(
       String sourceId, String mangaTitle, String chapterName,
       {bool isVault = false}) async {
     final dir = await getChapterDir(sourceId, mangaTitle, chapterName, isVault: isVault);
     final d = Directory(dir);
-    if (!await d.exists()) return [];
-    final files = await d.list().toList();
-    final jpgs = files
-        .where((f) => f.path.endsWith('.jpg'))
-        .map((f) => f.path)
-        .toList();
-    jpgs.sort();
-    return jpgs;
+    if (await d.exists()) {
+      final files = await d.list().toList();
+      final jpgs = files
+          .where((f) => f.path.endsWith('.jpg'))
+          .map((f) => f.path)
+          .toList();
+      if (jpgs.isNotEmpty) {
+        jpgs.sort();
+        return jpgs;
+      }
+    }
+    // Packed into a sibling .cbz/.pdf — unpack via the local-source reader
+    // (shared ZipDecoder / PDF rasterizer) and read those extracted pages.
+    final packed = await _packedChapterFile(dir);
+    if (packed != null) {
+      try {
+        return await LocalSourceService().getChapterPages(
+          LocalChapter(name: '', path: packed, isArchive: true),
+        );
+      } catch (e) {
+        await logger.warning(
+            'Offline: failed unpacking downloaded "$chapterName"',
+            category: LogCategory.download, detail: e.toString());
+      }
+    }
+    return [];
+  }
+
+  /// The sibling archive a chapter's images were packed into (CBZ preferred),
+  /// or null if it was never converted. See [convertToCbz]/[convertToPdf] — the
+  /// packed file sits at `<chapterDir>.cbz` / `.pdf`.
+  Future<String?> _packedChapterFile(String chapterDir) async {
+    for (final ext in const ['cbz', 'pdf']) {
+      final p = '$chapterDir.$ext';
+      if (await File(p).exists()) return p;
+    }
+    return null;
+  }
+
+  // ── Light novels ─────────────────────────────────────────────────────────
+  // A novel chapter is a single HTML document, not a set of images. It lives in
+  // the same per-chapter folder as a manga chapter (so delete/size/rescan all
+  // work unchanged) as a single `content.html` file.
+
+  /// Path to a downloaded novel chapter's HTML, whether or not it exists yet.
+  Future<String> getNovelChapterPath(
+      String sourceId, String novelTitle, String chapterName,
+      {bool isVault = false}) async {
+    final dir = await getChapterDir(sourceId, novelTitle, chapterName,
+        isVault: isVault);
+    return '$dir/content.html';
+  }
+
+  /// Whether a novel chapter's text is saved for offline reading.
+  Future<bool> isNovelChapterDownloaded(
+      String sourceId, String novelTitle, String chapterName,
+      {bool isVault = false}) async {
+    final path = await getNovelChapterPath(sourceId, novelTitle, chapterName,
+        isVault: isVault);
+    return File(path).exists();
+  }
+
+  /// Read a downloaded novel chapter's HTML, or null if it isn't downloaded.
+  Future<String?> readNovelChapter(
+      String sourceId, String novelTitle, String chapterName,
+      {bool isVault = false}) async {
+    final path = await getNovelChapterPath(sourceId, novelTitle, chapterName,
+        isVault: isVault);
+    final f = File(path);
+    if (!await f.exists()) return null;
+    try {
+      return await f.readAsString();
+    } catch (e) {
+      await logger.warning('Novel: failed reading offline chapter "$chapterName"',
+          category: LogCategory.download, detail: e.toString());
+      return null;
+    }
+  }
+
+  /// Save a novel chapter's already-fetched HTML for offline reading.
+  Future<bool> downloadNovelChapter({
+    required String sourceId,
+    required String novelTitle,
+    required String chapterName,
+    required String htmlContent,
+    bool isVault = false,
+  }) async {
+    if (htmlContent.trim().isEmpty) return false;
+    final dir = await getChapterDir(sourceId, novelTitle, chapterName,
+        isVault: isVault);
+    await Directory(dir).create(recursive: true);
+    try {
+      await File('$dir/content.html').writeAsString(htmlContent);
+      return true;
+    } catch (e) {
+      await logger.error('Novel: failed saving offline chapter "$chapterName"',
+          category: LogCategory.download, detail: e.toString());
+      return false;
+    }
   }
 
   /// Download a chapter's images.
@@ -134,10 +237,17 @@ class DownloadService {
     final cookieStore = CookieStore();
     final storedUA = await cookieStore.getUserAgent();
 
+    // All pages in a chapter share a host, so the Cookie/UA headers are the same
+    // for every page — build them ONCE instead of per image.
+    final baseHeaders = Map<String, String>.from(headers);
+    final cookieHeader = await cookieStore.getCookieHeader(imageUrls.first);
+    if (cookieHeader != null) baseHeaders['Cookie'] = cookieHeader;
+    baseHeaders.putIfAbsent('User-Agent', () => storedUA);
+
     int completed = 0;
     int failed = 0;
 
-    for (int i = 0; i < imageUrls.length; i++) {
+    Future<void> fetchOne(int i) async {
       final url = imageUrls[i];
       final fileName = '${(i + 1).toString().padLeft(3, '0')}.jpg';
       final filePath = '$dir/$fileName';
@@ -146,23 +256,18 @@ class DownloadService {
       if (await File(filePath).exists()) {
         completed++;
         onProgress?.call(completed, imageUrls.length);
-        continue;
+        return;
       }
 
-      // Build headers
-      final mergedHeaders = Map<String, String>.from(headers);
-      final cookieHeader = await cookieStore.getCookieHeader(url);
-      if (cookieHeader != null) mergedHeaders['Cookie'] = cookieHeader;
-      mergedHeaders.putIfAbsent('User-Agent', () => storedUA);
-
-      // Download with retry
+      // Download with retry (isolated per page — a flaky page's backoff no
+      // longer blocks the rest of the chapter now that pages run in parallel).
       bool success = false;
       for (int attempt = 0; attempt < 3 && !success; attempt++) {
         try {
           final response = await client.requestBytes(
             method: rhttp.HttpMethod.get,
             url: url,
-            headers: rhttp.HttpHeaders.rawMap(mergedHeaders),
+            headers: rhttp.HttpHeaders.rawMap(baseHeaders),
           );
           if (response.statusCode == 200 && response.body.isNotEmpty) {
             await File(filePath).writeAsBytes(response.body);
@@ -183,8 +288,31 @@ class DownloadService {
       onProgress?.call(completed, imageUrls.length);
     }
 
+    // Page images are plain HTTP GETs (no source/JVM/JS call — the page list was
+    // already fetched), so they're safe to download in parallel on every
+    // platform. A small cap keeps us under CDN per-host rate limits; the shared
+    // rhttp client pools connections across them. The i→filename mapping is
+    // preserved because each worker keeps its own index.
+    const imageConcurrency = 5;
+    var next = 0;
+    Future<void> worker() async {
+      while (true) {
+        final i = next++;
+        if (i >= imageUrls.length) break;
+        await fetchOne(i);
+      }
+    }
+
+    await Future.wait(List.generate(imageConcurrency, (_) => worker()));
+
     debugPrint('[Download] Chapter "$chapterName": $completed/${imageUrls.length} '
         '(${failed > 0 ? "$failed failed" : "complete"})');
+    if (failed > 0) {
+      // Surface failed downloads in the in-app log (not just debugPrint).
+      await logger.warning(
+          'Download: $failed/${imageUrls.length} pages failed — "$chapterName"',
+          category: LogCategory.network, detail: 'Source: $sourceId');
+    }
     return failed == 0;
   }
 
@@ -480,6 +608,8 @@ class DownloadService {
       return await File(savePath).exists();
     } catch (e) {
       debugPrint('[Download] Direct video failed: $e');
+      await logger.error('Episode download failed',
+          category: LogCategory.network, detail: '$url\n$e');
       return false;
     } finally {
       dio.close();
@@ -562,6 +692,8 @@ class DownloadService {
       return await File(savePath).exists();
     } catch (e) {
       debugPrint('[Download] HLS download failed: $e');
+      await logger.error('Episode (HLS) download failed',
+          category: LogCategory.network, detail: '$m3u8Url\n$e');
       return false;
     } finally {
       dio.close();
@@ -570,6 +702,109 @@ class DownloadService {
 
   String _xmlEscape(String s) =>
       s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+
+  /// Returns the set of '{sourceId}::{url}' for library entries that have at
+  /// least one downloaded chapter folder on disk. Scans each source directory
+  /// once, so passing the whole library is cheap.
+  ///
+  /// Only the normal library section is scanned (`isVault: false`) — the
+  /// library screen's "Downloaded" filter is for the normal library. Robust to
+  /// missing directories: an absent base/library tree, or an unreadable source
+  /// folder, simply contributes no keys instead of throwing.
+  Future<Set<String>> downloadedMangaKeys(
+      Iterable<({String sourceId, String url, String title})> entries) async {
+    final result = <String>{};
+    final list = entries.toList();
+    if (list.isEmpty) return result;
+
+    final base = await getBasePath();
+
+    // Group entries by source so each source directory is listed exactly once.
+    final bySource =
+        <String, List<({String sourceId, String url, String title})>>{};
+    for (final e in list) {
+      bySource.putIfAbsent(e.sourceId, () => []).add(e);
+    }
+
+    for (final entry in bySource.entries) {
+      final sourceDir = Directory('$base/library/${entry.key}');
+      if (!await sourceDir.exists()) continue;
+
+      // Collect the names of existing, non-empty manga folders in this source.
+      final nonEmptyFolders = <String>{};
+      try {
+        await for (final child in sourceDir.list(followLinks: false)) {
+          if (child is! Directory) continue;
+          final name = child.path.split('/').last.split('\\').last;
+          // Non-empty = contains at least one sub-entry (chapter folder or
+          // packed CBZ/PDF).
+          final empty = await child.list(followLinks: false).isEmpty;
+          if (!empty) nonEmptyFolders.add(name);
+        }
+      } catch (_) {
+        // Unreadable source directory — skip it rather than fail the scan.
+        continue;
+      }
+
+      for (final e in entry.value) {
+        if (nonEmptyFolders.contains(_sanitize(e.title))) {
+          result.add('${e.sourceId}::${e.url}');
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /// Given a manga/anime/novel's chapters, return the subset of chapter URLs
+  /// that are already downloaded on disk (library OR vault) — a non-empty
+  /// chapter folder (images or a novel's content.html) or a packed .cbz/.pdf
+  /// sibling file. Used to re-detect downloads the app made before its tracking
+  /// set was lost (e.g. a reinstall or data wipe keeps the files but clears the
+  /// SharedPreferences index), so chapter checkmarks come back on their own.
+  Future<Set<String>> downloadedChapterUrls(
+    String sourceId,
+    String mangaTitle,
+    Iterable<({String url, String name})> chapters,
+  ) async {
+    final chapterList = chapters.toList();
+    if (chapterList.isEmpty) return {};
+
+    final base = await getBasePath();
+    final sanitizedManga = _sanitize(mangaTitle);
+
+    final folders = <String>{}; // non-empty chapter folders (sanitized names)
+    final packed = <String>{}; // packed chapter files, sanitized name w/o ext
+    for (final section in const ['library', 'vault']) {
+      final mangaDir = Directory('$base/$section/$sourceId/$sanitizedManga');
+      if (!await mangaDir.exists()) continue;
+      try {
+        await for (final child in mangaDir.list(followLinks: false)) {
+          final name = child.path.split('/').last.split('\\').last;
+          if (child is Directory) {
+            final empty = await child.list(followLinks: false).isEmpty;
+            if (!empty) folders.add(name);
+          } else if (child is File) {
+            final dot = name.lastIndexOf('.');
+            final ext = dot >= 0 ? name.substring(dot + 1).toLowerCase() : '';
+            if (ext == 'cbz' || ext == 'pdf') {
+              packed.add(name.substring(0, dot));
+            }
+          }
+        }
+      } catch (_) {
+        // Unreadable manga directory — skip this section.
+      }
+    }
+    if (folders.isEmpty && packed.isEmpty) return {};
+
+    final result = <String>{};
+    for (final ch in chapterList) {
+      final s = _sanitize(ch.name);
+      if (folders.contains(s) || packed.contains(s)) result.add(ch.url);
+    }
+    return result;
+  }
 
   /// Get total download size in bytes for library, vault, or both.
   Future<int> getTotalSize({bool? isVault}) async {

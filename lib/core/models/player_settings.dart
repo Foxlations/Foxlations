@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/settings_store.dart';
 
 /// User-configurable video-player options, persisted in SharedPreferences and read
 /// by the player to build media_kit's controls theme. All have sensible defaults so
@@ -25,6 +25,13 @@ class PlayerSettings {
   /// Skip source-provided intro/outro ranges automatically (vs. showing a button).
   final bool autoSkipIntro; // default false
 
+  /// Show a manual "Skip Intro" button near the start of an episode (works even
+  /// when the source provides no intro markers).
+  final bool showIntroSkipButton; // default true
+
+  /// Seconds the manual Skip-Intro button jumps forward (typical OP ≈ 85s).
+  final int introSkipSeconds; // default 85
+
   const PlayerSettings({
     this.seekForwardSeconds = 10,
     this.seekBackwardSeconds = 10,
@@ -35,6 +42,8 @@ class PlayerSettings {
     this.autoplayNext = true,
     this.defaultSpeed = 1.0,
     this.autoSkipIntro = false,
+    this.showIntroSkipButton = true,
+    this.introSkipSeconds = 85,
   });
 
   static const kSeekForward = 'player_seek_forward';
@@ -46,9 +55,11 @@ class PlayerSettings {
   static const kAutoplayNext = 'player_autoplay_next';
   static const kDefaultSpeed = 'player_default_speed';
   static const kAutoSkipIntro = 'player_auto_skip_intro';
+  static const kShowIntroSkipButton = 'player_show_intro_skip_button';
+  static const kIntroSkipSeconds = 'player_intro_skip_seconds';
 
   static Future<PlayerSettings> load() async {
-    final p = await SharedPreferences.getInstance();
+    final p = SettingsStore.instance;
     return PlayerSettings(
       seekForwardSeconds: p.getInt(kSeekForward) ?? 10,
       seekBackwardSeconds: p.getInt(kSeekBackward) ?? 10,
@@ -59,13 +70,15 @@ class PlayerSettings {
       autoplayNext: p.getBool(kAutoplayNext) ?? true,
       defaultSpeed: p.getDouble(kDefaultSpeed) ?? 1.0,
       autoSkipIntro: p.getBool(kAutoSkipIntro) ?? false,
+      showIntroSkipButton: p.getBool(kShowIntroSkipButton) ?? true,
+      introSkipSeconds: p.getInt(kIntroSkipSeconds) ?? 85,
     );
   }
 
-  static Future<void> setInt(String key, int v) async =>
-      (await SharedPreferences.getInstance()).setInt(key, v);
-  static Future<void> setBool(String key, bool v) async =>
-      (await SharedPreferences.getInstance()).setBool(key, v);
-  static Future<void> setDouble(String key, double v) async =>
-      (await SharedPreferences.getInstance()).setDouble(key, v);
+  static Future<void> setInt(String key, int v) =>
+      SettingsStore.instance.setInt(key, v);
+  static Future<void> setBool(String key, bool v) =>
+      SettingsStore.instance.setBool(key, v);
+  static Future<void> setDouble(String key, double v) =>
+      SettingsStore.instance.setDouble(key, v);
 }

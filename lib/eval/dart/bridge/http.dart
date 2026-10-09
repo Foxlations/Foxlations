@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:d4rt/d4rt.dart';
 import 'package:rhttp/rhttp.dart' as rhttp;
 import '../../../core/services/cookie_store.dart';
+import '../../../core/services/doh/doh_resolver.dart';
 import '../../../core/services/webview_service.dart';
 import '../../model/m_source.dart';
 
@@ -105,18 +106,31 @@ class _HttpClient {
     }
   }
 
+  int _clientGen = -1;
+
   Future<rhttp.RhttpClient> _getClient() async {
-    if (_client != null) return _client!;
+    // Rebuild when the DoH toggle/provider changed since this client was built,
+    // so turning DoH off/on takes effect on the next request (the DNS settings
+    // are fixed at creation, so a cached client would otherwise keep the old
+    // resolver until app restart).
+    final gen = DohResolver.instance.clientGeneration;
+    if (_client != null && _clientGen == gen) return _client!;
+    final old = _client;
     // TLS verification MUST stay on: _buildHeaders attaches the user's stored
     // cookies (including the HttpOnly cf_clearance lifted from the WebView), so
     // an accepted forged cert would hand a network MITM the user's cleared
     // Cloudflare session and let it inject arbitrary source content. The JS
     // bridge's Dio client verifies; this one must match.
     _client = await rhttp.RhttpClient.create(
-      settings: const rhttp.ClientSettings(
+      settings: rhttp.ClientSettings(
         throwOnStatusCode: false,
+        // DNS-over-HTTPS when enabled; null = system DNS. TLS stays verified
+        // (see above) — DoH only changes how the hostname resolves.
+        dnsSettings: dohDnsSettingsOrNull(),
       ),
     );
+    _clientGen = gen;
+    old?.dispose();
     return _client!;
   }
 

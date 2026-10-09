@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../../core/providers/beta_provider.dart';
 import '../../core/providers/source_provider.dart';
 import '../../eval/kotlin/jvm_bridge.dart';
 import '../../l10n/app_localizations.dart';
@@ -40,7 +41,14 @@ class _BrowseScreenState extends State<BrowseScreen>
           .read<SourceProvider>()
           .installedSources
           .any((s) => s.source.isKotlinBased);
-      if (hasKotlin) FoxJvm.warmup();
+      // Delay the warmup slightly so a JVM boot never lands in the first-frame /
+      // foreground-transition window (the iOS Zero-VM signal-race behind the
+      // reopen-from-background crash).
+      if (hasKotlin) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) FoxJvm.warmup();
+        });
+      }
     });
   }
 
@@ -145,7 +153,8 @@ class _BrowseScreenState extends State<BrowseScreen>
                     },
                     tooltip: t.browseSearch,
                   ),
-                  if (_tabController.index == 1)
+                  if (_tabController.index == 1 &&
+                      context.watch<BetaProvider>().enabled)
                     _buildActionButton(
                       icon: Icons.auto_fix_high_rounded,
                       color: cs.primary,

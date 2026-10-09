@@ -34,6 +34,22 @@ public final class DohResolver extends InetAddressResolverProvider {
     private final Pattern ipRe =
         Pattern.compile("\"data\"\\s*:\\s*\"(\\d{1,3}(?:\\.\\d{1,3}){3})\"");
 
+    // The DoH endpoint, configurable from Dart (Advanced > DNS provider). It MUST
+    // be a LITERAL-IP https URL: iOS native DNS is broken and this resolver IS the
+    // DNS, so a hostname endpoint can't be resolved (it would recurse). Defaults to
+    // Cloudflare's 1.1.1.1; setEndpoint ignores anything that isn't IPv4-host, so a
+    // bad value can never break all name resolution.
+    private static volatile String endpoint = "https://1.1.1.1/dns-query";
+    private static final Pattern IPV4_URL =
+        Pattern.compile("^https://\\d{1,3}(?:\\.\\d{1,3}){3}(?::\\d+)?/\\S*$");
+
+    /** Called reflectively from SourceRunner.setDoh. No-op for a non-IP URL. */
+    public static void setEndpoint(String url) {
+        if (url != null && IPV4_URL.matcher(url.trim()).matches()) {
+            endpoint = url.trim();
+        }
+    }
+
     @Override
     public String name() { return "foxtensions-doh"; }
 
@@ -70,25 +86,35 @@ public final class DohResolver extends InetAddressResolverProvider {
     }
 
     private Stream<InetAddress> doh(String host) throws UnknownHostException {
+        // Try the user's configured provider first; if it returns no record or
+        // errors (not every provider serves the JSON API the same way), fall back
+        // to Cloudflare's 1.1.1.1 so resolution never breaks on iOS.
+        List<InetAddress> out = queryOne(endpoint, host);
+        if (out.isEmpty() && !endpoint.startsWith("https://1.1.1.1/")) {
+            out = queryOne("https://1.1.1.1/dns-query", host);
+        }
+        if (!out.isEmpty()) return out.stream();
+        throw new UnknownHostException("DoH: no A record for " + host);
+    }
+
+    private List<InetAddress> queryOne(String base, String host) {
+        List<InetAddress> out = new ArrayList<>();
         try {
+            String sep = base.indexOf('?') >= 0 ? "&" : "?";
             HttpRequest req = HttpRequest
-                .newBuilder(URI.create("https://1.1.1.1/dns-query?type=A&name=" + host))
+                .newBuilder(URI.create(base + sep + "type=A&name=" + host))
                 .header("accept", "application/dns-json")
                 .timeout(Duration.ofSeconds(8))
                 .GET().build();
             String body = http().send(req, HttpResponse.BodyHandlers.ofString()).body();
-            List<InetAddress> out = new ArrayList<>();
             Matcher m = ipRe.matcher(body);
             while (m.find()) {
                 out.add(InetAddress.getByAddress(host, ipv4(m.group(1))));
             }
-            if (!out.isEmpty()) return out.stream();
-            throw new UnknownHostException("DoH: no A record for " + host);
-        } catch (UnknownHostException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new UnknownHostException("DoH failed for " + host + ": " + e);
+        } catch (Exception ignored) {
+            // fall through — caller tries the next endpoint / throws
         }
+        return out;
     }
 
     private static byte[] ipv4(String ip) {

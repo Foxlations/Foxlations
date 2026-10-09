@@ -7,6 +7,7 @@ import 'model/m_source.dart';
 import 'interface.dart';
 import 'dart/service.dart';
 import 'javascript/service.dart';
+import 'javascript/lnreader_service.dart';
 import 'kotlin/service.dart';
 
 ExtensionService getExtensionService(
@@ -38,6 +39,16 @@ ExtensionService getExtensionService(
         : (source.config.isNotEmpty ? source.config.toString() : null),
     notes: source.notes.isNotEmpty ? source.notes : null,
   );
+
+  // LNReader novel plugins use a different JS plugin API; route them to the
+  // dedicated adapter instead of the Mangayomi-style JS runtime.
+  if (source.framework.toLowerCase() == 'lnreader') {
+    return LnrExtensionService(
+      mSource: mSource,
+      sourceCode: sourceCode,
+      baseUrl: effectiveBaseUrl,
+    );
+  }
 
   switch (source.sourceCodeLanguage) {
     case 'js':

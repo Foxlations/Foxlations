@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemeProvider extends ChangeNotifier {
+  // Legacy SharedPreferences keys — only read once, to migrate old installs.
   static const _themeKey = 'theme_mode';
   static const _breedKey = 'theme_breed';
   static const _invertKey = 'theme_invert_colors';
@@ -9,10 +13,13 @@ class ThemeProvider extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.dark;
   String _breedId = 'red_fox';
   bool _invertColors = false;
+  bool _oledBlack = false;
+  File? _file;
 
   ThemeMode get themeMode => _themeMode;
   String get breedId => _breedId;
   bool get invertColors => _invertColors;
+  bool get oledBlack => _oledBlack;
 
   /// Get the primary color for the current breed and brightness.
   Color primaryColor(Brightness brightness) {
@@ -25,37 +32,90 @@ class ThemeProvider extends ChangeNotifier {
     return brightness == Brightness.dark ? breed.accentDark : breed.accentLight;
   }
 
+  Future<File> _prefsFile() async {
+    final cached = _file;
+    if (cached != null) return cached;
+    final dir = await getApplicationSupportDirectory();
+    return _file = File('${dir.path}/theme_prefs.json');
+  }
+
   Future<void> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getString(_themeKey);
-    _themeMode = value == 'light' ? ThemeMode.light : ThemeMode.dark;
-    _breedId = prefs.getString(_breedKey) ?? 'red_fox';
-    _invertColors = prefs.getBool(_invertKey) ?? false;
+    // Durable file store first. Unlike NSUserDefaults/SharedPreferences — whose
+    // writes sit in an in-memory cache that only flushes periodically, so a quick
+    // force-quit right after a change loses it — this file is fsync'd on write,
+    // so the theme sticks even if the app is closed immediately after switching.
+    try {
+      final file = await _prefsFile();
+      if (await file.exists()) {
+        final m = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+        _themeMode = m['mode'] == 'light' ? ThemeMode.light : ThemeMode.dark;
+        _breedId = (m['breed'] as String?) ?? 'red_fox';
+        _invertColors = (m['invert'] as bool?) ?? false;
+        _oledBlack = (m['oled'] as bool?) ?? false;
+        notifyListeners();
+        return;
+      }
+    } catch (_) {
+      // Unreadable/corrupt — fall through and re-derive + rewrite below.
+    }
+    // No file yet: migrate any existing SharedPreferences values, then write the
+    // durable copy so future launches read it instead.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _themeMode = prefs.getString(_themeKey) == 'light'
+          ? ThemeMode.light
+          : ThemeMode.dark;
+      _breedId = prefs.getString(_breedKey) ?? 'red_fox';
+      _invertColors = prefs.getBool(_invertKey) ?? false;
+      _oledBlack = prefs.getBool('theme_oled') ?? false;
+    } catch (_) {
+      // No prefs either — keep the defaults.
+    }
+    await _save();
     notifyListeners();
+  }
+
+  Future<void> _save() async {
+    final data = jsonEncode({
+      'mode': _themeMode == ThemeMode.dark ? 'dark' : 'light',
+      'breed': _breedId,
+      'invert': _invertColors,
+      'oled': _oledBlack,
+    });
+    try {
+      final file = await _prefsFile();
+      // flush:true fsyncs, so the value is on disk before this returns.
+      await file.writeAsString(data, flush: true);
+    } catch (_) {
+      // Best-effort — a failed write just means it falls back to the last saved.
+    }
   }
 
   Future<void> toggleTheme() async {
     _themeMode =
         _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-        _themeKey, _themeMode == ThemeMode.dark ? 'dark' : 'light');
-    notifyListeners();
+    notifyListeners(); // flip the UI immediately
+    await _save(); // then persist durably
   }
 
   Future<void> setBreed(String breedId) async {
     _breedId = breedId;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_breedKey, breedId);
     notifyListeners();
+    await _save();
   }
 
   Future<void> setInvertColors(bool value) async {
     if (_invertColors == value) return;
     _invertColors = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_invertKey, value);
     notifyListeners();
+    await _save();
+  }
+
+  Future<void> setOledBlack(bool value) async {
+    if (_oledBlack == value) return;
+    _oledBlack = value;
+    notifyListeners();
+    await _save();
   }
 
   /// All available theme breeds.

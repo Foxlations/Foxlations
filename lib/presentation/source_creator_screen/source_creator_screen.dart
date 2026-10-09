@@ -59,11 +59,43 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
   @override
   void initState() {
     super.initState();
+    // Mark the editor "dirty" on the first edit so back-navigation can warn
+    // before discarding the half-built source definition.
+    for (final c in [_urlCtl, _nameCtl, _langCtl, ..._selectorCtls.values]) {
+      c.addListener(_markDirty);
+    }
     final seed = widget.seedUrl;
     if (seed != null && seed.isNotEmpty) {
       _urlCtl.text = seed;
       WidgetsBinding.instance.addPostFrameCallback((_) => _detect());
     }
+  }
+
+  bool _dirty = false;
+  void _markDirty() {
+    if (!_dirty) setState(() => _dirty = true);
+  }
+
+  Future<bool> _confirmDiscard() async {
+    final cs = Theme.of(context).colorScheme;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
+        title: const Text('Discard changes?'),
+        content: const Text(
+            'You have an unsaved source. Leave without saving it?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Keep editing')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Discard')),
+        ],
+      ),
+    );
+    return ok ?? false;
   }
 
   bool _detecting = false;
@@ -277,6 +309,26 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
       t.repoStepExtracting,
       t.repoStepFinalizing,
     ];
+    return PopScope(
+      // Guard back-navigation while there's unsaved work. Saving sets _saving
+      // (which stays true through its Navigator.pop), so Save is never blocked.
+      canPop: !_dirty || _saving,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final discard = await _confirmDiscard();
+        if (discard && mounted) {
+          setState(() => _dirty = false);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context).pop();
+          });
+        }
+      },
+      child: _buildScaffold(context, t, cs, detectSteps),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, AppLocalizations t,
+      ColorScheme cs, List<String> detectSteps) {
     return Scaffold(
       appBar: AppBar(
         title: Text(t.repoCreateSource,
@@ -380,7 +432,10 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
               ButtonSegment(value: 'novel', label: Text(t.repoNovel)),
             ],
             selected: {_contentType},
-            onSelectionChanged: (s) => setState(() => _contentType = s.first),
+            onSelectionChanged: (s) {
+              setState(() => _contentType = s.first);
+              _markDirty();
+            },
           ),
         ),
       ]),
@@ -388,7 +443,10 @@ class _SourceCreatorScreenState extends State<SourceCreatorScreen> {
         contentPadding: EdgeInsets.zero,
         title: Text(t.repoNsfw, style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface)),
         value: _nsfw,
-        onChanged: (v) => setState(() => _nsfw = v),
+        onChanged: (v) {
+          setState(() => _nsfw = v);
+          _markDirty();
+        },
       ),
 
       // ── Scraping studio ──

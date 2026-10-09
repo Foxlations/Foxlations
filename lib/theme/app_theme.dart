@@ -108,14 +108,16 @@ class AppTheme {
   static const Color _onSurfaceDark = Color(0xFFE8E8F0);
   static const Color _onSurfaceLight = Color(0xFF1A1A2E);
 
-  static ThemeData darkTheme({Color? primaryColor}) {
+  static ThemeData darkTheme({Color? primaryColor, bool oled = false}) {
     return _buildTheme(
       brightness: Brightness.dark,
       primary: primaryColor ?? const Color(0xFFFF7A5C),
-      background: _backgroundDark,
-      surface: _surfaceDark,
+      // OLED: pure-black background + near-black surface so unlit pixels stay off.
+      background: oled ? const Color(0xFF000000) : _backgroundDark,
+      surface: oled ? const Color(0xFF0A0A0A) : _surfaceDark,
       onSurface: _onSurfaceDark,
       muted: mutedDark,
+      oled: oled,
     );
   }
 
@@ -137,6 +139,7 @@ class AppTheme {
     required Color surface,
     required Color onSurface,
     required Color muted,
+    bool oled = false,
   }) {
     final isDark = brightness == Brightness.dark;
     final colorScheme = ColorScheme(
@@ -169,7 +172,7 @@ class AppTheme {
           ? const Color(0xFF3A3A4E)
           : const Color(0xFFD8D8DC),
       surfaceContainerHighest: isDark
-          ? const Color(0xFF2A2A3E)
+          ? (oled ? const Color(0xFF17171F) : const Color(0xFF2A2A3E))
           : const Color(0xFFE8E8EC),
     );
 

@@ -1,12 +1,22 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../../../core/build_config.dart';
+import '../../../core/providers/beta_provider.dart';
 import '../../../core/services/app_logger.dart';
+import '../../../core/services/doh/doh_provider.dart';
+import '../../../core/services/doh/doh_resolver.dart';
+import '../../../core/services/download_service.dart';
 import '../../../core/services/image_loader.dart';
+import '../../../eval/kotlin/jvm_bridge.dart';
+import '../../../core/services/settings_store.dart';
 import '../../../theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import 'gaze_lab_screen.dart';
 
 /// Advanced preference keys. Switches persist; some have no runtime effect
 /// yet (DNS-over-HTTPS, third-party extensions, external browser) — those
@@ -30,6 +40,7 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
   bool _verboseLogging = false;
   bool _dnsOverHttps = false;
   String _dnsProvider = 'Cloudflare';
+  List<DohProvider> _customDns = [];
   bool _thirdPartyExtensions = false;
   bool _extensionUpdateNotify = true;
   bool _externalBrowser = false;
@@ -41,27 +52,229 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
   }
 
   Future<void> _loadPrefs() async {
-    final p = await SharedPreferences.getInstance();
     setState(() {
-      _verboseLogging = p.getBool(AdvancedPrefs.verboseLogging) ?? false;
-      _dnsOverHttps = p.getBool(AdvancedPrefs.dnsOverHttps) ?? false;
-      _dnsProvider = p.getString(AdvancedPrefs.dnsProvider) ?? 'Cloudflare';
+      _verboseLogging =
+          SettingsStore.instance.getBool(AdvancedPrefs.verboseLogging) ?? false;
+      _dnsOverHttps =
+          SettingsStore.instance.getBool(AdvancedPrefs.dnsOverHttps) ?? false;
+      _dnsProvider =
+          SettingsStore.instance.getString(AdvancedPrefs.dnsProvider) ??
+              'Cloudflare';
+      _customDns = DohCustomStore.load();
       _thirdPartyExtensions =
-          p.getBool(AdvancedPrefs.thirdPartyExtensions) ?? false;
+          SettingsStore.instance.getBool(AdvancedPrefs.thirdPartyExtensions) ??
+              false;
       _extensionUpdateNotify =
-          p.getBool(AdvancedPrefs.extensionUpdateNotify) ?? true;
-      _externalBrowser = p.getBool(AdvancedPrefs.externalBrowser) ?? false;
+          SettingsStore.instance.getBool(AdvancedPrefs.extensionUpdateNotify) ??
+              true;
+      _externalBrowser =
+          SettingsStore.instance.getBool(AdvancedPrefs.externalBrowser) ??
+              false;
     });
   }
 
   Future<void> _setBool(String key, bool value) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool(key, value);
+    await SettingsStore.instance.setBool(key, value);
   }
 
   Future<void> _setString(String key, String value) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setString(key, value);
+    await SettingsStore.instance.setString(key, value);
+  }
+
+  // ── DNS-over-HTTPS provider management ───────────────────────────────────
+
+  /// Apply a DoH change immediately (without an app restart) by dropping the
+  /// cached HTTP clients + resolver cache so the next request rebuilds them.
+  void _applyDnsChange() {
+    DohResolver.instance.clearCache();
+    // Force cached source-extension clients to rebuild with the new DNS setting
+    // on their next request (ImageLoader/DownloadService are reset outright).
+    DohResolver.instance.bumpClientGeneration();
+    ImageLoader().resetHttpClient();
+    DownloadService().resetHttpClient();
+    // Push to the Kotlin extension lane too (Android OkHttp Dns / iOS JVM
+    // resolver). Best-effort; no-op when there's no embedded JVM/ART host.
+    final doh = jvmDohConfig();
+    FoxJvm.setDoh(doh.enabled, doh.url);
+  }
+
+  /// Display label of the currently-selected provider.
+  String _selectedDnsLabel() {
+    final p = DohProviders.byId(_dnsProvider, _customDns);
+    return p?.label ?? DohProviders.cloudflare.label;
+  }
+
+  Future<void> _selectDns(String id) async {
+    setState(() => _dnsProvider = id);
+    await _setString(AdvancedPrefs.dnsProvider, id);
+    _applyDnsChange();
+  }
+
+  void _openDnsProviderSheet() {
+    final cs = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cs.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) {
+          Widget row(DohProvider p) {
+            final selected = p.id == _dnsProvider;
+            return ListTile(
+              leading: Icon(
+                  selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: selected ? cs.primary : cs.outline),
+              title: Text(p.label,
+                  style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+              subtitle: Text(p.queryUrl,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+              trailing: p.isCustom
+                  ? IconButton(
+                      icon: Icon(Icons.delete_outline_rounded, color: cs.error),
+                      tooltip: 'Delete',
+                      onPressed: () async {
+                        await _confirmDeleteCustomDns(p);
+                        setSheet(() {});
+                      },
+                    )
+                  : null,
+              onTap: () {
+                _selectDns(p.id);
+                Navigator.pop(sheetCtx);
+              },
+            );
+          }
+
+          return SafeArea(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                child: Row(children: [
+                  Text('DNS provider',
+                      style: GoogleFonts.manrope(
+                          fontWeight: FontWeight.w700, fontSize: 15)),
+                ]),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    ...DohProviders.presets.map(row),
+                    ..._customDns.map(row),
+                    ListTile(
+                      leading: Icon(Icons.add_rounded, color: cs.primary),
+                      title: Text('Add custom DNS',
+                          style: GoogleFonts.manrope(
+                              fontWeight: FontWeight.w600, color: cs.primary)),
+                      onTap: () async {
+                        final added = await _addCustomDnsDialog();
+                        if (added) setSheet(() {});
+                      },
+                    ),
+                  ]),
+                ),
+              ),
+            ]),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Add-custom dialog (name + https URL). Returns true if one was added.
+  Future<bool> _addCustomDnsDialog() async {
+    final cs = Theme.of(context).colorScheme;
+    final nameCtl = TextEditingController();
+    final urlCtl = TextEditingController();
+    final added = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        String? error;
+        return StatefulBuilder(
+          builder: (ctx, setDlg) => AlertDialog(
+            backgroundColor: cs.surface,
+            title: const Text('Add custom DNS'),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(
+                controller: nameCtl,
+                decoration: const InputDecoration(
+                    labelText: 'Name', hintText: 'My DNS'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: urlCtl,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: 'DoH URL',
+                  hintText: 'https://example.com/dns-query',
+                  errorText: error,
+                ),
+              ),
+            ]),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel')),
+              FilledButton(
+                onPressed: () {
+                  final url = urlCtl.text.trim();
+                  if (!DohProviders.isValidUrl(url)) {
+                    setDlg(() => error = 'Enter a valid https:// URL');
+                    return;
+                  }
+                  Navigator.pop(ctx, true);
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (added == true) {
+      final provider = await DohCustomStore.add(nameCtl.text, urlCtl.text);
+      setState(() => _customDns = DohCustomStore.load());
+      await _selectDns(provider.id); // select the new one
+      nameCtl.dispose();
+      urlCtl.dispose();
+      return true;
+    }
+    nameCtl.dispose();
+    urlCtl.dispose();
+    return false;
+  }
+
+  Future<void> _confirmDeleteCustomDns(DohProvider p) async {
+    final cs = Theme.of(context).colorScheme;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
+        title: const Text('Delete custom DNS?'),
+        content: Text('Remove "${p.label}" from your DNS providers?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: cs.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await DohCustomStore.remove(p.id);
+    setState(() => _customDns = DohCustomStore.load());
+    // If the deleted one was selected, fall back to Cloudflare.
+    if (_dnsProvider == p.id) {
+      await _selectDns(DohProviders.cloudflare.id);
+    }
   }
 
   Future<void> _clearChapterCache() async {
@@ -145,6 +358,15 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
         padding: EdgeInsets.only(
             top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
         children: [
+          _SectionHeader(title: t.setxAdvancedSectionBeta),
+          _SwitchTile(
+              icon: Icons.science_rounded,
+              iconColor: AppTheme.warning,
+              title: t.setxAdvancedBeta,
+              subtitle: t.setxAdvancedBetaDesc,
+              value: context.watch<BetaProvider>().enabled,
+              onChanged: (v) => context.read<BetaProvider>().setEnabled(v)),
+          const SizedBox(height: 8),
           _SectionHeader(title: t.setxAdvancedSectionLogging),
           _SwitchTile(icon: Icons.bug_report_rounded, iconColor: cs.outline,
               title: t.setxAdvancedVerboseLoggingTitle, subtitle: t.setxAdvancedVerboseLoggingSubtitle,
@@ -156,22 +378,30 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
               title: t.setxAdvancedViewErrorLogsTitle, subtitle: t.setxAdvancedViewErrorLogsSubtitle,
               onTap: () => Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const ErrorLogViewerPage()))),
+          // Dev-only — never ships in public builds (built without FOX_DEV).
+          if (Platform.isIOS && kDevBuild)
+            _ActionTile(icon: Icons.center_focus_strong_rounded,
+                iconColor: AppTheme.secondary,
+                title: 'Gaze Lab (dev)',
+                subtitle: 'Live eye-tracking tuning + manual calibration',
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const GazeLabScreen()))),
           const SizedBox(height: 8),
           _SectionHeader(title: t.setxAdvancedSectionNetwork),
           _SwitchTile(icon: Icons.dns_rounded, iconColor: const Color(0xFF06B6D4),
               title: t.setxAdvancedDnsOverHttpsTitle, subtitle: t.setxAdvancedDnsOverHttpsSubtitle,
-              value: _dnsOverHttps, onChanged: (v) {
+              value: _dnsOverHttps, onChanged: (v) async {
                 setState(() => _dnsOverHttps = v);
-                _setBool(AdvancedPrefs.dnsOverHttps, v);
+                // Await the write so _applyDnsChange reads the NEW flag value
+                // (jvmDohConfig/dohDnsSettingsOrNull both read it from the store).
+                await _setBool(AdvancedPrefs.dnsOverHttps, v);
+                _applyDnsChange();
               }),
           if (_dnsOverHttps)
-            _ChoiceTile(icon: Icons.cloud_rounded, iconColor: const Color(0xFF06B6D4),
-                title: t.setxAdvancedDnsProviderTitle, value: _dnsProvider,
-                options: const ['Cloudflare', 'Google', 'AdGuard', 'Custom'],
-                onChanged: (v) {
-                  setState(() => _dnsProvider = v);
-                  _setString(AdvancedPrefs.dnsProvider, v);
-                }),
+            _DnsProviderTile(
+              selectedLabel: _selectedDnsLabel(),
+              onTap: _openDnsProviderSheet,
+            ),
           const SizedBox(height: 8),
           _SectionHeader(title: t.setxAdvancedSectionExtensions),
           _SwitchTile(icon: Icons.extension_rounded, iconColor: AppTheme.warning,
@@ -537,50 +767,16 @@ class _FilterDropdown<T> extends StatelessWidget {
   }
 }
 
-class _ChoiceTile extends StatelessWidget {
-  final IconData icon; final Color iconColor; final String title; final String value;
-  final List<String> options; final ValueChanged<String> onChanged;
-  const _ChoiceTile({required this.icon, required this.iconColor, required this.title,
-      required this.value, required this.options, required this.onChanged});
+/// Tappable tile that shows the selected DoH provider and opens the manager.
+class _DnsProviderTile extends StatelessWidget {
+  final String selectedLabel;
+  final VoidCallback onTap;
+  const _DnsProviderTile({required this.selectedLabel, required this.onTap});
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
-      onTap: () {
-        showModalBottomSheet(
-          context: context, backgroundColor: cs.surface,
-          shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLarge))),
-          builder: (_) => Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 36, height: 4,
-                  decoration: BoxDecoration(color: cs.outline, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 16),
-              Text(title, style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
-              Divider(color: cs.outlineVariant),
-              ...options.map((opt) {
-                final isSelected = opt == value;
-                return InkWell(
-                  onTap: () { onChanged(opt); Navigator.pop(context); },
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    decoration: BoxDecoration(
-                        color: isSelected ? cs.primary.withAlpha(26) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-                    child: Row(children: [
-                      Expanded(child: Text(opt, style: GoogleFonts.manrope(
-                          fontSize: 14, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, color: cs.onSurface))),
-                      if (isSelected) Icon(Icons.check_rounded, size: 18, color: cs.primary),
-                    ]),
-                  ),
-                );
-              }),
-            ]),
-          ),
-        );
-      },
+      onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -589,11 +785,11 @@ class _ChoiceTile extends StatelessWidget {
             border: Border.all(color: cs.outlineVariant)),
         child: Row(children: [
           Container(width: 36, height: 36,
-              decoration: BoxDecoration(color: iconColor.withAlpha(25), borderRadius: BorderRadius.circular(10)),
-              child: Icon(icon, color: iconColor, size: 18)),
+              decoration: BoxDecoration(color: const Color(0xFF06B6D4).withAlpha(25), borderRadius: BorderRadius.circular(10)),
+              child: const Icon(Icons.cloud_rounded, color: Color(0xFF06B6D4), size: 18)),
           const SizedBox(width: 12),
-          Expanded(child: Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface))),
-          Text(value, style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+          Expanded(child: Text('DNS provider', style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface))),
+          Text(selectedLabel, style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
           const SizedBox(width: 4),
           Icon(Icons.chevron_right_rounded, color: cs.outline, size: 20),
         ]),

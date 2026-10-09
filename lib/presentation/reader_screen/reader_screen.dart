@@ -2,17 +2,22 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:rhttp/rhttp.dart' as rhttp;
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:gal/gal.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import '../../core/services/image_loader.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/reader_provider.dart';
 import '../../core/providers/library_provider.dart';
 import '../../core/providers/tracking_provider.dart';
 import '../../core/providers/download_provider.dart';
+import '../../core/providers/incognito_provider.dart';
 import '../library_screen/library_screen.dart' show kBookmarkedMangaIdsKey;
 import '../../l10n/app_localizations.dart';
 import '../../eval/model/page_url.dart';
@@ -20,9 +25,14 @@ import '../../theme/app_theme.dart';
 import '../widgets/manga_image.dart';
 import 'widgets/reader_translation_provider_sheet.dart';
 import 'widgets/reader_translation_overlay.dart';
+import 'widgets/radial_reader_menu.dart';
 import '../../core/services/ai_translation_service.dart';
 import '../../core/services/koharu_service.dart';
 import '../../core/services/volume_keys.dart';
+import '../../core/services/gaze_scroll_service.dart';
+import '../../core/services/tilt_scroll_service.dart';
+import '../../core/services/app_logger.dart';
+import '../../core/services/settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ReaderScreen extends StatelessWidget {
@@ -50,11 +60,50 @@ class ReaderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sourceProvider = context.read<SourceProvider>();
-    final installed = sourceProvider.getInstalledSource(sourceId);
+    final installed = sourceProvider.resolveInstalled(sourceId);
 
     if (installed == null) {
+      final t = AppLocalizations.of(context);
+      final cs = Theme.of(context).colorScheme;
       return Scaffold(
-        body: Center(child: Text(AppLocalizations.of(context).readerSourceNotInstalled)),
+        // A plain Center had no way back out — the user was stuck on a black
+        // screen (common after a backup restore before sources are reinstalled).
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: const BackButton(),
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.extension_off_rounded, size: 48, color: cs.outline),
+                const SizedBox(height: 16),
+                Text(
+                  t.readerSourceNotInstalled,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.manrope(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  t.readerSourceNotInstalledHint,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.manrope(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -108,7 +157,16 @@ class _ReaderBodyState extends State<_ReaderBody>
   final ScrollOffsetController _scrollOffsetController = ScrollOffsetController();
   int _sliderPage = 0; // Tracks slider position during drag
   bool _isInteracting = false; // User is touching HUD elements
+  // Last first-visible position, to tell a real scroll from a spurious itemPositions
+  // re-emit (layout passes, e.g. the rebuild when a tap reveals the HUD).
+  int? _lastFirstIndex;
+  double? _lastLeadingEdge;
   bool _sliderInitialized = false; // One-time sync after pages load
+  // HUD shows briefly on entry, then hides once the first page image loads.
+  // Once the user taps/scrolls (or the fallback fires), the initial phase is
+  // "resolved" and the HUD is purely tap/scroll-driven after that.
+  bool _initialHudResolved = false;
+  DateTime? _enteredAt;
   // Last wakelock state we pushed to the OS, so build() only calls the plugin
   // when the "Keep Screen On" setting actually changes rather than every frame.
   bool? _wakelockApplied;
@@ -124,6 +182,13 @@ class _ReaderBodyState extends State<_ReaderBody>
   // size feeds the overlay's letterbox math; _pageTranslating guards re-runs.
   final Map<int, List<TranslationBubble>> _pageBubbles = {};
   final Map<int, Size> _pageImgSize = {};
+  // Dual-page (landscape) reader: the current page→slot grouping, the pages
+  // detected as wide double-spreads (shown on their own when split-wide is on),
+  // and whether dual-page was active on the previous build (so a rotation that
+  // flips the mode can re-anchor the controller onto the right spread).
+  List<List<int>> _slots = const [];
+  final Set<int> _widePages = {};
+  bool? _lastDualActive;
   final Set<int> _pageTranslating = {};
   final Set<int> _pageDone = {}; // attempted (success OR fail) — don't re-run
   bool get _isTranslating => _pageTranslating.isNotEmpty;
@@ -140,6 +205,14 @@ class _ReaderBodyState extends State<_ReaderBody>
     // once the provider has finished loading prefs (see post-frame callback
     // below).
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Allow landscape while reading (the rest of the app is portrait) so the
+    // double-page layout can engage when the phone is turned sideways. Reset on
+    // dispose.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     _hudController = AnimationController(
       duration: AppTheme.standard,
       vsync: this,
@@ -162,18 +235,36 @@ class _ReaderBodyState extends State<_ReaderBody>
       setState(() => _sliderPage = reader.currentPage);
       _hudController.forward();
       reader.toggleHud();
-      _scheduleAutoHide(reader);
+      _enteredAt = DateTime.now();
+      // Fallback: if no page image ever reports loaded (e.g. all error out),
+      // still end the entry phase so the HUD doesn't sit there forever.
+      Future.delayed(const Duration(seconds: 5), _resolveInitialHud);
       _loadProviderName();
     });
     // Volume-button page navigation (Android, opt-in). Only while a reader is open —
     // disabled again in dispose so the buttons control volume elsewhere. Read the pref
     // directly so a not-yet-loaded provider can't leave it off.
     _maybeEnableVolumeKeys();
+    _maybeEnableGaze();
+    _maybeEnableTilt();
+    _loadBookmarks();
+    _loadRadialSettings();
+  }
+
+  Future<void> _loadRadialSettings() async {
+    final prefs = SettingsStore.instance;
+    if (!mounted) return;
+    setState(() {
+      _radialEnabled = prefs.getBool('reader_radial_enabled') ?? false;
+      _radialLeftSide =
+          (prefs.getString('reader_radial_side') ?? 'right') == 'left';
+    });
   }
 
   Future<void> _maybeEnableVolumeKeys() async {
-    final prefs = await SharedPreferences.getInstance();
-    final on = prefs.getBool('reader_volume_keys') ?? false;
+    final prefs = SettingsStore.instance;
+    final beta = prefs.getBool('beta_features_enabled') ?? false; // volume-key nav is beta
+    final on = beta && (prefs.getBool('reader_volume_keys') ?? false);
     _volScrollSpeed = prefs.getDouble('reader_volume_scroll_speed') ?? 600.0;
     if (on && mounted) {
       VolumeKeys.enable(_onVolumeKey);
@@ -202,6 +293,19 @@ class _ReaderBodyState extends State<_ReaderBody>
   Timer? _holdScrollTimer;
   bool _holdScrolling = false;
   double _volScrollSpeed = 600.0;
+  // Hands-free (gaze) scrolling — iOS only.
+  Timer? _gazeTimer;
+  int _gazeDelta = 0;
+  double _gazeSpeed = 0;
+  bool _gazeActive = false;
+  bool _gazeSupported = false;
+  bool _tiltActive = false;
+  final Set<String> _bookmarks = {};
+
+  // In-reader radial control (opt-in) — see RadialReaderMenu. When enabled it
+  // replaces the classic top/bottom bars with two corner anchors.
+  bool _radialEnabled = false;
+  bool _radialLeftSide = false;
 
   /// Volume-key handler. dir = 'up'|'down', phase = 'down'|'up'.
   /// - Paged (ltr/rtl): each press flips one page.
@@ -239,7 +343,10 @@ class _ReaderBodyState extends State<_ReaderBody>
     final reader = context.read<ReaderProvider>();
     final base = _navTarget ?? _currentReaderPage(reader);
     final target = base + delta;
-    if (target >= 0 && target <= reader.totalPages - 1) {
+    // In paged mode _currentReaderPage is the controller's slot index, so bound
+    // the flip by the slot count (== page count outside dual-page mode).
+    final maxSlot = (_slots.isNotEmpty ? _slots.length : reader.totalPages) - 1;
+    if (target >= 0 && target <= maxSlot) {
       _navTarget = target;
       _navResetTimer?.cancel();
       _navResetTimer =
@@ -307,6 +414,26 @@ class _ReaderBodyState extends State<_ReaderBody>
       reader.setPage(page);
       if (mounted) setState(() => _sliderPage = page);
       _updateProgress(reader, page);
+      _initialHudResolved = true; // a real scroll ends the entry phase
+    }
+
+    // Only treat this as a SCROLL when the viewport actually moved. itemPositions
+    // re-emits on layout passes too — notably the rebuild that happens when a tap
+    // reveals the HUD — and hiding on those spurious emits made the HUD vanish the
+    // instant it appeared ("I tap and it disappears almost instantly"). Compare the
+    // first-visible item's index + leading edge against the last to detect real motion.
+    final movedIndex = _lastFirstIndex != null && firstVisible.index != _lastFirstIndex;
+    final movedEdge = _lastLeadingEdge != null &&
+        (firstVisible.itemLeadingEdge - _lastLeadingEdge!).abs() > 0.004;
+    final scrolled = movedIndex || movedEdge;
+    _lastFirstIndex = firstVisible.index;
+    _lastLeadingEdge = firstVisible.itemLeadingEdge;
+
+    // A real scroll hides the controls — but only once the entry phase is over, so
+    // layout settling as pages load doesn't yank the HUD away on first open.
+    if (scrolled && _initialHudResolved && reader.showHud && !_isInteracting) {
+      _hudController.reverse();
+      reader.toggleHud();
     }
 
     // Trigger next chapter when user scrolls to end card (only when
@@ -325,9 +452,359 @@ class _ReaderBodyState extends State<_ReaderBody>
     if (_isTranslationActive) _translateVisiblePages();
   }
 
+  // ── Hands-free (gaze) scrolling ──────────────────────
+  // iOS-only: continuous modes drive the fluid scroll loop; paged modes flip one
+  // page per look (native emits one decision per dwell).
+  Future<void> _maybeEnableGaze() async {
+    _gazeSupported = await GazeScroll.isSupported();
+    if (mounted) setState(() {});
+    if (!_gazeSupported) return;
+    final prefs = SettingsStore.instance;
+    if (!(prefs.getBool('beta_features_enabled') ?? false)) return; // hands-free is beta
+    if (!(prefs.getBool('reader_gaze_enabled') ?? false)) return;
+    await _startGaze(prefs);
+  }
+
+  Future<void> _startGaze(SettingsStore prefs) async {
+    _volScrollSpeed = prefs.getDouble('reader_volume_scroll_speed') ?? 600.0;
+    await GazeScroll.updateSettings(GazeSettings(
+      mode: prefs.getString('reader_gaze_mode') ?? 'combined',
+      threshold: prefs.getDouble('reader_gaze_threshold') ?? 0.8,
+      dwellMs: (prefs.getDouble('reader_gaze_dwell') ?? 300).round(),
+      smoothing: prefs.getDouble('reader_gaze_smoothing') ?? 0.25,
+      useGeometric: prefs.getBool('reader_gaze_geometric') ?? true,
+    ));
+    if (!mounted) return;
+    await GazeScroll.enable(_onGaze);
+    if (mounted) setState(() => _gazeActive = true);
+  }
+
+  Future<void> _toggleGaze() async {
+    final prefs = SettingsStore.instance;
+    if (_gazeActive) {
+      await GazeScroll.disable();
+      await prefs.setBool('reader_gaze_enabled', false);
+      _stopGazeScroll();
+      if (mounted) setState(() => _gazeActive = false);
+      return;
+    }
+    if (!await _confirmGazeCamera()) return;
+    // Mutual exclusivity: gaze replaces tilt + volume.
+    if (_tiltActive) {
+      await TiltScroll.disable();
+      if (mounted) setState(() => _tiltActive = false);
+    }
+    VolumeKeys.disable();
+    await prefs.setBool('reader_tilt_enabled', false);
+    await prefs.setBool('reader_volume_keys', false);
+    await prefs.setBool('reader_gaze_enabled', true);
+    await _startGaze(prefs);
+  }
+
+  Future<bool> _confirmGazeCamera() async {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cs.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(t.readerGazeCameraTitle,
+            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: Text(t.readerGazeCameraWarning,
+            style: GoogleFonts.manrope(fontSize: 13)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(t.readerCancel)),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(t.readerEnable)),
+        ],
+      ),
+    );
+    return ok ?? false;
+  }
+
+  void _onGaze(GazeEvent e) {
+    if (!mounted) return;
+    logger.info(
+        'Hands-free: ${e.direction.name} @ ${e.intensity.toStringAsFixed(2)}',
+        category: LogCategory.general);
+    // Paged modes: one flip per discrete look.
+    if (_pageController?.hasClients == true) {
+      if (e.direction == GazeDirection.down) {
+        _flipPage(1);
+      } else if (e.direction == GazeDirection.up) {
+        _flipPage(-1);
+      }
+      return;
+    }
+    // Continuous modes: fluid scroll loop.
+    if (e.direction == GazeDirection.none) {
+      _stopGazeScroll();
+      return;
+    }
+    _gazeDelta = e.direction == GazeDirection.down ? 1 : -1;
+    _gazeSpeed = _volScrollSpeed * (0.35 + 0.65 * e.intensity.clamp(0.0, 1.0));
+    _beginGazeScroll();
+  }
+
+  void _beginGazeScroll() {
+    const tick = Duration(milliseconds: 100);
+    void scrollOnce() {
+      if (!mounted || _gazeDelta == 0) return;
+      final step = _gazeDelta * _gazeSpeed * (tick.inMilliseconds / 1000.0);
+      try {
+        _scrollOffsetController.animateScroll(
+            offset: step, duration: tick, curve: Curves.linear);
+      } catch (_) {}
+    }
+
+    scrollOnce();
+    _gazeTimer ??= Timer.periodic(tick, (_) {
+      if (!mounted || _gazeDelta == 0) {
+        _gazeTimer?.cancel();
+        _gazeTimer = null;
+        return;
+      }
+      scrollOnce();
+    });
+  }
+
+  void _stopGazeScroll() {
+    _gazeDelta = 0;
+    _gazeTimer?.cancel();
+    _gazeTimer = null;
+  }
+
+  // Tilt-to-scroll reuses the gaze scroll path (mutually exclusive with gaze).
+  void _onTilt(TiltEvent e) {
+    final dir = e.direction == TiltDirection.down
+        ? GazeDirection.down
+        : (e.direction == TiltDirection.up
+            ? GazeDirection.up
+            : GazeDirection.none);
+    _onGaze(GazeEvent(dir, e.intensity));
+  }
+
+  Future<void> _maybeEnableTilt() async {
+    final prefs = SettingsStore.instance;
+    if (!(prefs.getBool('beta_features_enabled') ?? false)) return; // hands-free is beta
+    if (!(prefs.getBool('reader_tilt_enabled') ?? false)) return;
+    await _startTilt(prefs);
+  }
+
+  Future<void> _startTilt(SettingsStore prefs) async {
+    _volScrollSpeed = prefs.getDouble('reader_volume_scroll_speed') ?? 600.0;
+    TiltScroll.updateSettings(TiltSettings(
+      threshold: prefs.getDouble('reader_tilt_threshold') ?? 0.20,
+      smoothing: prefs.getDouble('reader_tilt_smoothing') ?? 0.20,
+    ));
+    await TiltScroll.enable(_onTilt);
+    if (mounted) setState(() => _tiltActive = true);
+  }
+
+  Future<void> _toggleTilt() async {
+    final prefs = SettingsStore.instance;
+    if (_tiltActive) {
+      await TiltScroll.disable();
+      await prefs.setBool('reader_tilt_enabled', false);
+      _stopGazeScroll();
+      if (mounted) setState(() => _tiltActive = false);
+      return;
+    }
+    // Mutual exclusivity: tilt replaces gaze + volume.
+    if (_gazeActive) {
+      await GazeScroll.disable();
+      await prefs.setBool('reader_gaze_enabled', false);
+      if (mounted) setState(() => _gazeActive = false);
+    }
+    VolumeKeys.disable();
+    await prefs.setBool('reader_volume_keys', false);
+    await prefs.setBool('reader_tilt_enabled', true);
+    await _startTilt(prefs);
+  }
+
+  // Long-press the in-reader hands-free toggle → quick options for the active
+  // input (sensitivity / speed / mode / recalibrate), applied live.
+  Future<void> _openHandsFreeMenu() async {
+    if (!_gazeActive && !_tiltActive) return;
+    final isGaze = _gazeActive;
+    final prefs = SettingsStore.instance;
+    if (!mounted) return;
+    final t = AppLocalizations.of(context);
+    final cs = Theme.of(context).colorScheme;
+    double sensitivity = isGaze
+        ? (prefs.getDouble('reader_gaze_threshold') ?? 0.8)
+        : (prefs.getDouble('reader_tilt_threshold') ?? 0.20);
+    double speed = (prefs.getDouble('reader_volume_scroll_speed') ?? 600.0)
+        .clamp(150.0, 2000.0);
+    String mode = prefs.getString('reader_gaze_mode') ?? 'combined';
+
+    void push() {
+      if (isGaze) {
+        GazeScroll.updateSettings(GazeSettings(
+          mode: mode,
+          threshold: sensitivity,
+          dwellMs: (prefs.getDouble('reader_gaze_dwell') ?? 300).round(),
+          smoothing: prefs.getDouble('reader_gaze_smoothing') ?? 0.25,
+          useGeometric: prefs.getBool('reader_gaze_geometric') ?? true,
+        ));
+      } else {
+        TiltScroll.updateSettings(TiltSettings(
+          threshold: sensitivity,
+          smoothing: prefs.getDouble('reader_tilt_smoothing') ?? 0.20,
+        ));
+      }
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: cs.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(
+              20, 16, 20, 16 + MediaQuery.of(sheetCtx).padding.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(t.readerHandsFreeOptions,
+                  style: GoogleFonts.manrope(
+                      fontWeight: FontWeight.w700, fontSize: 15)),
+              const SizedBox(height: 8),
+              Text(t.readerGazeSensitivity,
+                  style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+              Slider(
+                value: sensitivity,
+                min: isGaze ? 0.25 : 0.08,
+                max: isGaze ? 0.9 : 0.5,
+                onChanged: (v) => setSheet(() => sensitivity = v),
+                onChangeEnd: (v) {
+                  prefs.setDouble(
+                      isGaze ? 'reader_gaze_threshold' : 'reader_tilt_threshold',
+                      v);
+                  push();
+                },
+              ),
+              Text(t.readerScrollSpeed,
+                  style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+              Slider(
+                value: speed,
+                min: 150,
+                max: 2000,
+                onChanged: (v) => setSheet(() => speed = v),
+                onChangeEnd: (v) {
+                  prefs.setDouble('reader_volume_scroll_speed', v);
+                  if (mounted) setState(() => _volScrollSpeed = v);
+                },
+              ),
+              if (isGaze) ...[
+                Text(t.readerGazeMode,
+                    style:
+                        GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+                const SizedBox(height: 6),
+                Wrap(spacing: 8, children: [
+                  for (final m in const ['eyesOnly', 'headOnly', 'combined'])
+                    ChoiceChip(
+                      label: Text(m == 'eyesOnly'
+                          ? 'Eyes'
+                          : (m == 'headOnly' ? 'Head' : 'Both')),
+                      selected: mode == m,
+                      onSelected: (_) {
+                        setSheet(() => mode = m);
+                        prefs.setString('reader_gaze_mode', m);
+                        push();
+                      },
+                    ),
+                ]),
+              ],
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: () {
+                    Navigator.pop(sheetCtx);
+                    _recalibrateHandsFree(isGaze);
+                  },
+                  icon: const Icon(Icons.center_focus_strong_rounded),
+                  label: Text(t.readerGazeCalibrate),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _recalibrateHandsFree(bool isGaze) {
+    final t = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content:
+            Text(isGaze ? t.readerGazeCalibrating : t.readerTiltCalibrating),
+        duration: const Duration(milliseconds: 1600)));
+    if (isGaze) {
+      GazeScroll.calibrate(durationMs: 1500);
+    } else {
+      TiltScroll.calibrate(durationMs: 1200);
+    }
+  }
+
+  // Per-chapter bookmarks — shared with the detail screen via the same key.
+  Future<void> _loadBookmarks() async {
+    if (widget.mangaUrl == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(
+              'manga_bookmarks_${widget.sourceId}_${widget.mangaUrl}') ??
+          const [];
+      if (mounted && list.isNotEmpty) {
+        setState(() => _bookmarks
+          ..clear()
+          ..addAll(list));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleCurrentBookmark() async {
+    if (widget.mangaUrl == null) return;
+    final chapterUrl = context.read<ReaderProvider>().currentChapterUrl;
+    if (chapterUrl.isEmpty) return;
+    setState(() {
+      if (_bookmarks.contains(chapterUrl)) {
+        _bookmarks.remove(chapterUrl);
+      } else {
+        _bookmarks.add(chapterUrl);
+      }
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'manga_bookmarks_${widget.sourceId}_${widget.mangaUrl}';
+      if (_bookmarks.isEmpty) {
+        await prefs.remove(key);
+      } else {
+        await prefs.setStringList(key, _bookmarks.toList());
+      }
+    } catch (_) {}
+  }
+
+  // Captured from _updateProgress so dispose can refresh the library's
+  // "Continue reading" ONCE on exit — the per-page save no longer notifies.
+  LibraryProvider? _libRef;
+
   @override
   void dispose() {
+    // One reload so the library reflects where we left off (progress was saved
+    // per-page without notifying, to avoid rebuilding the library each flip).
+    _libRef?.reload();
     VolumeKeys.disable();
+    GazeScroll.disable();
+    TiltScroll.disable();
+    _gazeTimer?.cancel();
     _navResetTimer?.cancel();
     _holdTimer?.cancel();
     _holdScrollTimer?.cancel();
@@ -337,6 +814,8 @@ class _ReaderBodyState extends State<_ReaderBody>
     _scrollController?.dispose();
     _translationAnimController.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // Back to portrait-only for the rest of the app (matches the player's exit).
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     // Never leave the wakelock held once the reader is gone.
     if (_wakelockApplied == true) {
       WakelockPlus.disable().catchError((_) {});
@@ -355,17 +834,48 @@ class _ReaderBodyState extends State<_ReaderBody>
   }
 
   void _toggleHud(ReaderProvider reader) {
-    if (reader.showHud) {
-      if (_isInteracting) return; // Don't hide while user is interacting
-      _hudController.reverse();
-    } else {
-      _hudController.forward();
-      _scheduleAutoHide(reader);
-    }
+    _initialHudResolved = true; // a screen tap means the user is driving now
+    // Don't hide while the user is mid-interaction with a HUD control.
+    if (reader.showHud && _isInteracting) return;
+    // Flip the source of truth FIRST, then drive the animation to match it. Driving
+    // the controller off the OLD state (as before) could leave showHud=true while the
+    // fade sat at 0 — the HUD was "shown" but invisible, so a tap appeared to do nothing
+    // ("the menu doesn't reappear"). Syncing to the new state makes tap-to-reveal reliable
+    // in BOTH the classic bars and the radial wheel (whose visibility follows showHud).
     reader.toggleHud();
+    if (reader.showHud) {
+      _hudController.forward(); // tap to reveal — stays until next tap or scroll
+    } else {
+      _hudController.reverse();
+    }
   }
 
+  /// Called when a page image finishes loading. The first one to load ends the
+  /// "show briefly on entry" phase and hides the HUD — after a short minimum so
+  /// it's actually on screen for a beat first.
+  void _onPageImageLoaded() {
+    if (_initialHudResolved || !mounted) return;
+    final elapsed =
+        DateTime.now().difference(_enteredAt ?? DateTime.now()).inMilliseconds;
+    final wait = elapsed < 700 ? 700 - elapsed : 0;
+    Future.delayed(Duration(milliseconds: wait), _resolveInitialHud);
+  }
+
+  void _resolveInitialHud() {
+    if (_initialHudResolved || !mounted) return;
+    _initialHudResolved = true;
+    final reader = context.read<ReaderProvider>();
+    if (reader.showHud && !_isInteracting) {
+      _hudController.reverse();
+      reader.toggleHud();
+    }
+  }
+
+  // Re-hide the HUD a few seconds after the user finishes fiddling with a HUD
+  // control (slider/menu). NOT used for a plain screen tap — a tapped-open HUD
+  // stays until the next tap or scroll.
   void _scheduleAutoHide(ReaderProvider reader) {
+    _initialHudResolved = true;
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted && reader.showHud && !_isInteracting) {
         _hudController.reverse();
@@ -400,6 +910,13 @@ class _ReaderBodyState extends State<_ReaderBody>
           backgroundColor: _bgColorFor(reader.settings.bgColor, context),
           body: Stack(
             children: [
+              // Tap anywhere — even on loading/error/gaps — toggles the controls.
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () => _toggleHud(reader),
+                ),
+              ),
               // Page content
               if (reader.isLoading && reader.pages.isEmpty)
                 Center(
@@ -409,6 +926,51 @@ class _ReaderBodyState extends State<_ReaderBody>
                 _buildError(reader)
               else
                 _buildReader(context, reader),
+
+              // Eye-comfort overlays — above the pages, below the controls, and
+              // non-interactive. Warm sepia tint for reduced blue light, plus an
+              // in-app dim that can go darker than the system's minimum.
+              if (reader.settings.warmTint > 0)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ColoredBox(
+                      color: const Color(0xFFFF9500).withAlpha(
+                          (reader.settings.warmTint * 0.40 * 255).round()),
+                    ),
+                  ),
+                ),
+              if (reader.settings.brightness < 1.0)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: ColoredBox(
+                      color: Colors.black.withAlpha(
+                          ((1.0 - reader.settings.brightness) * 255)
+                              .round()
+                              .clamp(0, 217)),
+                    ),
+                  ),
+                ),
+
+              if ((_gazeActive || _tiltActive) && !_radialEnabled)
+                PositionedDirectional(
+                  top: MediaQuery.of(context).padding.top + 8,
+                  end: 12,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Icon(
+                          _gazeActive
+                              ? Icons.visibility_rounded
+                              : Icons.screen_rotation_rounded,
+                          size: 16,
+                          color: Colors.white),
+                    ),
+                  ),
+                ),
 
               // Translation bubbles are now drawn per-page (see _buildPageImage
               // and the paginated itemBuilder) so they ride along with each
@@ -446,8 +1008,10 @@ class _ReaderBodyState extends State<_ReaderBody>
                   ),
                 ),
 
-              // HUD overlay (animated fade)
-              if (reader.showHud || _hudController.isAnimating)
+              // Controls: the opt-in radial replaces the classic bars when on.
+              if (_radialEnabled)
+                Positioned.fill(child: _buildRadial(context, reader, t))
+              else if (reader.showHud || _hudController.isAnimating)
                 IgnorePointer(
                   ignoring: !reader.showHud,
                   child: FadeTransition(
@@ -485,11 +1049,26 @@ class _ReaderBodyState extends State<_ReaderBody>
                 textAlign: TextAlign.center),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: () => reader.loadPages(),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: Text(t.readerRetry, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
-            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: Text(t.readerBack,
+                    style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+                style: OutlinedButton.styleFrom(
+                    foregroundColor: _onBg.withAlpha(230),
+                    side: BorderSide(color: _onBg.withAlpha(90))),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.icon(
+                onPressed: () => reader.loadPages(),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(t.readerRetry, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+                style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
+              ),
+            ],
           ),
         ],
       ),
@@ -508,14 +1087,40 @@ class _ReaderBodyState extends State<_ReaderBody>
   }
 
   Widget _buildPagedReader(BuildContext context, ReaderProvider reader) {
-    _pageController ??= PageController(initialPage: reader.currentPage);
     final screenWidth = MediaQuery.of(context).size.width;
     final s = reader.settings;
     final fit = _boxFitFor(s.scaleType);
     final filter = _imageColorFilter(s);
+    final rtl = reader.readingMode == ReadingMode.rtl;
+
+    // Dual-page: two pages side-by-side, only in landscape + a paged mode. The
+    // whole reader (controller, nav, slider) then works in "slot" space, where
+    // a slot is one or two page indices; in single-page mode every slot is one
+    // page, so the slot index equals the page index and behaviour is unchanged.
+    final dualActive = s.dualPageLandscape &&
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    _slots = dualActive
+        ? _dualPageSlots(reader, s.dualPageSplitWide)
+        : [for (var i = 0; i < reader.pages.length; i++) <int>[i]];
+    final curSlot = _slotOfPage(_slots, reader.currentPage);
+
+    _pageController ??= PageController(initialPage: curSlot);
+    // On a rotation that flips dual on/off, the controller's page index now
+    // points at the wrong slot (the grouping changed) — re-anchor it onto the
+    // slot holding the current page so the reader doesn't jump.
+    if (_lastDualActive != dualActive) {
+      _lastDualActive = dualActive;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_pageController?.hasClients == true &&
+            (_pageController!.page ?? 0).round() != curSlot) {
+          _pageController!.jumpToPage(curSlot);
+        }
+      });
+    }
 
     void goPrev() {
-      if (reader.currentPage > 0) {
+      final cur = (_pageController?.page ?? 0).round();
+      if (cur > 0) {
         _pageController?.previousPage(
           duration: AppTheme.standard,
           curve: AppTheme.primaryCurve,
@@ -526,7 +1131,8 @@ class _ReaderBodyState extends State<_ReaderBody>
     }
 
     void goNext() {
-      if (reader.currentPage < reader.totalPages - 1) {
+      final cur = (_pageController?.page ?? 0).round();
+      if (cur < _slots.length - 1) {
         _pageController?.nextPage(
           duration: AppTheme.standard,
           curve: AppTheme.primaryCurve,
@@ -540,70 +1146,70 @@ class _ReaderBodyState extends State<_ReaderBody>
       children: [
         PageView.builder(
           controller: _pageController,
-          reverse: reader.readingMode == ReadingMode.rtl,
-          itemCount: reader.pages.length,
-          onPageChanged: (page) {
-            reader.setPage(page);
-            setState(() => _sliderPage = page);
-            _updateProgress(reader, page);
-            // Translate the page that just came into view.
-            if (_isTranslationActive) _translatePage(page);
+          reverse: rtl,
+          itemCount: _slots.length,
+          onPageChanged: (slot) {
+            if (slot < 0 || slot >= _slots.length) return;
+            final pages = _slots[slot];
+            // Track the furthest page in the spread so progress %, the
+            // download-ahead trigger and mark-as-read all fire correctly on the
+            // final spread even when it's a pair.
+            final lead = pages.last;
+            reader.setPage(lead);
+            setState(() => _sliderPage = lead);
+            _updateProgress(reader, lead);
+            _initialHudResolved = true; // swiping ends the entry phase
+            if (reader.showHud && !_isInteracting) {
+              _hudController.reverse();
+              reader.toggleHud();
+            }
+            // Translate every page that just came into view.
+            if (_isTranslationActive) {
+              for (final p in pages) {
+                _translatePage(p);
+              }
+            }
             // Auto-preload next chapter when within last 2 pages.
             if (s.autoPreload &&
                 !reader.isLoadingNext &&
                 !reader.isLastChapter &&
-                page >= reader.totalPages - 2) {
+                pages.last >= reader.totalPages - 2) {
               reader.loadNextChapter();
             }
           },
-          itemBuilder: (_, i) {
-            final pageUrl = reader.pages[i];
-            Widget image = MangaImage(
-              imageUrl: pageUrl.url,
-              referer: pageUrl.headers?['Referer'],
-              fit: fit,
-              width: double.infinity,
-              height: double.infinity,
-              translatedBytes: _isTranslationActive ? _koharuImageCache[i] : null,
-              placeholder: Center(
-                child: CircularProgressIndicator(color: _onBg.withAlpha(150)),
-              ),
-              errorWidget: Center(
-                child: Icon(Icons.broken_image_rounded, color: _onBg.withAlpha(150), size: 48),
-              ),
-            );
-            if (filter != null) {
-              image = ColorFiltered(colorFilter: filter, child: image);
-            }
-            // Overlay bubbles (non-koharu providers draw boxes; koharu bakes
-            // the translation into translatedBytes above). The overlay fills
-            // the page box and maps normalized bounds into the displayed image
-            // rect, so it stays put over the text as the page zooms/pans.
-            final bubbles = _pageBubbles[i];
-            if (_isTranslationActive &&
-                _selectedProviderId != 'koharu' &&
-                bubbles != null &&
-                bubbles.isNotEmpty) {
-              image = Stack(
-                fit: StackFit.expand,
-                children: [
-                  image,
-                  Positioned.fill(
-                    child: ReaderTranslationOverlay(
-                      bubbles: bubbles,
-                      animation: _translationAnimation,
-                      imageSize: _pageImgSize[i],
-                      fitWidth: fit == BoxFit.fitWidth,
-                      showTranslated: _showTranslated,
-                    ),
-                  ),
-                ],
+          itemBuilder: (_, slot) {
+            final pages = _slots[slot];
+            if (pages.length == 1) {
+              return GestureDetector(
+                onLongPress: () => _showPageMenu(pages.first),
+                child: InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 4.0,
+                  child: _pagedPage(reader, pages.first, fit, filter,
+                      reportSize: dualActive && s.dualPageSplitWide),
+                ),
               );
             }
+            // Two-up spread. The PageView is already reversed for RTL, so within
+            // the slot the earlier page goes on the right there.
+            final a = pages[0], b = pages[1];
+            final leftPage = rtl ? b : a;
+            final rightPage = rtl ? a : b;
             return InteractiveViewer(
               minScale: 1.0,
               maxScale: 4.0,
-              child: image,
+              child: Row(
+                children: [
+                  for (final p in [leftPage, rightPage])
+                    Expanded(
+                      child: GestureDetector(
+                        onLongPress: () => _showPageMenu(p),
+                        child: _pagedPage(reader, p, fit, filter,
+                            reportSize: dualActive && s.dualPageSplitWide),
+                      ),
+                    ),
+                ],
+              ),
             );
           },
         ),
@@ -619,6 +1225,107 @@ class _ReaderBodyState extends State<_ReaderBody>
           ),
       ],
     );
+  }
+
+  /// One page of the paged reader (no gesture wrapper), with the colour filter
+  /// and any translation overlay applied — shared by the single-page and
+  /// dual-page layouts. [reportSize] wires up the wide-page detector.
+  Widget _pagedPage(ReaderProvider reader, int i, BoxFit fit,
+      ColorFilter? filter,
+      {bool reportSize = false}) {
+    final pageUrl = reader.pages[i];
+    Widget image = MangaImage(
+      imageUrl: pageUrl.url,
+      referer: pageUrl.headers?['Referer'],
+      fit: fit,
+      width: double.infinity,
+      height: double.infinity,
+      translatedBytes: _isTranslationActive ? _koharuImageCache[i] : null,
+      onLoaded: _onPageImageLoaded,
+      onSize: reportSize ? (size) => _onPageIntrinsicSize(i, size) : null,
+      autoCrop: reader.settings.autoCropBorders,
+      placeholder: Center(
+        child: CircularProgressIndicator(color: _onBg.withAlpha(150)),
+      ),
+      // No custom errorWidget → MangaImage's built-in retryable error.
+    );
+    if (filter != null) {
+      image = ColorFiltered(colorFilter: filter, child: image);
+    }
+    // Overlay bubbles (non-koharu providers draw boxes; koharu bakes the
+    // translation into translatedBytes above). The overlay fills the page box
+    // and maps normalized bounds into the displayed image rect, so it stays put
+    // over the text as the page zooms/pans.
+    final bubbles = _pageBubbles[i];
+    if (_isTranslationActive &&
+        _selectedProviderId != 'koharu' &&
+        bubbles != null &&
+        bubbles.isNotEmpty) {
+      image = Stack(
+        fit: StackFit.expand,
+        children: [
+          image,
+          Positioned.fill(
+            child: ReaderTranslationOverlay(
+              bubbles: bubbles,
+              animation: _translationAnimation,
+              imageSize: _pageImgSize[i],
+              fitWidth: fit == BoxFit.fitWidth,
+              showTranslated: _showTranslated,
+            ),
+          ),
+        ],
+      );
+    }
+    return image;
+  }
+
+  /// Groups page indices into display "slots" for the dual-page reader. Pages
+  /// pair up two-at-a-time, except a known wide double-spread (when [splitWide]
+  /// is on) gets its own slot so it isn't squished, and a spread never straddles
+  /// a chapter boundary.
+  List<List<int>> _dualPageSlots(ReaderProvider reader, bool splitWide) {
+    final n = reader.pages.length;
+    final slots = <List<int>>[];
+    var i = 0;
+    while (i < n) {
+      if (splitWide && _widePages.contains(i)) {
+        slots.add([i]);
+        i += 1;
+        continue;
+      }
+      final canPair = i + 1 < n &&
+          !(splitWide && _widePages.contains(i + 1)) &&
+          reader.getBoundaryAt(i + 1) == null;
+      if (canPair) {
+        slots.add([i, i + 1]);
+        i += 2;
+      } else {
+        slots.add([i]);
+        i += 1;
+      }
+    }
+    return slots;
+  }
+
+  int _slotOfPage(List<List<int>> slots, int page) {
+    for (var s = 0; s < slots.length; s++) {
+      if (slots[s].contains(page)) return s;
+    }
+    return 0;
+  }
+
+  /// A page's real dimensions came back: if it's a wide double-spread, remember
+  /// it so the next build regroups it onto its own slot. Only pages ahead of the
+  /// current one regroup, so the view the user is on doesn't shift under them.
+  void _onPageIntrinsicSize(int i, Size size) {
+    if (!mounted || size.height <= 0) return;
+    final wide = size.width > size.height;
+    if (wide && !_widePages.contains(i)) {
+      setState(() => _widePages.add(i));
+    } else if (!wide && _widePages.contains(i)) {
+      setState(() => _widePages.remove(i));
+    }
   }
 
   Widget _buildTapZones({
@@ -714,6 +1421,7 @@ class _ReaderBodyState extends State<_ReaderBody>
 
           return GestureDetector(
             onTap: () => _toggleHud(reader),
+            onLongPress: () => _showPageMenu(i),
             child: _buildPageImage(reader.pages[i], i),
           );
         },
@@ -746,14 +1454,13 @@ class _ReaderBodyState extends State<_ReaderBody>
         fit: BoxFit.fitWidth,
         width: double.infinity,
         translatedBytes: translatedBytes,
+        onLoaded: _onPageImageLoaded,
+        autoCrop: reader.settings.autoCropBorders,
         placeholder: SizedBox(
           height: 400,
           child: Center(child: CircularProgressIndicator(color: _onBg.withAlpha(150))),
         ),
-        errorWidget: SizedBox(
-          height: 400,
-          child: Center(child: Icon(Icons.broken_image_rounded, color: _onBg.withAlpha(150), size: 48)),
-        ),
+        // No custom errorWidget → MangaImage shows its built-in retryable error.
       );
     }
     if (filter != null) {
@@ -858,6 +1565,97 @@ class _ReaderBodyState extends State<_ReaderBody>
 
   // ── HUD ────────────────────────────────────────────────────────────────
 
+  /// Toggle AI translation for the visible pages, clearing per-page caches when
+  /// turned off. Shared by the classic bottom bar and the radial menu.
+  void _toggleTranslationActive() {
+    setState(() {
+      _isTranslationActive = !_isTranslationActive;
+      if (!_isTranslationActive) {
+        _pageBubbles.clear();
+        _pageImgSize.clear();
+        _pageDone.clear();
+        _pageTranslating.clear();
+        _koharuImageCache.clear();
+        _translationAnimController.reset();
+      }
+    });
+    // Kick off translation for whatever's on screen; scrolling then translates
+    // new pages as they come into view.
+    if (_isTranslationActive) _translateVisiblePages();
+  }
+
+  Widget _buildRadial(
+      BuildContext context, ReaderProvider reader, AppLocalizations t) {
+    final cs = _chapterSlider(reader);
+    return RadialReaderMenu(
+      leftSide: _radialLeftSide,
+      // The wheel FAB and back button hide while reading, like the classic bars — they
+      // fade out on a tap/scroll (showHud false) and back in on the next tap. While the
+      // wheel is actually open they stay regardless (handled inside the widget).
+      visible: reader.showHud,
+      title: widget.mangaTitle ?? t.readerTitle,
+      chapter: _chapterLabel(reader).isNotEmpty ? _chapterLabel(reader) : null,
+      titleExpanded: reader.showHud,
+      onBack: () => Navigator.pop(context),
+      page: cs.page,
+      totalPages: cs.total,
+      onSeek: cs.seek,
+      onOpenChanged: (open) {
+        // Keep the title pill expanded (and auto-hide paused) while the wheel is
+        // up; when it closes, let the controls fade on the usual timer.
+        if (open && !reader.showHud) {
+          _hudController.forward();
+          reader.toggleHud();
+        } else if (!open && reader.showHud) {
+          _scheduleAutoHide(reader);
+        }
+      },
+      actions: [
+        RadialAction(
+            icon: Icons.tune_rounded,
+            label: t.readerSettings,
+            onTap: () => _showSettingsSheet(context, reader)),
+        RadialAction(
+            icon: _bookmarks.contains(reader.currentChapterUrl)
+                ? Icons.bookmark_rounded
+                : Icons.bookmark_border_rounded,
+            label: t.readerBookmark,
+            onTap: _toggleCurrentBookmark),
+        RadialAction(
+            icon: Icons.keyboard_double_arrow_left_rounded,
+            label: t.readerPreviousChapter,
+            enabled: reader.hasPreviousChapter,
+            onTap: () {
+              if (reader.hasPreviousChapter) reader.goToPreviousChapter();
+            }),
+        RadialAction(
+            icon: Icons.keyboard_double_arrow_right_rounded,
+            label: t.readerNextChapter,
+            enabled: reader.hasNextChapter,
+            onTap: () {
+              if (reader.hasNextChapter) reader.goToNextChapter();
+            }),
+        if (_gazeSupported)
+          RadialAction(
+              icon: _gazeActive
+                  ? Icons.visibility_rounded
+                  : Icons.visibility_outlined,
+              label: t.readerGazeScroll,
+              onTap: _toggleGaze)
+        else
+          RadialAction(
+              icon: Icons.screen_rotation_rounded,
+              label: t.readerTiltScroll,
+              onTap: _toggleTilt),
+        if (_translationEnabled)
+          RadialAction(
+              icon: Icons.translate_rounded,
+              label: t.readerAiTranslate,
+              onTap: _toggleTranslationActive),
+      ],
+    );
+  }
+
   Widget _buildHud(BuildContext context, ReaderProvider reader) {
     return Column(
       children: [
@@ -917,9 +1715,9 @@ class _ReaderBodyState extends State<_ReaderBody>
                     shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
                   ),
                 ),
-                if (widget.chapterTitle != null)
+                if (_chapterLabel(reader).isNotEmpty)
                   Text(
-                    widget.chapterTitle!,
+                    _chapterLabel(reader),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.manrope(
@@ -931,6 +1729,24 @@ class _ReaderBodyState extends State<_ReaderBody>
               ],
             ),
           ),
+          if (_gazeSupported)
+            _HudButton(
+              icon: _gazeActive
+                  ? Icons.visibility_rounded
+                  : Icons.visibility_outlined,
+              onTap: _toggleGaze,
+              onLongPress:
+                  (_gazeActive || _tiltActive) ? _openHandsFreeMenu : null,
+              tooltip: t.readerGazeScroll,
+            )
+          else
+            _HudButton(
+              icon: Icons.screen_rotation_rounded,
+              onTap: _toggleTilt,
+              onLongPress:
+                  (_gazeActive || _tiltActive) ? _openHandsFreeMenu : null,
+              tooltip: t.readerTiltScroll,
+            ),
           const SizedBox(width: 8),
           _HudButton(
             icon: Icons.tune_rounded,
@@ -942,7 +1758,35 @@ class _ReaderBodyState extends State<_ReaderBody>
     );
   }
 
+  /// Chapter-scoped page-slider model shared by the classic bottom bar and the
+  /// radial dock, so the scrubber only moves within the current chapter (not
+  /// across every loaded chapter). [page]/[total] are local to the chapter.
+  /// The chapter label for the HUD — the chapter the user is currently on
+  /// (derived from the page), falling back to the opened chapter's title.
+  String _chapterLabel(ReaderProvider reader) {
+    final name = reader.chapterNameForPage(_sliderPage);
+    return name.isNotEmpty ? name : (widget.chapterTitle ?? '');
+  }
+
+  ({int page, int total, void Function(int) seek}) _chapterSlider(
+      ReaderProvider reader) {
+    final r = reader.chapterRangeForPage(_sliderPage);
+    final total = (r.end - r.start).clamp(1, 1 << 30);
+    final page = (_sliderPage - r.start).clamp(0, total - 1);
+    return (
+      page: page,
+      total: total,
+      seek: (localPage) {
+        final global = (r.start + localPage).clamp(0, reader.totalPages - 1);
+        setState(() => _sliderPage = global);
+        reader.setPage(global);
+        _jumpToPage(reader, global);
+      },
+    );
+  }
+
   Widget _buildBottomBar(BuildContext context, ReaderProvider reader) {
+    final cs = _chapterSlider(reader);
     final t = AppLocalizations.of(context);
     return Container(
       decoration: const BoxDecoration(
@@ -966,7 +1810,7 @@ class _ReaderBodyState extends State<_ReaderBody>
               children: [
                 if (reader.settings.showPageNumber)
                   Text(
-                    '${_sliderPage + 1}',
+                    '${cs.page + 1}',
                     style: GoogleFonts.manrope(
                       fontSize: reader.settings.fontSize * 0.75,
                       fontWeight: FontWeight.w700,
@@ -984,17 +1828,12 @@ class _ReaderBodyState extends State<_ReaderBody>
                       trackHeight: 3,
                     ),
                     child: Slider(
-                      value: _sliderPage.toDouble().clamp(0, (reader.totalPages - 1).toDouble()),
+                      value: cs.page.toDouble().clamp(0, (cs.total - 1).toDouble()),
                       min: 0,
-                      max: (reader.totalPages - 1).toDouble().clamp(1, double.infinity),
-                      divisions: reader.totalPages > 1 ? reader.totalPages - 1 : 1,
+                      max: (cs.total - 1).toDouble().clamp(1, double.infinity),
+                      divisions: cs.total > 1 ? cs.total - 1 : 1,
                       onChangeStart: (_) => _isInteracting = true,
-                      onChanged: (value) {
-                        final page = value.round();
-                        setState(() => _sliderPage = page);
-                        reader.setPage(page);
-                        _jumpToPage(reader, page);
-                      },
+                      onChanged: (value) => cs.seek(value.round()),
                       onChangeEnd: (_) {
                         _isInteracting = false;
                         _scheduleAutoHide(reader);
@@ -1004,7 +1843,7 @@ class _ReaderBodyState extends State<_ReaderBody>
                 ),
                 if (reader.settings.showPageNumber)
                   Text(
-                    '${reader.totalPages}',
+                    '${cs.total}',
                     style: GoogleFonts.manrope(
                       fontSize: reader.settings.fontSize * 0.75,
                       fontWeight: FontWeight.w700,
@@ -1019,22 +1858,7 @@ class _ReaderBodyState extends State<_ReaderBody>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isTranslationActive = !_isTranslationActive;
-                    if (!_isTranslationActive) {
-                      _pageBubbles.clear();
-                      _pageImgSize.clear();
-                      _pageDone.clear();
-                      _pageTranslating.clear();
-                      _koharuImageCache.clear();
-                      _translationAnimController.reset();
-                    }
-                  });
-                  // Kick off translation for whatever's on screen; scrolling
-                  // then translates new pages as they come into view.
-                  if (_isTranslationActive) _translateVisiblePages();
-                },
+                onTap: _toggleTranslationActive,
                 child: AnimatedContainer(
                   duration: AppTheme.standard,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1100,8 +1924,10 @@ class _ReaderBodyState extends State<_ReaderBody>
               ),
               const SizedBox(width: 24),
               _HudButton(
-                icon: Icons.bookmark_border_rounded,
-                onTap: () {},
+                icon: _bookmarks.contains(reader.currentChapterUrl)
+                    ? Icons.bookmark_rounded
+                    : Icons.bookmark_border_rounded,
+                onTap: _toggleCurrentBookmark,
                 tooltip: t.readerBookmark,
                 size: 18,
               ),
@@ -1156,21 +1982,15 @@ class _ReaderBodyState extends State<_ReaderBody>
 
     try {
       final page = reader.pages[index];
-      Uint8List imageBytes;
-
-      if (page.url.startsWith('file://')) {
-        final path = page.url.replaceFirst('file://', '');
-        imageBytes = await File(path).readAsBytes();
-      } else {
-        final client = await rhttp.RhttpClient.create();
-        try {
-          final response = await client.requestBytes(
-            method: rhttp.HttpMethod.get, url: page.url,
-            headers: page.headers != null ? rhttp.HttpHeaders.rawMap(page.headers!) : null);
-          imageBytes = response.body;
-        } finally {
-          client.dispose();
-        }
+      // Fetch via the shared image pipeline (ImageLoader) so it reuses the
+      // already-cached page bytes, the pooled client, and the same TLS handling
+      // the reader uses — instead of spinning up (and binning) a fresh rhttp
+      // client per page, which also re-downloaded the image and failed on the
+      // broken-cert CDNs.
+      final imageBytes = await _pageBytes(page);
+      if (imageBytes == null) {
+        if (mounted) setState(() => _pageTranslating.remove(index));
+        return;
       }
 
       // Natural pixel size drives the overlay's letterbox math in paginated
@@ -1251,7 +2071,9 @@ class _ReaderBodyState extends State<_ReaderBody>
     // Default OFF to match Settings > AI (which also defaults false). The old
     // `?? true` here meant the reader showed the Translate button even when the
     // setting read as disabled — the feature must be opt-in.
-    final enabled = prefs.getBool('ai_translation_enabled') ?? false;
+    // AI translation is a beta feature — off unless beta is enabled too.
+    final enabled = (SettingsStore.instance.getBool('beta_features_enabled') ?? false) &&
+        (prefs.getBool('ai_translation_enabled') ?? false);
     final id = prefs.getString('ai_provider') ?? 'gemini';
     if (mounted) setState(() { _selectedProviderName = name; _translationEnabled = enabled; _selectedProviderId = id; });
   }
@@ -1268,17 +2090,268 @@ class _ReaderBodyState extends State<_ReaderBody>
     );
   }
 
-  void _showSettingsSheet(BuildContext context, ReaderProvider reader) {
+  // ── Long-press page menu: Share / Save / Set as cover / Recognize text ──────
+
+  /// Bytes for a page — the in-memory cache (what MangaImage already loaded) for
+  /// remote pages, or disk for downloaded (`file://`) pages.
+  Future<Uint8List?> _pageBytes(PageUrl p) async {
+    try {
+      if (p.url.startsWith('file://')) {
+        return await File(p.url.replaceFirst('file://', '')).readAsBytes();
+      }
+      final referer = p.headers?['Referer'];
+      return await ImageLoader()
+          .loadImage(p.url, headers: referer != null ? {'Referer': referer} : null);
+    } catch (e) {
+      logger.error('Page bytes load failed: $e', category: LogCategory.general);
+      return null;
+    }
+  }
+
+  void _pageToast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  void _showPageMenu(int index) {
+    final reader = context.read<ReaderProvider>();
+    if (index < 0 || index >= reader.pages.length) return;
+    final page = reader.pages[index];
     final cs = Theme.of(context).colorScheme;
     final t = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surface,
       shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: cs.outline.withAlpha(77),
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 12),
+            _pageMenuTile(cs, Icons.ios_share_rounded, t.readerPageShare, () {
+              Navigator.pop(sheetCtx);
+              _sharePage(page);
+            }),
+            _pageMenuTile(cs, Icons.download_rounded, t.readerPageSave, () {
+              Navigator.pop(sheetCtx);
+              _savePage(page);
+            }),
+            _pageMenuTile(cs, Icons.image_rounded, t.readerPageSetCover, () {
+              Navigator.pop(sheetCtx);
+              _setPageAsCover(page);
+            }),
+            _pageMenuTile(cs, Icons.text_fields_rounded, t.readerPageRecognizeText,
+                () {
+              Navigator.pop(sheetCtx);
+              _recognizePageText(page);
+            }),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _pageMenuTile(
+      ColorScheme cs, IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+        child: Row(children: [
+          Icon(icon, size: 22, color: cs.primary),
+          const SizedBox(width: 16),
+          Text(label,
+              style: GoogleFonts.manrope(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurface)),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _sharePage(PageUrl page) async {
+    final t = AppLocalizations.of(context);
+    final bytes = await _pageBytes(page);
+    if (bytes == null) {
+      _pageToast(t.readerPageImageUnavailable);
+      return;
+    }
+    try {
+      final dir = await getTemporaryDirectory();
+      final f = File(
+          '${dir.path}/share_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await f.writeAsBytes(bytes);
+      await Share.shareXFiles([XFile(f.path, mimeType: 'image/jpeg')]);
+    } catch (e) {
+      logger.error('Share page failed: $e', category: LogCategory.general);
+    }
+  }
+
+  Future<void> _savePage(PageUrl page) async {
+    final t = AppLocalizations.of(context);
+    final bytes = await _pageBytes(page);
+    if (bytes == null) {
+      _pageToast(t.readerPageImageUnavailable);
+      return;
+    }
+    try {
+      await Gal.putImageBytes(bytes, album: 'Foxlations');
+      _pageToast(t.readerPageSaved);
+    } catch (e) {
+      logger.error('Save page failed: $e', category: LogCategory.general);
+      _pageToast(t.readerPageSaveFailed);
+    }
+  }
+
+  Future<void> _setPageAsCover(PageUrl page) async {
+    final t = AppLocalizations.of(context);
+    if (widget.mangaUrl == null) {
+      _pageToast(t.readerPageCoverNeedsLibrary);
+      return;
+    }
+    final bytes = await _pageBytes(page);
+    if (bytes == null) {
+      _pageToast(t.readerPageImageUnavailable);
+      return;
+    }
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final coversDir = Directory('${dir.path}/covers');
+      if (!await coversDir.exists()) await coversDir.create(recursive: true);
+      final f = File(
+          '${coversDir.path}/${widget.sourceId}_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await f.writeAsBytes(bytes);
+      if (!mounted) return;
+      final ok = await context
+          .read<LibraryProvider>()
+          .setCover(widget.sourceId, widget.mangaUrl!, f.path);
+      _pageToast(ok ? t.readerPageCoverSet : t.readerPageCoverNeedsLibrary);
+    } catch (e) {
+      logger.error('Set cover failed: $e', category: LogCategory.general);
+    }
+  }
+
+  Future<void> _recognizePageText(PageUrl page) async {
+    final t = AppLocalizations.of(context);
+    final bytes = await _pageBytes(page);
+    if (bytes == null) {
+      _pageToast(t.readerPageImageUnavailable);
+      return;
+    }
+    var text = '';
+    try {
+      final dir = await getTemporaryDirectory();
+      final f =
+          File('${dir.path}/ocr_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await f.writeAsBytes(bytes);
+      final recognizer = TextRecognizer(script: _ocrScriptForSource());
+      try {
+        final result =
+            await recognizer.processImage(InputImage.fromFilePath(f.path));
+        text = result.blocks.map((b) => b.text).join('\n').trim();
+      } finally {
+        recognizer.close();
+        try {
+          await f.delete();
+        } catch (_) {}
+      }
+    } catch (e) {
+      logger.error('OCR failed: $e', category: LogCategory.general);
+    }
+    if (!mounted) return;
+    _showOcrResult(text);
+  }
+
+  TextRecognitionScript _ocrScriptForSource() {
+    String? lang;
+    try {
+      lang = context
+          .read<SourceProvider>()
+          .getInstalledSource(widget.sourceId)
+          ?.source
+          .lang;
+    } catch (_) {}
+    switch ((lang ?? '').toLowerCase()) {
+      case 'ja':
+        return TextRecognitionScript.japanese;
+      case 'ko':
+        return TextRecognitionScript.korean;
+      case 'zh':
+      case 'zh-hans':
+      case 'zh-hant':
+        return TextRecognitionScript.chinese;
+      default:
+        return TextRecognitionScript.latin;
+    }
+  }
+
+  void _showOcrResult(String text) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
+    final hasText = text.trim().isNotEmpty;
+    showDialog(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        backgroundColor: cs.surface,
+        title: Text(t.readerPageOcrTitle,
+            style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w700, color: cs.onSurface)),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            hasText ? text : t.readerPageOcrEmpty,
+            style: GoogleFonts.manrope(
+                fontSize: 14, color: hasText ? cs.onSurface : cs.outline),
+          ),
+        ),
+        actions: [
+          if (hasText)
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: text));
+                Navigator.pop(dctx);
+                _pageToast(
+                    AppLocalizations.of(context).setxAdvancedCopiedToClipboard);
+              },
+              child: Text(t.readerPageOcrCopy),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dctx),
+            child: Text(MaterialLocalizations.of(dctx).closeButtonLabel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSettingsSheet(BuildContext context, ReaderProvider reader) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cs.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      builder: (_) => StatefulBuilder(
+        builder: (sheetCtx, setSheet) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(sheetCtx).size.height * 0.85,
+        ),
+        child: SingleChildScrollView(
+        child: Padding(
+        padding: EdgeInsets.fromLTRB(
+            16, 12, 16, 32 + MediaQuery.of(sheetCtx).viewPadding.bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1346,17 +2419,98 @@ class _ReaderBodyState extends State<_ReaderBody>
                 ),
               );
             }),
+            const SizedBox(height: 8),
+            Row(children: [
+              Icon(Icons.blur_circular_rounded, size: 20, color: cs.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Text(t.readerRadialMenu,
+                      style: GoogleFonts.manrope(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: cs.onSurface))),
+              Switch(
+                  value: _radialEnabled,
+                  onChanged: (v) {
+                    _setRadialEnabled(v);
+                    setSheet(() {});
+                  }),
+            ]),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Eye comfort',
+                  style: GoogleFonts.manrope(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: cs.outline)),
+            ),
+            Row(children: [
+              Icon(Icons.wb_twilight_rounded, size: 20, color: AppTheme.warning),
+              const SizedBox(width: 10),
+              SizedBox(
+                  width: 72,
+                  child: Text('Warm',
+                      style: GoogleFonts.manrope(
+                          fontSize: 13, color: cs.onSurface))),
+              Expanded(
+                child: Slider(
+                  value: reader.settings.warmTint.clamp(0.0, 1.0),
+                  min: 0,
+                  max: 1,
+                  divisions: 10,
+                  onChanged: (v) {
+                    reader.setEyeComfort(warmTint: v);
+                    setSheet(() {});
+                  },
+                  onChangeEnd: (_) => reader.saveEyeComfort(),
+                ),
+              ),
+            ]),
+            Row(children: [
+              Icon(Icons.brightness_6_rounded, size: 20, color: AppTheme.warning),
+              const SizedBox(width: 10),
+              SizedBox(
+                  width: 72,
+                  child: Text('Brightness',
+                      style: GoogleFonts.manrope(
+                          fontSize: 13, color: cs.onSurface))),
+              Expanded(
+                child: Slider(
+                  value: reader.settings.brightness.clamp(0.15, 1.0),
+                  min: 0.15,
+                  max: 1,
+                  divisions: 17,
+                  onChanged: (v) {
+                    reader.setEyeComfort(brightness: v);
+                    setSheet(() {});
+                  },
+                  onChangeEnd: (_) => reader.saveEyeComfort(),
+                ),
+              ),
+            ]),
           ],
         ),
       ),
+      ),
+      ),
+      ),
     );
+  }
+
+  Future<void> _setRadialEnabled(bool v) async {
+    setState(() => _radialEnabled = v);
+    await SettingsStore.instance.setBool('reader_radial_enabled', v);
   }
 
   void _jumpToPage(ReaderProvider reader, int page) {
     if (reader.readingMode == ReadingMode.ltr ||
         reader.readingMode == ReadingMode.rtl) {
       if (_pageController?.hasClients == true) {
-        _pageController!.jumpToPage(page);
+        // The controller is in slot space; map the target page onto its slot
+        // (identity outside dual-page mode).
+        _pageController!.jumpToPage(
+            _slots.isNotEmpty ? _slotOfPage(_slots, page) : page);
       }
     } else {
       // Use ScrollablePositionedList's precise item-based scrolling
@@ -1371,6 +2525,7 @@ class _ReaderBodyState extends State<_ReaderBody>
     if (widget.mangaUrl == null) return;
     try {
       final libraryProvider = context.read<LibraryProvider>();
+      _libRef = libraryProvider; // for the single refresh on dispose
       libraryProvider.updateReadingProgress(
         widget.sourceId,
         widget.mangaUrl!,
@@ -1384,8 +2539,10 @@ class _ReaderBodyState extends State<_ReaderBody>
       if (dl.downloadWhileReading &&
           reader.totalPages > 0 &&
           page >= (reader.totalPages * 0.3).floor()) {
-        final next = reader.nextChapterInfo;
-        if (next != null && next['url']!.isNotEmpty) {
+        // Queue the next N chapters (DownloadProvider dedupes against in-flight
+        // + already-downloaded, so re-queuing is cheap).
+        for (final next in reader.nextChaptersInfo(dl.downloadAheadCount)) {
+          if ((next['url'] ?? '').isEmpty) continue;
           dl.enqueueChapter(
             sourceId: widget.sourceId,
             mangaUrl: widget.mangaUrl!,
@@ -1395,17 +2552,25 @@ class _ReaderBodyState extends State<_ReaderBody>
           );
         }
       }
-      // Mark chapter as read when reaching the last page
+      // Mark chapter as read when reaching the last page. Skipped in incognito
+      // (the manual "mark as read" on the detail screen still works — only this
+      // automatic, reading-driven one is suppressed). _syncTracking is a no-op
+      // in incognito too (guarded in TrackingProvider.syncChapterRead).
       if (page >= reader.totalPages - 1) {
-        libraryProvider.markChapterRead(
-          widget.sourceId,
-          widget.mangaUrl!,
-          reader.currentChapterUrl,
-        );
+        if (!IncognitoProvider.active) {
+          libraryProvider.markChapterRead(
+            widget.sourceId,
+            widget.mangaUrl!,
+            reader.currentChapterUrl,
+          );
+        }
         _syncTracking(reader);
         _applyAutoDeleteRules(reader, dl);
       }
-    } catch (_) {}
+    } catch (e, s) {
+      logger.error('Reader progress/mark-read/tracker step failed',
+          category: LogCategory.general, detail: '$e\n$s');
+    }
   }
 
   /// Push the just-read chapter's number to any connected trackers bound to
@@ -1612,12 +2777,14 @@ class _ReaderBodyState extends State<_ReaderBody>
 class _HudButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final String tooltip;
   final double size;
 
   const _HudButton({
     required this.icon,
     required this.onTap,
+    this.onLongPress,
     required this.tooltip,
     this.size = 20,
   });
@@ -1630,6 +2797,7 @@ class _HudButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(AppTheme.radiusFull),
           splashColor: Colors.white24,
           child: Container(

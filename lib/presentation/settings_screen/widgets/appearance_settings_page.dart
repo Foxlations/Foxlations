@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'nav_order_page.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
@@ -182,30 +183,39 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
             top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
         children: [
           _SectionHeader(title: t.setdAppearanceSectionTheme),
-          ...kThemeBreeds.map((breed) {
-            final isSelected = breed.id == _selectedBreedId;
-            final previewPrimary =
-                isDark ? breed.primaryDark : breed.primaryLight;
-            final previewAccent =
-                isDark ? breed.accentDark : breed.accentLight;
-            final previewBg =
-                isDark ? breed.backgroundDark : breed.backgroundLight;
-            return _BreedTile(
-              breed: breed,
-              isSelected: isSelected,
-              previewPrimary: previewPrimary,
-              previewAccent: previewAccent,
-              previewBg: previewBg,
-              primaryColor: primaryColor,
-              onTap: () async {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedBreedId = breed.id);
-                context.read<ThemeProvider>().setBreed(breed.id);
-                // The vault's secret opener moved to the Foxlations logo on the
-                // About page (tap it 9×).
-              },
-            );
-          }),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 3,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 0.82,
+              children: kThemeBreeds.map((breed) {
+                final isSelected = breed.id == _selectedBreedId;
+                final previewPrimary =
+                    isDark ? breed.primaryDark : breed.primaryLight;
+                final previewAccent =
+                    isDark ? breed.accentDark : breed.accentLight;
+                final previewBg =
+                    isDark ? breed.backgroundDark : breed.backgroundLight;
+                return _BreedTile(
+                  breed: breed,
+                  isSelected: isSelected,
+                  previewPrimary: previewPrimary,
+                  previewAccent: previewAccent,
+                  previewBg: previewBg,
+                  primaryColor: primaryColor,
+                  onTap: () async {
+                    HapticFeedback.selectionClick();
+                    setState(() => _selectedBreedId = breed.id);
+                    context.read<ThemeProvider>().setBreed(breed.id);
+                  },
+                );
+              }).toList(),
+            ),
+          ),
           const SizedBox(height: 8),
           _SectionHeader(title: t.setdAppearanceSectionDisplay),
           _DarkModeTile(
@@ -218,6 +228,12 @@ class _AppearanceSettingsPageState extends State<AppearanceSettingsPage> {
             primaryColor: primaryColor,
             onChanged: themeProvider.setInvertColors,
           ),
+          _OledTile(
+            value: themeProvider.oledBlack,
+            primaryColor: primaryColor,
+            onChanged: themeProvider.setOledBlack,
+          ),
+          _NavOrderTile(primaryColor: primaryColor),
           const SizedBox(height: 24),
         ],
       ),
@@ -275,8 +291,7 @@ class _BreedTile extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isSelected
               ? primaryColor.withAlpha(26)
@@ -287,82 +302,45 @@ class _BreedTile extends StatelessWidget {
             width: isSelected ? 1.5 : 1,
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Theme preview strip
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(color: cs.outlineVariant, width: 1),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Container(color: previewPrimary),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Container(color: previewAccent),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Container(color: previewBg),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(breed.emoji,
-                          style: const TextStyle(fontSize: 16)),
-                      const SizedBox(width: 6),
-                      Text(
-                        breed.name,
-                        style: GoogleFonts.manrope(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                    ],
+              child: Stack(children: [
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Column(children: [
+                      Expanded(flex: 2, child: Container(color: previewPrimary)),
+                      Expanded(flex: 1, child: Container(color: previewAccent)),
+                      Expanded(flex: 1, child: Container(color: previewBg)),
+                    ]),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    breed.description,
-                    style: GoogleFonts.manrope(
-                        fontSize: 12, color: cs.outline),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            // Selection indicator
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? primaryColor : Colors.transparent,
-                border: Border.all(
-                  color: isSelected ? primaryColor : cs.outline,
-                  width: 2,
                 ),
-              ),
-              child: isSelected
-                  ? const Icon(Icons.check_rounded,
-                      size: 14, color: Colors.white)
-                  : null,
+                if (isSelected)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle, color: primaryColor),
+                      child: const Icon(Icons.check_rounded,
+                          size: 12, color: Colors.white),
+                    ),
+                  ),
+              ]),
             ),
+            const SizedBox(height: 6),
+            Text('${breed.emoji} ${breed.name}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.manrope(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: cs.onSurface)),
           ],
         ),
       ),
@@ -429,6 +407,133 @@ class _InvertColorsTile extends StatelessWidget {
                     t.setdAppearanceInvertColorsDesc,
                     style: GoogleFonts.manrope(
                         fontSize: 12, color: cs.outline),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: cs.onPrimary,
+              activeTrackColor: primaryColor,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Navigation-bar reorder tile ──────────────────────────────
+class _NavOrderTile extends StatelessWidget {
+  final Color primaryColor;
+  const _NavOrderTile({required this.primaryColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
+    return GestureDetector(
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const NavOrderPage())),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: primaryColor.withAlpha(25),
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: Icon(Icons.reorder_rounded, color: primaryColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.setdAppearanceNavOrder,
+                      style: GoogleFonts.manrope(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface)),
+                  const SizedBox(height: 2),
+                  Text(t.setdAppearanceNavOrderDesc,
+                      style:
+                          GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: cs.outline),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── OLED Pure-Black Tile ─────────────────────────────────────
+class _OledTile extends StatelessWidget {
+  final bool value;
+  final Color primaryColor;
+  final ValueChanged<bool> onChanged;
+
+  const _OledTile({
+    required this.value,
+    required this.primaryColor,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          border: Border.all(color: cs.outlineVariant),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: primaryColor.withAlpha(25),
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: Icon(Icons.contrast_rounded, color: primaryColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.setdAppearanceOledBlack,
+                    style: GoogleFonts.manrope(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    t.setdAppearanceOledBlackDesc,
+                    style: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
                   ),
                 ],
               ),

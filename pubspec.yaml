@@ -1,7 +1,7 @@
 name: manga_reader
 description: A manga reading app with extension-based sources.
 publish_to: 'none'
-version: 1.1.0+70
+version: 1.2.0+178
 
 environment:
   sdk: ^3.11.3
@@ -80,10 +80,31 @@ dependencies:
   # iOS volume-button page navigation: iOS has no volume-button event API, so this
   # observes the system volume + hides the HUD (Android uses native key capture instead).
   flutter_volume_controller: ^2.0.2
+  # Text-to-speech for the light-novel reader ("Listen"). Android/iOS/Windows/
+  # macOS; guarded off on Linux (no plugin implementation there).
+  flutter_tts: ^4.2.0
+  # Lock-screen / notification media controls + background keep-alive for the
+  # novel "Listen" TTS (Android foreground service + iOS Now Playing). Initialised
+  # only on Android/iOS; the reader's TTS still works if it's unavailable.
+  audio_service: ^0.18.15
+  sensors_plus: ^6.1.0
   battery_plus: ^6.0.1
   google_generative_ai: ^0.4.7
   google_mlkit_text_recognition: ^0.14.0
   google_mlkit_translation: ^0.12.0
+
+  # Local notifications (new-chapter / library-update / download events).
+  flutter_local_notifications: ^18.0.1
+  # App lock: biometric / device-credential unlock (PIN stored via
+  # flutter_secure_storage above).
+  local_auth: ^2.3.0
+  # Open source links in the system browser when the user opts out of the
+  # in-app WebView (Advanced > External browser).
+  url_launcher: ^6.3.1
+  # Reader page long-press menu: share a page, and save it to the photo gallery.
+  share_plus: ^10.1.4
+  gal: ^2.3.1
+  sherpa_onnx: ^1.13.8
 
 dev_dependencies:
   flutter_test:
@@ -116,3 +137,4 @@ flutter:
   assets:
     - assets/
     - assets/images/
+    - assets/js/

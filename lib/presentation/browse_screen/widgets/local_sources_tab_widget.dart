@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../../core/services/ios_folder_access.dart';
 import '../../../core/services/local_source_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../routes/app_routes.dart';
@@ -34,30 +35,25 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
     if (mounted) setState(() => _loading = false);
   }
 
-  /// iOS hands back a security-scoped URL from the folder picker that the app
-  /// cannot re-open later, so the folder scans to nothing and the user is left
-  /// staring at an empty shelf with no error. Say so and point at file import,
-  /// which works because it copies the picked file into our own sandbox.
-  bool _warnIfFoldersUnsupported() {
-    if (!Platform.isIOS) return false;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          AppLocalizations.of(context).browseIosFolderWarning,
-        ),
-        duration: const Duration(seconds: 5),
-      ),
-    );
+  /// Pick a folder and save it. On iOS this goes through the native
+  /// security-scoped picker so the folder stays readable across launches
+  /// (iOS re-creates the sandbox on every re-sign); elsewhere the plain
+  /// directory picker is enough. Returns true if a folder was added.
+  Future<bool> _pickAndStoreFolder() async {
+    if (Platform.isIOS) {
+      final picked = await IosFolderAccess.instance.pickFolder();
+      if (picked == null) return false;
+      await _service.addFolder(picked.path, bookmark: picked.bookmark);
+      return true;
+    }
+    final path = await FilePicker.getDirectoryPath();
+    if (path == null) return false;
+    await _service.addFolder(path);
     return true;
   }
 
   Future<void> _addFolder() async {
-    if (_warnIfFoldersUnsupported()) return;
-    final path = await FilePicker.getDirectoryPath();
-    if (path != null) {
-      await _service.addFolder(path);
-      _load();
-    }
+    if (await _pickAndStoreFolder()) _load();
   }
 
   Future<void> _removeFolder(String path) async {
@@ -277,10 +273,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
                 side: BorderSide(color: cs.primary.withAlpha(80)),
                 padding: const EdgeInsets.symmetric(vertical: 10)),
               onPressed: () async {
-                if (_warnIfFoldersUnsupported()) return;
-                final path = await FilePicker.getDirectoryPath();
-                if (path != null) {
-                  await _service.addFolder(path);
+                if (await _pickAndStoreFolder()) {
                   _folders = await _service.getFolders();
                   setSheetState(() {});
                   _load();

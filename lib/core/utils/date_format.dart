@@ -8,9 +8,13 @@ String formatChapterDate(String? raw) {
 
   DateTime? date;
 
-  // Try parsing as milliseconds timestamp first
+  // Try parsing as milliseconds timestamp first.
   final ms = int.tryParse(raw);
-  if (ms != null && ms > 0) {
+  if (ms != null) {
+    // A purely-numeric value that's 0 or negative isn't a real timestamp —
+    // LNReader (and some other) plugins emit "0" when a chapter has no release
+    // date. Show nothing rather than a literal "0".
+    if (ms <= 0) return '';
     date = DateTime.fromMillisecondsSinceEpoch(ms);
   }
 

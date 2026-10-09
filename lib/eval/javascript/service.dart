@@ -13,6 +13,8 @@ import '../model/m_video.dart';
 import '../model/page_url.dart';
 import '../model/source_preference.dart';
 import '../interface.dart';
+import '../../core/services/cookie_store.dart';
+import '../../core/utils/url_utils.dart';
 
 class JsExtensionService implements ExtensionService {
   late JavascriptRuntime runtime;
@@ -146,13 +148,40 @@ var extention = new DefaultExtension();
   }
 
   @override
-  Future<MManga> getDetail(String url) async {
+  Future<MManga> getDetail(String url, {bool fullChapters = true}) async {
     return MManga.fromJson(
         await _extensionApplyAsync('getDetail', [url]));
   }
 
   @override
   Future<List<PageUrl>> getPageList(String url) async {
+    // Mirror the Dart bridge: many JS sources (the Manganato/MangaBox family in
+    // particular) return bare image-URL strings with no headers, but their
+    // image CDNs 403 without a Referer. Build a baseUrl/origin Referer fallback
+    // (plus the stored UA and the source's own getHeaders) and attach it to
+    // every page so ImageLoader isn't hotlink-blocked.
+    Map<String, String> sourceHeaders;
+    try {
+      sourceHeaders = getHeaders();
+    } catch (_) {
+      sourceHeaders = const {};
+    }
+    final storedUA = await CookieStore().getUserAgent();
+    var referer = safeOrigin(url) ?? _baseUrl;
+    final refererUri = Uri.tryParse(referer);
+    if (refererUri != null &&
+        refererUri.host.isNotEmpty &&
+        !refererUri.host.startsWith('www.')) {
+      referer = referer.replaceFirst(
+          '://${refererUri.host}', '://www.${refererUri.host}');
+    }
+    if (referer.isNotEmpty && !referer.endsWith('/')) referer = '$referer/';
+    final defaultHeaders = <String, String>{
+      if (referer.isNotEmpty) 'Referer': referer,
+      if (storedUA.isNotEmpty) 'User-Agent': storedUA,
+      ...sourceHeaders,
+    };
+
     final pages = LinkedHashSet<PageUrl>(
       equals: (a, b) => a.url == b.url,
       hashCode: (p) => p.url.hashCode,
@@ -161,10 +190,18 @@ var extention = new DefaultExtension();
     for (final e
         in await _extensionApplyAsync<List>('getPageList', [url])) {
       if (e != null) {
-        final page = e is String
-            ? PageUrl(e.trim())
-            : PageUrl.fromJson(
-                (e as Map).map((k, v) => MapEntry(k.toString(), v)));
+        final PageUrl page;
+        if (e is String) {
+          page = PageUrl(e.trim(),
+              headers: Map<String, String>.from(defaultHeaders));
+        } else {
+          page = PageUrl.fromJson(
+              (e as Map).map((k, v) => MapEntry(k.toString(), v)));
+          page.headers = {
+            ...defaultHeaders,
+            ...?page.headers,
+          };
+        }
         pages.add(page);
       }
     }
@@ -240,6 +277,9 @@ var extention = new DefaultExtension();
       return '';
     }
   }
+
+  @override
+  Future<String?> getWebUrl(String url) async => rehomeUrl(sourceBaseUrl, url);
 
   @override
   List<SourcePreference> getSourcePreferences() {

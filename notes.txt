@@ -1,32 +1,97 @@
-Foxlations v1.1.0
+A big update since 1.1.0 — new reading features, a live Downloads manager, a real
+library-update system, cross-app backups, DNS-over-HTTPS, iOS improvements, and a
+first-run tutorial.
 
-A new Discover feed, one-tap source setup, faster source lists, more languages,
-and a batch of fixes.
+Highlights:
 
-Highlights
-- Discover new series — a new Discover tab suggests manga, anime, and light novels
-  one at a time. Tap Next for another, add it to your library when one of your
-  sources carries it, or save it for later. Filter by genre, and link a tracker
-  for picks based on what you have already read.
-- One-tap source install — on a source site, its "add to app" button now opens
-  Foxlations and adds the repo for you; just confirm.
-- Faster, lighter source lists — large source repos load from a compact index
-  that's a fraction of the size, so adding and refreshing them is quicker on
-  mobile data.
-- Filter Browse by language and repository — the filter is now a pop-up with
-  Language and Repository tabs; pick any combination to narrow a long list.
-- Nine languages — the whole app is translated into English, Spanish, Portuguese,
-  French, German, Italian, Japanese, Chinese, and Arabic (Settings > Language),
-  and more can now be added by the community.
-- Right-to-left layouts — Arabic and other right-to-left languages mirror the
-  interface correctly.
-- iOS, Android, and Windows.
+READING
+- Double-page (two-up) reading in landscape, with automatic handling of wide
+  double-spreads.
+- Eye-comfort: a warm blue-light filter + in-app dimming for manga, and
+  sepia / warm / gray / OLED themes for novels — adjustable right in the reader.
+- Light-novel reader customization: font, text alignment, line spacing, margins.
+- Long-press a page to Share, Save, Set as cover, or Recognize text.
+- The chapter title at the top now follows the chapter you're actually on.
+- In-reader reading-mode settings now scroll, so every option is reachable.
+- Clear, readable source errors on screen instead of stack traces.
 
-Also in this release
-- Manga, anime, and novels each keep their own progress, so Continue lands in the
-  right place for every type.
-- Fixes: manga reliably continues from your saved page; moving titles in and out
-  of the vault works again and keeps your progress; and you can no longer install
-  the same source twice.
+LIGHT NOVELS
+- Chapter lists now load in full (no longer capped at the first 100 chapters).
+- Download chapters for offline reading (plus download-ahead).
+- Much better "Listen" (text-to-speech): background playback with lock-screen
+  controls, live sentence highlighting, adjustable pitch / speed / voice, an
+  offline neural voice option, and it resumes where you left off.
 
-Full change list is in the app: More > About > What's New.
+ANIME
+- Skip Intro / Skip Outro (AniSkip) for MyAnimeList-linked titles, with a live
+  countdown.
+- Play downloaded episodes offline.
+- A Categories tab that uses the source's own genre filters.
+
+LIBRARY & UPDATES
+- A live Downloads manager: watch each chapter download with a progress bar,
+  pause or resume the whole queue, cancel individual items, set how many download
+  at once, and see what finished this session. Download settings moved behind the
+  gear icon.
+- Live update progress: an in-app banner and a notification show "Updating ...
+  X/Y", then "X completed, X skipped, X failed". The summary is now expandable
+  (categories start collapsed) — open any category to see each title and retry a
+  whole group or a single entry.
+- Smart updates that skip titles you haven't started, still have unread on, or
+  that are completed — less load on sources.
+- Refresh library covers (re-fetch cover art from the source).
+- Download-ahead while reading (1-10 chapters).
+- Offline reading of chapters saved as CBZ / PDF.
+- Fixed the "Downloaded" filter hiding titles — it now shows anything with at
+  least one downloaded chapter or episode, across manga, anime and novels.
+- Faster bulk move / migrate, and cover-art fixes.
+
+BACKUPS
+- Import backups from Mihon / Tachiyomi (and forks), Aniyomi, Tachimanga and
+  Mangayomi.
+- "Create compatible backup" now lets you pick the target app — Mihon/Tachiyomi,
+  Aniyomi, Tachimanga, Mangayomi or LNReader — and choose which content types to
+  include; the file is built to match that app. Manga, anime and light novels
+  stay distinct (anime exports as anime, novels as novels).
+- Foxlations' own backups now use a shorter ".fox" name (older .fxbackup files
+  still restore).
+
+SOURCES & EXTENSIONS
+- Global search can be scoped to All / Manga / Anime / Novels.
+- Long-press a genre/tag on a title to search it across every source, auto-
+  filtered to that content type.
+- Fixed images not loading on some sources (e.g. Manganato) — pages now send the
+  correct referer so the image server stops blocking them.
+- Updating extensions now shows a spinner (both "Update all" and individual
+  installs and updates).
+- Fixed "Open in WebView" on a title opening the wrong page (a 404 or the site
+  homepage). It now opens the item's real source page, for manga, anime and
+  novels. The in-app browser also has an "Open in browser" option to hand the
+  current page to your phone's default browser, and now blocks ad junk
+  (auto-playing videos, pop-ups, and redirects that pull you off to an ad site)
+  while still letting you tap around normally.
+- Run Kotlin (Tachiyomi / Mihon / Aniyomi / Keiyoushi) extensions in addition to
+  JavaScript and Dart sources.
+- RepoForge improvements, plus a "discard changes" guard so you don't lose a
+  half-built source.
+- Fixes for "source not installed" after restoring a backup.
+
+PRIVACY & NETWORK
+- DNS-over-HTTPS — Cloudflare, Google, Quad9, AdGuard, or your own custom
+  providers. Turning it off now takes effect immediately.
+- Better Cloudflare handling.
+- Incognito mode, app lock (biometric / device credential), and a secure-screen
+  option.
+
+iOS & PLATFORM
+- Pick a folder for your local sources that stays readable across launches (and
+  shows up in the Files app).
+- Fewer crashes when reopening the app from the background.
+- Volume-button page navigation.
+- App language support + community translations.
+
+NEW
+- A quick, illustrated first-launch tutorial and a Help & Tips page.
+- A Foxlations Discord: https://discord.gg/qmGB7h7vsn
+
+Plus many performance improvements and bug fixes.

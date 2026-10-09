@@ -1,14 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/app_nav.dart';
 import '../../core/models/manga_model.dart';
+import '../../core/models/chapter_model.dart';
 import '../widgets/manga_image.dart';
 import '../../core/providers/library_provider.dart';
 import '../../core/providers/vault_provider.dart';
+import '../../core/services/settings_store.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/library_type_provider.dart';
+import '../../core/providers/incognito_provider.dart';
+import '../../core/providers/download_provider.dart';
 import '../../core/services/library_update_service.dart';
 import '../../core/models/library_settings.dart';
 import '../../core/utils/library_query.dart';
@@ -36,6 +43,23 @@ String? _originOf(String? url) {
 // ── Reading Status ────────────────────────────────────────────
 enum MangaReadingStatus { all, reading, completed, onHold, dropped, planToRead }
 
+/// State of the drop-down library-update banner: progress while [done] is
+/// false, then the run [result] summary.
+class _UpdateBanner {
+  final bool done;
+  final int checked;
+  final int total;
+  final String? title;
+  final LibraryUpdateResult? result;
+  const _UpdateBanner({
+    required this.done,
+    this.checked = 0,
+    this.total = 0,
+    this.title,
+    this.result,
+  });
+}
+
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
 
@@ -58,6 +82,14 @@ class _LibraryScreenState extends State<LibraryScreen>
   String? _selectedCategory; // null = "All"
   int _swipeDir = 1; // last category-swipe direction, for the slide animation
   bool _isRefreshing = false;
+  // Live "checked / total" during a library update — a ValueNotifier so only the
+  // small header indicator rebuilds, not the whole screen, on every tick.
+  final ValueNotifier<(int checked, int total)?> _updateProgress =
+      ValueNotifier(null);
+  // The drop-down update banner: progress while updating, then the summary
+  // (tap → Retry failed / Update skipped). Auto-hides after a short delay.
+  final ValueNotifier<_UpdateBanner?> _updateBanner = ValueNotifier(null);
+  Timer? _bannerHideTimer;
   LibrarySettings _librarySettings = const LibrarySettings();
 
   // Multi-select mode
@@ -84,8 +116,8 @@ class _LibraryScreenState extends State<LibraryScreen>
     if (type == 'all') return all;
     final sp = context.read<SourceProvider>();
     return all.where((m) {
-      final t = m.contentTypeOr(
-          sp.getInstalledSource(m.sourceId)?.source.itemType ?? 'manga');
+      // O(1) itemType lookup (cached map) instead of a per-item source scan.
+      final t = m.contentTypeOr(sp.installedItemType(m.sourceId));
       return t == type;
     }).toList();
   }
@@ -137,32 +169,260 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   /// [scoped] limits the check to the entries currently on screen (the selected
   /// category), which is what "Category Update" means.
-  Future<void> _refreshLibrary({bool scoped = false}) async {
+  Future<void> _refreshLibrary(
+      {bool scoped = false,
+      List<LibraryManga>? only,
+      bool ignoreSkipRules = false}) async {
     if (_isRefreshing) return;
-    final subset = scoped
-        ? _activeManga(context)
-            .where((m) =>
-                _selectedCategory == null ||
-                m.categories.contains(_selectedCategory))
-            .toList()
-        : null;
+    final subset = only ??
+        (scoped
+            ? _activeManga(context)
+                .where((m) =>
+                    _selectedCategory == null ||
+                    m.categories.contains(_selectedCategory))
+                .toList()
+            : null);
     setState(() => _isRefreshing = true);
+    _updateProgress.value = null;
+    _bannerHideTimer?.cancel();
+    _updateBanner.value = const _UpdateBanner(done: false);
+    // A (re)load of the library is a good moment to reconcile the downloaded
+    // index with disk (covers pull-to-refresh and the "Check for updates" tap).
+    _refreshDownloadedIndex();
     final libraryProvider = context.read<LibraryProvider>();
     final sourceProvider = context.read<SourceProvider>();
-    final newUpdates = await LibraryUpdateService.checkForUpdates(
+    final result = await LibraryUpdateService.checkForUpdates(
       libraryProvider: libraryProvider,
       sourceProvider: sourceProvider,
       only: subset,
+      ignoreSkipRules: ignoreSkipRules,
+      downloadProvider: context.read<DownloadProvider>(),
+      onProgress: (checked, total, title) {
+        _updateProgress.value = (checked, total);
+        _updateBanner.value = _UpdateBanner(
+            done: false, checked: checked, total: total, title: title);
+      },
     );
-    if (mounted) {
-      final t = AppLocalizations.of(context);
-      setState(() => _isRefreshing = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(newUpdates.isNotEmpty
-            ? 'Found ${newUpdates.length} new chapter${newUpdates.length == 1 ? '' : 's'}'
-            : t.libraryNoNewChapters),
-        duration: const Duration(seconds: 2)));
+    _updateProgress.value = null;
+    if (!mounted) return;
+    setState(() => _isRefreshing = false);
+    // Show the summary in the banner; auto-hide after a bit (tap keeps it).
+    _updateBanner.value = _UpdateBanner(done: true, result: result);
+    _bannerHideTimer?.cancel();
+    _bannerHideTimer = Timer(const Duration(seconds: 12), () {
+      if (mounted) _updateBanner.value = null;
+    });
+  }
+
+  /// Tapping the summary banner opens this menu: retry the failed titles, or
+  /// force-update the skipped ones (ongoing/hiatus only — completed won't gain
+  /// chapters). No actions available → just the counts.
+  void _openUpdateSummaryMenu(LibraryUpdateResult result) {
+    _bannerHideTimer?.cancel(); // keep the banner while the menu is open
+    final cs = Theme.of(context).colorScheme;
+    final skippedUpdatable = result.skippedUpdatable;
+
+    // New-chapter count per title, so the Completed category can show how many
+    // chapters each title gained.
+    final newChaptersByUrl = <String, int>{};
+    for (final u in result.updates) {
+      newChaptersByUrl[u.mangaUrl] = (newChaptersByUrl[u.mangaUrl] ?? 0) + 1;
     }
+
+    void openDetail(LibraryManga m) {
+      Navigator.of(context).pop();
+      Navigator.pushNamed(context, AppRoutes.mangaDetail, arguments: {
+        'mangaUrl': m.url,
+        'sourceId': m.sourceId,
+        'title': m.title,
+        'coverUrl': m.coverUrl,
+      });
+    }
+
+    // Any retry/update closes the sheet; the banner then shows live progress.
+    void retry(List<LibraryManga> titles, {bool ignoreSkipRules = false}) {
+      if (titles.isEmpty) return;
+      Navigator.of(context).pop();
+      _refreshLibrary(only: titles, ignoreSkipRules: ignoreSkipRules);
+    }
+
+    String cap(String s) =>
+        s.isEmpty ? 'Unknown' : s[0].toUpperCase() + s.substring(1);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cs.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (sheetCtx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetCtx).size.height * 0.8),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 10, bottom: 2),
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: cs.outline.withAlpha(77),
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 2),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Library update',
+                    style: GoogleFonts.manrope(
+                        fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                    '${result.completed} completed · ${result.skipped} skipped · ${result.failed} failed',
+                    style:
+                        GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.only(bottom: 12),
+                children: [
+                  if (result.completed > 0)
+                    _buildUpdateCategory(
+                      cs: cs,
+                      icon: Icons.check_circle_rounded,
+                      color: cs.primary,
+                      label: 'Completed',
+                      titles: result.completedTitles,
+                      subtitleFor: (m) {
+                        final n = newChaptersByUrl[m.url] ?? 0;
+                        return n > 0
+                            ? '$n new chapter${n == 1 ? '' : 's'}'
+                            : 'Up to date';
+                      },
+                      onTapItem: openDetail,
+                    ),
+                  if (result.skipped > 0)
+                    _buildUpdateCategory(
+                      cs: cs,
+                      icon: Icons.skip_next_rounded,
+                      color: cs.tertiary,
+                      label: 'Skipped',
+                      titles: result.skippedTitles,
+                      actionLabel: skippedUpdatable.isNotEmpty
+                          ? 'Update ${skippedUpdatable.length}'
+                          : null,
+                      onAction: skippedUpdatable.isNotEmpty
+                          ? () => retry(skippedUpdatable, ignoreSkipRules: true)
+                          : null,
+                      subtitleFor: (m) => skippedUpdatable.contains(m)
+                          ? '${cap(m.status)} · tap Update to force'
+                          : '${cap(m.status)} · no new chapters expected',
+                      trailingFor: (m) => skippedUpdatable.contains(m)
+                          ? IconButton(
+                              icon: Icon(Icons.download_rounded,
+                                  size: 20, color: cs.primary),
+                              tooltip: 'Update this title',
+                              onPressed: () =>
+                                  retry([m], ignoreSkipRules: true))
+                          : null,
+                      onTapItem: openDetail,
+                    ),
+                  if (result.failed > 0)
+                    _buildUpdateCategory(
+                      cs: cs,
+                      icon: Icons.error_outline_rounded,
+                      color: cs.error,
+                      label: 'Failed',
+                      titles: result.failedTitles,
+                      actionLabel: 'Retry all',
+                      onAction: () => retry(result.failedTitles),
+                      subtitleFor: (m) => 'Update failed · tap to open',
+                      trailingFor: (m) => IconButton(
+                          icon: Icon(Icons.refresh_rounded,
+                              size: 20, color: cs.primary),
+                          tooltip: 'Retry this title',
+                          onPressed: () => retry([m])),
+                      onTapItem: openDetail,
+                    ),
+                  if (result.completed == 0 &&
+                      result.skipped == 0 &&
+                      result.failed == 0)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                      child: Text('No titles were checked.',
+                          style: GoogleFonts.manrope(
+                              fontSize: 13, color: cs.outline)),
+                    ),
+                ],
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  /// One stacked, expandable category in the update-summary sheet: a header with
+  /// the count + an optional whole-category action, expanding to the individual
+  /// titles (each tappable to open, with an optional per-item action).
+  Widget _buildUpdateCategory({
+    required ColorScheme cs,
+    required IconData icon,
+    required Color color,
+    required String label,
+    required List<LibraryManga> titles,
+    required String Function(LibraryManga) subtitleFor,
+    required void Function(LibraryManga) onTapItem,
+    bool initiallyExpanded = false,
+    String? actionLabel,
+    VoidCallback? onAction,
+    Widget? Function(LibraryManga)? trailingFor,
+  }) {
+    return ExpansionTile(
+      initiallyExpanded: initiallyExpanded,
+      tilePadding: const EdgeInsets.symmetric(horizontal: 20),
+      childrenPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: color),
+      title: Row(children: [
+        Expanded(
+          child: Text('$label (${titles.length})',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+        ),
+        if (actionLabel != null && onAction != null)
+          TextButton(
+            onPressed: onAction,
+            style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8)),
+            child: Text(actionLabel,
+                style: GoogleFonts.manrope(
+                    fontWeight: FontWeight.w700, fontSize: 12, color: color)),
+          ),
+      ]),
+      children: titles.map((m) {
+        return ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.only(left: 36, right: 8),
+          title: Text(m.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.manrope(fontSize: 13)),
+          subtitle: Text(subtitleFor(m),
+              style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+          trailing: trailingFor?.call(m),
+          onTap: () => onTapItem(m),
+        );
+      }).toList(),
+    );
   }
 
   @override
@@ -175,7 +435,11 @@ class _LibraryScreenState extends State<LibraryScreen>
     // own failures — a missing network or an unreachable site must never block
     // the library from loading.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) UpdatePrompt.maybeShow(context);
+      if (!mounted) return;
+      UpdatePrompt.maybeShow(context);
+      // Populate the downloaded-manga index once the first frame has the
+      // library list available.
+      _refreshDownloadedIndex();
     });
   }
 
@@ -379,6 +643,9 @@ class _LibraryScreenState extends State<LibraryScreen>
     routeObserver.unsubscribe(this);
     _searchController.dispose();
     _searchFocus.dispose();
+    _updateProgress.dispose();
+    _bannerHideTimer?.cancel();
+    _updateBanner.dispose();
     super.dispose();
   }
 
@@ -402,8 +669,35 @@ class _LibraryScreenState extends State<LibraryScreen>
       list = list.where((m) => m.title.toLowerCase().contains(q)).toList();
     }
 
-    // User-chosen filters + sort order (Filter/Sort sheet).
-    return applyLibraryQuery(list, _librarySettings);
+    // User-chosen filters + sort order (Filter/Sort sheet). The "Downloaded"
+    // filter needs the manga-level download index, which lives in
+    // DownloadProvider (download state is tracked outside the manga model).
+    final dlKeys = context.read<DownloadProvider>().downloadedMangaKeys;
+    return applyLibraryQuery(list, _librarySettings, downloadedKeys: dlKeys);
+  }
+
+  /// Rescan disk for which library entries have downloaded chapters so the
+  /// "Downloaded" filter and the downloaded badge reflect reality. Kept off the
+  /// hot rebuild path — called from initState and library (re)loads, never from
+  /// build().
+  void _refreshDownloadedIndex() {
+    if (!mounted) return;
+    // Scan the WHOLE library — every content type, plus the vault — not just the
+    // active tab. The index is clear()..addAll()'d on each rebuild, so feeding it
+    // only the current tab's entries would drop downloaded titles of other types
+    // and the "Downloaded" filter would wrongly hide them.
+    final all = <LibraryManga>[
+      ...context.read<LibraryProvider>().manga,
+      ...context.read<VaultProvider>().manga,
+    ];
+    final seen = <String>{};
+    final entries = <({String sourceId, String url, String title})>[];
+    for (final m in all) {
+      if (seen.add('${m.sourceId}::${m.url}')) {
+        entries.add((sourceId: m.sourceId, url: m.url, title: m.title));
+      }
+    }
+    context.read<DownloadProvider>().refreshDownloadedMangaIndex(entries);
   }
 
   void _onSearchToggle() {
@@ -464,40 +758,63 @@ class _LibraryScreenState extends State<LibraryScreen>
     return all.where((m) => _selectedMangaIds.contains(_mangaKey(m))).toList();
   }
 
+  /// Opt-in: whether the "Move to vault" batch action shows in the NORMAL library.
+  /// Off by default so enabling it is a deliberate choice (it hints the vault exists).
+  /// Always available while already inside the vault (to move items out).
+  static const _showVaultMoveKey = 'vault_show_library_move';
+  bool get _showLibraryVaultMove {
+    final vault = context.read<VaultProvider>();
+    if (vault.vaultActive) return true;
+    return vault.vaultEnabled &&
+        (SettingsStore.instance.getBool(_showVaultMoveKey) ?? false);
+  }
+
+  /// Move the selected titles into the vault (from the normal library) or out of
+  /// it (while in vault mode), carrying their chapters/progress.
+  Future<void> _batchVaultMove() async {
+    final items = _getSelectedManga();
+    if (items.isEmpty) return;
+    final lib = context.read<LibraryProvider>();
+    final vault = context.read<VaultProvider>();
+    final toVault = !vault.vaultActive;
+    // Gather first, then move the whole batch in one provider call so the
+    // library reloads/notifies once (not once per title).
+    final toAdd = <(LibraryManga, List<LibraryChapter>)>[];
+    final keys = <(String, String)>[];
+    for (final m in items) {
+      final ch = toVault
+          ? lib.fullChapters(m.sourceId, m.url)
+          : vault.fullChapters(m.sourceId, m.url);
+      toAdd.add((m, ch));
+      keys.add((m.sourceId, m.url));
+    }
+    var ok = 0;
+    try {
+      if (toVault) {
+        await vault.addEntriesWithChaptersBulk(toAdd);
+        await lib.removeMangaBulk(keys);
+      } else {
+        await lib.addEntriesWithChaptersBulk(toAdd);
+        await vault.removeMangaBulk(keys);
+      }
+      ok = items.length;
+    } catch (_) {/* logged in the provider */}
+    if (!mounted) return;
+    _exitSelectMode();
+    AppTheme.showSnackBar(
+        context,
+        toVault
+            ? 'Moved $ok to vault'
+            : 'Moved $ok out of vault');
+  }
+
   // Vault-aware provider helpers
-  void _doRemove(LibraryManga manga) {
+  void _doSetCategoriesBulk(List<(String, String, List<String>)> items) {
     final vault = context.read<VaultProvider>();
     if (vault.vaultActive) {
-      vault.removeFromLibrary(manga.sourceId, manga.url);
+      vault.setMangaCategoriesBulk(items);
     } else {
-      context.read<LibraryProvider>().removeFromLibrary(manga.sourceId, manga.url);
-    }
-  }
-
-  void _doSetCategories(LibraryManga manga, List<String> cats) {
-    final vault = context.read<VaultProvider>();
-    if (vault.vaultActive) {
-      vault.setMangaCategories(manga.sourceId, manga.url, cats);
-    } else {
-      context.read<LibraryProvider>().setMangaCategories(manga.sourceId, manga.url, cats);
-    }
-  }
-
-  void _doMarkAllRead(LibraryManga manga) {
-    final vault = context.read<VaultProvider>();
-    if (vault.vaultActive) {
-      vault.markAllRead(manga.sourceId, manga.url);
-    } else {
-      context.read<LibraryProvider>().markAllRead(manga.sourceId, manga.url);
-    }
-  }
-
-  void _doMarkAllUnread(LibraryManga manga) {
-    final vault = context.read<VaultProvider>();
-    if (vault.vaultActive) {
-      vault.markAllUnread(manga.sourceId, manga.url);
-    } else {
-      context.read<LibraryProvider>().markAllUnread(manga.sourceId, manga.url);
+      context.read<LibraryProvider>().setMangaCategoriesBulk(items);
     }
   }
 
@@ -572,9 +889,9 @@ class _LibraryScreenState extends State<LibraryScreen>
                     child: FilledButton(
                       onPressed: () {
                         Navigator.pop(ctx);
-                        for (final m in mangaList) {
-                          _doSetCategories(m, selected.toList());
-                        }
+                        final cats = selected.toList();
+                        _doSetCategoriesBulk(
+                            [for (final m in mangaList) (m.sourceId, m.url, cats)]);
                         if (_isSelectMode) _exitSelectMode();
                       },
                       style: FilledButton.styleFrom(
@@ -594,19 +911,41 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  // Batch actions for multi-select
+  // Batch actions for multi-select. Each hands the whole selection to the active
+  // provider in one bulk call, so the library reloads/notifies once (not per item).
+  List<(String, String)> _selectedKeys() =>
+      [for (final m in _getSelectedManga()) (m.sourceId, m.url)];
+
   void _batchMarkRead() {
-    for (final m in _getSelectedManga()) { _doMarkAllRead(m); }
+    final keys = _selectedKeys();
+    final vault = context.read<VaultProvider>();
+    if (vault.vaultActive) {
+      vault.markAllReadBulk(keys);
+    } else {
+      context.read<LibraryProvider>().markAllReadBulk(keys);
+    }
     _exitSelectMode();
   }
 
   void _batchMarkUnread() {
-    for (final m in _getSelectedManga()) { _doMarkAllUnread(m); }
+    final keys = _selectedKeys();
+    final vault = context.read<VaultProvider>();
+    if (vault.vaultActive) {
+      vault.markAllUnreadBulk(keys);
+    } else {
+      context.read<LibraryProvider>().markAllUnreadBulk(keys);
+    }
     _exitSelectMode();
   }
 
   void _batchRemove() {
-    for (final m in _getSelectedManga()) { _doRemove(m); }
+    final keys = _selectedKeys();
+    final vault = context.read<VaultProvider>();
+    if (vault.vaultActive) {
+      vault.removeMangaBulk(keys);
+    } else {
+      context.read<LibraryProvider>().removeMangaBulk(keys);
+    }
     _exitSelectMode();
   }
 
@@ -678,11 +1017,20 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   LibraryManga? get _lastReadManga {
     final manga = _activeManga(context);
-    if (manga.isEmpty) return null;
-    final withRead = manga.where((m) => m.readChapters > 0 && m.lastReadChapterUrl != null).toList();
-    if (withRead.isEmpty) return null;
-    withRead.sort((a, b) => (b.lastReadAt ?? DateTime(2000)).compareTo(a.lastReadAt ?? DateTime(2000)));
-    return withRead.first;
+    // Single O(N) pass for the most-recently-read entry — no full sort just to
+    // pick one item (this runs on every library rebuild).
+    LibraryManga? best;
+    DateTime bestAt = DateTime(2000);
+    for (final m in manga) {
+      if (m.readChapters > 0 && m.lastReadChapterUrl != null) {
+        final at = m.lastReadAt ?? DateTime(2000);
+        if (best == null || at.isAfter(bestAt)) {
+          best = m;
+          bestAt = at;
+        }
+      }
+    }
+    return best;
   }
 
   /// Columns for the grid — whatever the user picked in "Items per row".
@@ -747,6 +1095,13 @@ class _LibraryScreenState extends State<LibraryScreen>
             _BatchButton(icon: Icons.done_all_rounded, label: t.libraryBatchRead, onTap: _batchMarkRead),
             _BatchButton(icon: Icons.remove_done_rounded, label: t.libraryBatchUnread, onTap: _batchMarkUnread),
             _BatchButton(icon: Icons.swap_horiz_rounded, label: t.libraryBatchMigrate, onTap: _batchMigrate),
+            if (_showLibraryVaultMove)
+              _BatchButton(
+                  icon: _isVaultMode
+                      ? Icons.lock_open_rounded
+                      : Icons.lock_outline_rounded,
+                  label: _isVaultMode ? 'Move out' : 'To vault',
+                  onTap: _batchVaultMove),
             _BatchButton(icon: Icons.delete_outline_rounded, label: t.libraryBatchRemove, onTap: _batchRemove),
           ],
         ),
@@ -764,6 +1119,11 @@ class _LibraryScreenState extends State<LibraryScreen>
     // Library tab's long-press menu) rebuilds the whole screen and re-filters
     // every list below via _activeManga.
     final contentType = context.watch<LibraryTypeProvider>().type;
+    // Rebuild when the downloaded-manga SET changes (a chapter finished), so the
+    // "Downloaded" filter/badges stay in sync — but NOT on every per-image
+    // progress tick (which a plain watch did, re-filtering the whole library
+    // several times a second during downloads).
+    context.select<DownloadProvider, int>((d) => d.downloadedCount);
     final addLabel = switch (contentType) {
       'anime' => t.libraryAddAnime,
       'novel' => t.libraryAddLNs,
@@ -800,6 +1160,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                 onMoreTap: _openMoreMenu,
                 hasActiveFilter: _librarySettings.hasActiveFilter,
                 isRefreshing: _isRefreshing,
+                updateProgress: _updateProgress,
               ),
         body: SafeArea(
           child: _showStats
@@ -823,10 +1184,32 @@ class _LibraryScreenState extends State<LibraryScreen>
                                 !cats.contains(_selectedCategory))) {
                           _selectedCategory = cats.first;
                         }
+                        // Per-category entry counts for the "Show number of
+                        // items" setting. Computed once here (off the chip
+                        // build path) only when the setting is on.
+                        final counts = <String, int>{};
+                        if (_librarySettings.showTabCounts) {
+                          // Single pass over the library instead of one full
+                          // scan per category (was O(categories × entries)).
+                          for (final m in _activeManga(context)) {
+                            for (final c in m.categories) {
+                              counts[c] = (counts[c] ?? 0) + 1;
+                            }
+                          }
+                        }
                         return _CategoryTabs(
                           categories: cats,
                           selected: _selectedCategory,
                           onSelected: (cat) => setState(() {
+                            // Turn the cube the right way when tapping a tab
+                            // (swipes set _swipeDir in _swipeCategory).
+                            int idxOf(String? c) =>
+                                c == null ? -1 : cats.indexOf(c);
+                            final from = _showBookmarksOnly
+                                ? -1
+                                : idxOf(_selectedCategory);
+                            final to = idxOf(cat);
+                            if (to != from) _swipeDir = to > from ? 1 : -1;
                             _selectedCategory = cat;
                             _showBookmarksOnly = false;
                           }),
@@ -834,8 +1217,32 @@ class _LibraryScreenState extends State<LibraryScreen>
                           bookmarkCount: _bookmarkedIds.length,
                           onBookmarkToggle: () => setState(
                               () => _showBookmarksOnly = !_showBookmarksOnly),
+                          showTabCounts: _librarySettings.showTabCounts,
+                          categoryCounts: counts,
                         );
                       },
+                    ),
+                    // Library-update progress / summary banner (drops down).
+                    ValueListenableBuilder<_UpdateBanner?>(
+                      valueListenable: _updateBanner,
+                      builder: (_, banner, _) => AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOut,
+                        alignment: Alignment.topCenter,
+                        child: banner == null
+                            ? const SizedBox(width: double.infinity)
+                            : _UpdateProgressBanner(
+                                banner: banner,
+                                onTapSummary: banner.result == null
+                                    ? null
+                                    : () => _openUpdateSummaryMenu(
+                                        banner.result!),
+                                onDismiss: () {
+                                  _bannerHideTimer?.cancel();
+                                  _updateBanner.value = null;
+                                },
+                              ),
+                      ),
                     ),
                     // Continue reading banner
                     Consumer2<LibraryProvider, VaultProvider>(
@@ -852,6 +1259,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                               'sourceId': lastRead.sourceId,
                               'title': lastRead.title,
                               'coverUrl': lastRead.coverUrl,
+                              'resume': true,
                             },
                           ),
                         );
@@ -922,6 +1330,9 @@ class _LibraryScreenState extends State<LibraryScreen>
                                       selectedIds: _isSelectMode
                                           ? _selectedMangaIds
                                           : null,
+                                      badgeUnread: _librarySettings.badgeUnread,
+                                      badgeDownloaded:
+                                          _librarySettings.badgeDownloaded,
                                       onTap: onTap,
                                       onLongPress: onLong,
                                     )
@@ -930,30 +1341,78 @@ class _LibraryScreenState extends State<LibraryScreen>
                                       selectedIds: _isSelectMode
                                           ? _selectedMangaIds
                                           : null,
+                                      badgeUnread: _librarySettings.badgeUnread,
+                                      badgeDownloaded:
+                                          _librarySettings.badgeDownloaded,
                                       onTap: onTap,
                                       onLongPress: onLong,
                                     );
 
-                          // Slide the grid/list in from the swipe direction
-                          // when the category changes. Keyed on the current
-                          // filter state so a real category change animates but
-                          // a data refresh (same key) doesn't flicker.
-                          final animated = AnimatedSwitcher(
-                            duration: AppTheme.standard,
-                            switchInCurve: AppTheme.primaryCurve,
-                            transitionBuilder: (child, animation) => ClipRect(
-                              child: SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: Offset(_swipeDir.toDouble(), 0),
-                                  end: Offset.zero,
-                                ).animate(animation),
-                                child: child,
+                          // Cube-rotate the grid/list when the category changes:
+                          // the outgoing face turns away toward one side while the
+                          // incoming face turns in from the other (a 3D cube).
+                          // Keyed on the filter state so a real category change
+                          // animates but a data refresh (same key) doesn't flicker.
+                          // ClipRect keeps the turning faces inside the content box.
+                          final animated = ClipRect(
+                            // ONE shared perspective for both faces, so the cube
+                            // turns as a single rigid object instead of two faces
+                            // spinning from separate vanishing points (which read
+                            // as "one goes, then the other").
+                            child: Transform(
+                              alignment: Alignment.center,
+                              transform: Matrix4.identity()
+                                ..setEntry(3, 2, 0.0016),
+                              child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 460),
+                              switchInCurve: Curves.easeInOutCubic,
+                              switchOutCurve: Curves.easeInOutCubic,
+                              transitionBuilder: (child, animation) =>
+                                  LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final w = constraints.maxWidth;
+                                  return AnimatedBuilder(
+                                    animation: animation,
+                                    builder: (context, _) {
+                                      final dir = _swipeDir.toDouble();
+                                      final leaving = animation.status ==
+                                              AnimationStatus.reverse ||
+                                          animation.status ==
+                                              AnimationStatus.dismissed;
+                                      final v = animation.value; // 0..1
+                                      final away =
+                                          1 - v; // 1 = edge-on, 0 = centered
+                                      // Entering rides in on the +dir face of the
+                                      // cube; leaving turns away on the -dir face.
+                                      final sign = leaving ? -dir : dir;
+                                      // No perspective here — it's on the shared
+                                      // parent so both faces project from one
+                                      // vanishing point and turn as one cube. Each
+                                      // face slides to the side and turns; the
+                                      // negative rotateY makes the corner point
+                                      // TOWARD the viewer (convex / "outside").
+                                      final m = Matrix4.identity()
+                                        ..multiply(Matrix4.translationValues(
+                                            sign * 0.5 * w * away, 0, 0))
+                                        ..rotateY(-sign * 1.40 * away); // ~80°
+                                      return Opacity(
+                                        opacity: (0.5 + 0.5 * v).clamp(0.0, 1.0),
+                                        child: Transform(
+                                          alignment: Alignment.center,
+                                          transform: m,
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                              child: KeyedSubtree(
+                                key: ValueKey(
+                                    '${_selectedCategory ?? '_all'}|$_showBookmarksOnly|$_isGridView'),
+                                child: inner,
                               ),
                             ),
-                            child: KeyedSubtree(
-                              key: ValueKey(
-                                  '${_selectedCategory ?? '_all'}|$_showBookmarksOnly|$_isGridView'),
-                              child: inner,
                             ),
                           );
 
@@ -981,8 +1440,10 @@ class _LibraryScreenState extends State<LibraryScreen>
         floatingActionButton: !_showStats && !_isSelectMode
             ? FloatingActionButton.extended(
                 heroTag: 'library_fab',
-                onPressed: () =>
-                    Navigator.pushNamed(context, AppRoutes.browse),
+                // Switch to the Browse TAB (keeps the bottom nav bar) rather
+                // than pushing Browse as a full-screen route over the shell,
+                // which hid the nav bar and left the user stuck.
+                onPressed: () => navTabRequest.value = 'browse',
                 icon: const Icon(Icons.add_rounded, size: 20),
                 label: Text(addLabel,
                     style: GoogleFonts.manrope(
@@ -1015,6 +1476,7 @@ class _LibraryAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onStatsTap;
   final VoidCallback? onRefresh;
   final bool isRefreshing;
+  final ValueNotifier<(int checked, int total)?>? updateProgress;
   final VoidCallback onOptionsTap;
   final VoidCallback onMoreTap;
   final bool hasActiveFilter;
@@ -1036,6 +1498,7 @@ class _LibraryAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.hasActiveFilter = false,
     this.onRefresh,
     this.isRefreshing = false,
+    this.updateProgress,
   });
 
   @override
@@ -1073,6 +1536,24 @@ class _LibraryAppBar extends StatelessWidget implements PreferredSizeWidget {
                 key: const ValueKey('title'), totalUnread: totalUnread, isVaultMode: isVaultMode),
       ),
       actions: [
+        // Persistent reminder that incognito mode is on (no history / tracker
+        // updates while reading). Shown in every app-bar state, search included.
+        if (context.watch<IncognitoProvider>().enabled)
+          Padding(
+            padding: const EdgeInsets.only(right: 2),
+            child: Tooltip(
+              message: t.libraryIncognitoActive,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppTheme.warning.withAlpha(30),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
+                ),
+                child: const Icon(Icons.visibility_off_outlined,
+                    size: 16, color: AppTheme.warning),
+              ),
+            ),
+          ),
         if (!isSearchActive) ...[
           _AppBarAction(
             icon: Icons.search_rounded,
@@ -1081,10 +1562,38 @@ class _LibraryAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           if (!showStats && onRefresh != null)
             isRefreshing
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2)))
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2)),
+                        // Live "checked / total" so the user can see it's
+                        // working and roughly how far along it is.
+                        if (updateProgress != null)
+                          ValueListenableBuilder<(int, int)?>(
+                            valueListenable: updateProgress!,
+                            builder: (_, p, __) {
+                              if (p == null || p.$2 <= 0) {
+                                return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: Text('${p.$1}/${p.$2}',
+                                    style: GoogleFonts.robotoMono(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: cs.outline)),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                  )
                 : _AppBarAction(
                     icon: Icons.refresh_rounded,
                     onTap: onRefresh!,
@@ -1249,6 +1758,8 @@ class _CategoryTabs extends StatelessWidget {
   final bool showBookmarksOnly;
   final int bookmarkCount;
   final VoidCallback onBookmarkToggle;
+  final bool showTabCounts;
+  final Map<String, int> categoryCounts;
 
   const _CategoryTabs({
     required this.categories,
@@ -1257,6 +1768,8 @@ class _CategoryTabs extends StatelessWidget {
     required this.showBookmarksOnly,
     required this.bookmarkCount,
     required this.onBookmarkToggle,
+    this.showTabCounts = false,
+    this.categoryCounts = const {},
   });
 
   @override
@@ -1348,9 +1861,22 @@ class _CategoryTabs extends StatelessWidget {
                               ? cs.primary
                               : Colors.transparent,
                           width: 1.5)),
-                      child: Text(label,
-                          style:
-                              isSelected ? selectedStyle : unselectedStyle),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(label,
+                              style: isSelected
+                                  ? selectedStyle
+                                  : unselectedStyle),
+                          if (showTabCounts) ...[
+                            const SizedBox(width: 5),
+                            Text('${categoryCounts[label] ?? 0}',
+                                style: isSelected
+                                    ? selectedStyle
+                                    : unselectedStyle),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -1365,6 +1891,91 @@ class _CategoryTabs extends StatelessWidget {
 }
 
 // ── Continue Reading Banner ──────────────────────────────────
+/// Drop-down banner showing library-update progress, then the run summary
+/// (tappable to open the retry/update-skipped menu).
+class _UpdateProgressBanner extends StatelessWidget {
+  final _UpdateBanner banner;
+  final VoidCallback? onTapSummary;
+  final VoidCallback onDismiss;
+  const _UpdateProgressBanner(
+      {required this.banner, this.onTapSummary, required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final done = banner.done;
+    final r = banner.result;
+    final hasActions =
+        done && r != null && (r.failed > 0 || r.skippedUpdatable.isNotEmpty);
+    final text = done
+        ? (r == null
+            ? 'Update complete'
+            : '${r.completed} completed · ${r.skipped} skipped · ${r.failed} failed')
+        : (banner.total > 0
+            ? 'Updating ${banner.title ?? ''}  ${banner.checked}/${banner.total}'
+            : 'Updating…');
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      decoration: BoxDecoration(
+        color: cs.primary.withAlpha(24),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cs.primary.withAlpha(60)),
+      ),
+      child: InkWell(
+        onTap: done ? onTapSummary : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+          child: Row(children: [
+            Icon(done ? Icons.check_circle_rounded : Icons.sync_rounded,
+                size: 18, color: cs.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.manrope(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: cs.onSurface)),
+                    if (!done) ...[
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: banner.total > 0
+                              ? banner.checked / banner.total
+                              : null,
+                          minHeight: 4,
+                          color: cs.primary,
+                          backgroundColor: cs.onSurface.withAlpha(30),
+                        ),
+                      ),
+                    ] else if (hasActions) ...[
+                      const SizedBox(height: 2),
+                      Text('Tap to retry / update skipped',
+                          style: GoogleFonts.manrope(
+                              fontSize: 11, color: cs.outline)),
+                    ],
+                  ]),
+            ),
+            if (done)
+              IconButton(
+                icon: Icon(Icons.close_rounded, size: 18, color: cs.outline),
+                onPressed: onDismiss,
+                visualDensity: VisualDensity.compact,
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _ContinueReadingBanner extends StatelessWidget {
   final LibraryManga manga;
   final VoidCallback onTap;
@@ -1375,6 +1986,8 @@ class _ContinueReadingBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppLocalizations.of(context);
+    // Anime items read "Watching" / "Episode" instead of "Reading" / "Chapter".
+    final isAnime = (manga.contentType ?? '') == 'anime';
     final progress = manga.totalChapters > 0
         ? manga.readChapters / manga.totalChapters
         : 0.0;
@@ -1406,7 +2019,7 @@ class _ContinueReadingBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(t.libraryContinueReading,
+                  Text(isAnime ? t.libraryContinueWatching : t.libraryContinueReading,
                       style: GoogleFonts.manrope(
                           fontSize: 10, fontWeight: FontWeight.w600,
                           color: cs.primary, letterSpacing: 0.5)),
@@ -1427,7 +2040,12 @@ class _ContinueReadingBanner extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      Text(t.libraryChapterProgress(manga.readChapters, manga.totalChapters),
+                      Text(
+                          isAnime
+                              ? t.libraryEpisodeProgress(
+                                  manga.readChapters, manga.totalChapters)
+                              : t.libraryChapterProgress(
+                                  manga.readChapters, manga.totalChapters),
                           style: GoogleFonts.manrope(fontSize: 10, color: cs.outline)),
                     ],
                   ),
@@ -1454,12 +2072,16 @@ class _LibraryGrid extends StatefulWidget {
   final List<LibraryManga> mangaList;
   final int columnCount;
   final Set<String>? selectedIds;
+  final bool badgeUnread;
+  final bool badgeDownloaded;
   final ValueChanged<LibraryManga> onTap;
   final ValueChanged<LibraryManga> onLongPress;
 
   const _LibraryGrid({
     required this.mangaList, required this.columnCount,
     this.selectedIds,
+    this.badgeUnread = true,
+    this.badgeDownloaded = true,
     required this.onTap, required this.onLongPress});
 
   @override
@@ -1471,10 +2093,19 @@ class _LibraryGridState extends State<_LibraryGrid>
   late List<AnimationController> _itemControllers;
   late List<Animation<double>> _itemAnimations;
 
+  // Only the first screenful gets the staggered entrance. Allocating an
+  // AnimationController (+ Ticker + delayed timer) for EVERY item meant a
+  // 1000-item library spun up 1000 tickers on mount/category-switch, which
+  // dominated that cost; items past this just render (itemBuilder falls back to
+  // a bare card when index is beyond the animation list).
+  static const int _maxEntranceAnimations = 16;
+
   @override
   void initState() {
     super.initState();
-    _itemControllers = List.generate(widget.mangaList.length,
+    final n = widget.mangaList.length;
+    final count = n > _maxEntranceAnimations ? _maxEntranceAnimations : n;
+    _itemControllers = List.generate(count,
         (i) => AnimationController(vsync: this, duration: AppTheme.entrance));
     _itemAnimations = _itemControllers
         .map((c) => CurvedAnimation(parent: c, curve: AppTheme.primaryCurve))
@@ -1498,6 +2129,10 @@ class _LibraryGridState extends State<_LibraryGrid>
       // Always scrollable so pull-to-refresh triggers even when the grid
       // doesn't fill the screen.
       physics: const AlwaysScrollableScrollPhysics(),
+      // Pre-build ~a row or two beyond the viewport so covers start loading
+      // before they scroll into view (fewer placeholder pops on fast scroll).
+      // ignore: deprecated_member_use
+      cacheExtent: 600,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: widget.columnCount,
@@ -1507,8 +2142,14 @@ class _LibraryGridState extends State<_LibraryGrid>
         final m = widget.mangaList[index];
         final isSelected = widget.selectedIds?.contains('${m.sourceId}::${m.url}') ?? false;
         final card = _MangaGridCard(
+          // Key by manga identity so Flutter never recycles one card's state
+          // (and its kept-alive cover image) onto a different title — that
+          // recycling is what made covers "dupe" onto neighbours during updates.
+          key: ValueKey('${m.sourceId}::${m.url}'),
           manga: m,
           isSelected: isSelected,
+          badgeUnread: widget.badgeUnread,
+          badgeDownloaded: widget.badgeDownloaded,
           onTap: () => widget.onTap(m),
           onLongPress: () => widget.onLongPress(m));
         if (index >= _itemAnimations.length) return card;
@@ -1527,9 +2168,18 @@ class _LibraryGridState extends State<_LibraryGrid>
 class _MangaGridCard extends StatefulWidget {
   final LibraryManga manga;
   final bool isSelected;
+  final bool badgeUnread;
+  final bool badgeDownloaded;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
-  const _MangaGridCard({required this.manga, this.isSelected = false, required this.onTap, required this.onLongPress});
+  const _MangaGridCard({
+    super.key,
+    required this.manga,
+    this.isSelected = false,
+    this.badgeUnread = true,
+    this.badgeDownloaded = true,
+    required this.onTap,
+    required this.onLongPress});
 
   @override
   State<_MangaGridCard> createState() => _MangaGridCardState();
@@ -1557,6 +2207,11 @@ class _MangaGridCardState extends State<_MangaGridCard>
     final unread = context.read<LibraryProvider>().unreadForManga(widget.manga);
     final progress = widget.manga.totalChapters > 0
         ? widget.manga.readChapters / widget.manga.totalChapters : 0.0;
+    final showUnread = widget.badgeUnread && unread > 0;
+    final showDownloaded = widget.badgeDownloaded &&
+        context
+            .read<DownloadProvider>()
+            .isMangaDownloaded('${widget.manga.sourceId}::${widget.manga.url}');
 
     return GestureDetector(
       onTapDown: (_) => _pressController.forward(),
@@ -1598,17 +2253,34 @@ class _MangaGridCardState extends State<_MangaGridCard>
                     style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700,
                         color: Colors.white, height: 1.3,
                         shadows: const [Shadow(color: Colors.black, blurRadius: 4)]))),
-              // Unread badge
-              if (unread > 0)
+              // Badge cluster (unread + downloaded), stacked so the two never
+              // overlap when both are shown.
+              if (showUnread || showDownloaded)
                 PositionedDirectional(top: 6, end: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: cs.primary,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
-                    child: Text(unread > 99 ? '99+' : '$unread',
-                        style: GoogleFonts.manrope(
-                            fontSize: 10, fontWeight: FontWeight.w800, color: cs.onPrimary)))),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (showUnread)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: cs.primary,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
+                          child: Text(unread > 99 ? '99+' : '$unread',
+                              style: GoogleFonts.manrope(
+                                  fontSize: 10, fontWeight: FontWeight.w800, color: cs.onPrimary))),
+                      if (showDownloaded) ...[
+                        if (showUnread) const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            color: cs.tertiary,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
+                          child: Icon(Icons.download_done_rounded,
+                              size: 12, color: cs.onTertiary)),
+                      ],
+                    ],
+                  )),
               // Selection overlay
               if (widget.isSelected) ...[
                 Container(color: cs.primary.withAlpha(60)),
@@ -1631,9 +2303,17 @@ class _MangaGridCardState extends State<_MangaGridCard>
 class _LibraryList extends StatelessWidget {
   final List<LibraryManga> mangaList;
   final Set<String>? selectedIds;
+  final bool badgeUnread;
+  final bool badgeDownloaded;
   final ValueChanged<LibraryManga> onTap;
   final ValueChanged<LibraryManga> onLongPress;
-  const _LibraryList({required this.mangaList, this.selectedIds, required this.onTap, required this.onLongPress});
+  const _LibraryList({
+    required this.mangaList,
+    this.selectedIds,
+    this.badgeUnread = true,
+    this.badgeDownloaded = true,
+    required this.onTap,
+    required this.onLongPress});
 
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
@@ -1651,13 +2331,23 @@ class _LibraryList extends StatelessWidget {
     final t = AppLocalizations.of(context);
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
+      // ignore: deprecated_member_use
+      cacheExtent: 600,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
       itemCount: mangaList.length,
       itemBuilder: (_, index) {
         final manga = mangaList[index];
         final unread = context.read<LibraryProvider>().unreadForManga(manga);
         final isSelected = selectedIds?.contains('${manga.sourceId}::${manga.url}') ?? false;
+        final showUnread = badgeUnread && unread > 0;
+        final showDownloaded = badgeDownloaded &&
+            context
+                .read<DownloadProvider>()
+                .isMangaDownloaded('${manga.sourceId}::${manga.url}');
         return Material(
+          // Key by manga identity so a recycled row never shows a neighbour's
+          // kept-alive cover (the list-view counterpart of the grid fix).
+          key: ValueKey('${manga.sourceId}::${manga.url}'),
           color: Colors.transparent,
           child: InkWell(
             onTap: () => onTap(manga),
@@ -1702,7 +2392,17 @@ class _LibraryList extends StatelessWidget {
                               style: GoogleFonts.manrope(
                                   fontSize: 10, fontWeight: FontWeight.w600, color: _statusColor(manga.status)))),
                         const Spacer(),
-                        if (unread > 0)
+                        if (showDownloaded)
+                          Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: cs.tertiary,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
+                            child: Icon(Icons.download_done_rounded,
+                                size: 12, color: cs.onTertiary)),
+                        if (showDownloaded && showUnread)
+                          const SizedBox(width: 6),
+                        if (showUnread)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(

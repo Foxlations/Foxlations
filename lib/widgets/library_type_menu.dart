@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../core/providers/library_type_provider.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 
 /// Icons for each content type, mirroring the Library tab's own icon set.
@@ -38,7 +39,7 @@ Future<void> showLibraryTypeBubble(BuildContext context, Rect anchor) {
   return showGeneralDialog(
     context: context,
     barrierDismissible: true,
-    barrierLabel: 'Library type',
+    barrierLabel: AppLocalizations.of(context).libraryTypeMenuBarrier,
     barrierColor: Colors.black.withAlpha(40),
     transitionDuration: const Duration(milliseconds: 160),
     pageBuilder: (_, __, ___) => _LibraryTypeBubble(anchor: anchor),

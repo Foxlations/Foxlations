@@ -7,6 +7,7 @@ import '../../../core/models/installed_source_model.dart';
 import '../../../core/providers/library_provider.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../core/providers/tracking_provider.dart';
+import '../../../core/providers/vault_provider.dart';
 import '../../../core/utils/search_filter.dart';
 import '../../../eval/lib.dart';
 import '../../../eval/model/m_manga.dart';
@@ -60,13 +61,23 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
   final List<String> _unmatched = [];
 
   // ── source enumeration ──────────────────────────────────────
+  // The vault is a SEPARATE library; migrate operates on whichever is active
+  // (mirrors the per-title migrate screen) instead of always the normal library,
+  // which left bulk-migrate blind to vault content.
+  dynamic get _activeLib {
+    final vault = context.read<VaultProvider>();
+    return vault.vaultActive ? vault : context.read<LibraryProvider>();
+  }
+
+  List<LibraryManga> get _activeManga =>
+      (_activeLib.manga as List).cast<LibraryManga>();
+
   List<_SourceGroup> _fromGroups() {
     final t = AppLocalizations.of(context);
-    final lib = context.read<LibraryProvider>();
     final sources = context.read<SourceProvider>().installedSources;
     final byId = {for (final s in sources) s.source.id: s};
     final counts = <String, int>{};
-    for (final m in lib.manga) {
+    for (final m in _activeManga) {
       counts[m.sourceId] = (counts[m.sourceId] ?? 0) + 1;
     }
     final groups = counts.entries.map((e) {
@@ -85,10 +96,16 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
     return groups;
   }
 
-  List<InstalledSource> _toSources() =>
-      context.read<SourceProvider>().installedSources
-          .where((s) => s.source.id != _fromId)
-          .toList();
+  List<InstalledSource> _toSources() {
+    final vault = context.read<VaultProvider>();
+    return context.read<SourceProvider>().installedSources.where((s) {
+      if (s.source.id == _fromId) return false;
+      // Outside the vault, don't offer vaulted sources as targets (matches the
+      // per-title migrate's `!isSourceInVault` filter and Browse's hiding).
+      if (!vault.vaultActive && vault.isSourceInVault(s.source.id)) return false;
+      return true;
+    }).toList();
+  }
 
   String _shortId(String id) =>
       id.length <= 10 ? id : '${id.substring(0, 10)}…';
@@ -101,9 +118,16 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
   }
 
   String? _chapterNumber(String name) {
-    final dec = RegExp(r'(\d+\.\d+)').firstMatch(name);
-    if (dec != null) return dec.group(1);
-    return RegExp(r'(\d+)').firstMatch(name)?.group(1);
+    // Prefer the number after a chapter/episode label so "Vol. 2 Ch. 5" and
+    // "2024 - Chapter 5" both yield 5, not the volume/year. Fall back to the
+    // LAST number (titles usually end with the chapter number).
+    final labelled = RegExp(
+            r'(?:chapter|chap|ch|episode|epis|ep|#)\s*\.?\s*(\d+(?:\.\d+)?)',
+            caseSensitive: false)
+        .firstMatch(name);
+    if (labelled != null) return labelled.group(1);
+    final all = RegExp(r'(\d+(?:\.\d+)?)').allMatches(name).toList();
+    return all.isEmpty ? null : all.last.group(1);
   }
 
   // ── run ─────────────────────────────────────────────────────
@@ -114,9 +138,8 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
     final to = _installed(toId);
     if (to == null) return;
 
-    final lib = context.read<LibraryProvider>();
     final entries =
-        lib.manga.where((m) => m.sourceId == fromId).toList(growable: false);
+        _activeManga.where((m) => m.sourceId == fromId).toList(growable: false);
     if (entries.isEmpty) return;
 
     // Phase 1 — analyse: find each entry on the target (exact URL, then an
@@ -214,7 +237,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
   Future<void> _commit(
       List<_PlanItem> plan, String fromId, String toId) async {
     final t = AppLocalizations.of(context);
-    final lib = context.read<LibraryProvider>();
+    final lib = _activeLib; // normal library or vault, whichever is active
     final tracking = context.read<TrackingProvider>();
     final movable = plan.where((p) => p.matchType != 'none').toList();
 
@@ -252,7 +275,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
     });
   }
 
-  Future<void> _move(LibraryProvider lib, TrackingProvider tracking,
+  Future<void> _move(dynamic lib, TrackingProvider tracking,
       _PlanItem p, String fromId, String toId) async {
     final old = p.entry;
     final targetUrl = p.targetUrl ?? old.url;
@@ -327,6 +350,11 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
+    // Rebuild when sources finish installing or the library/vault changes, so
+    // the FROM/TO pickers aren't stuck showing a stale (often empty) set.
+    context.watch<SourceProvider>();
+    context.watch<LibraryProvider>();
+    context.watch<VaultProvider>();
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -367,6 +395,14 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           fromGroups.isEmpty,
           () => _pickFrom(fromGroups),
         ),
+        // Explain a legitimately-empty FROM list so it isn't read as a bug — the
+        // picker only lists sources that actually have entries in this library.
+        if (fromGroups.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: Text('No titles in this library to migrate.',
+                style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline)),
+          ),
         const SizedBox(height: 16),
         _label(t.repoTo, cs),
         _picker(
@@ -375,11 +411,17 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           _fromId == null || toSources.isEmpty,
           () => _pickTo(toSources),
         ),
+        if (_fromId == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: Text('Choose a source to migrate from first.',
+                style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline)),
+          ),
         const SizedBox(height: 8),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           value: _matchByTitle,
-          activeColor: cs.primary,
+          activeThumbColor: cs.primary,
           title: Text(t.repoAlsoMatchByTitle,
               style: GoogleFonts.manrope(
                   fontSize: 14, fontWeight: FontWeight.w600)),

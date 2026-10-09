@@ -3,12 +3,15 @@ package com.foxlations.manga_reader
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
+import android.view.WindowManager
 import com.foxlations.manga_reader.ext.ExtensionHost
-import io.flutter.embedding.android.FlutterActivity
+// FlutterFragmentActivity (not FlutterActivity) is required by local_auth's
+// biometric prompt, which needs a FragmentActivity host.
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     // Volume-button page navigation: the manga/novel readers enable capture while open
     // (and disable it on exit), so ONLY there do we intercept the hardware volume keys —
     // tell Flutter which way to page and swallow the event so system volume doesn't
@@ -44,6 +47,28 @@ class MainActivity : FlutterActivity() {
                             main.post { result.success(resp) }
                         }.start()
                     }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Secure screen (Settings > Security > Secure Screen). FLAG_SECURE blanks the
+        // app's thumbnail in the recent-apps switcher and blocks screenshots/screen
+        // recording while set. Toggled live from Dart.
+        val secure = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger, "foxlations/secure")
+        secure.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setSecure" -> {
+                    val on = call.arguments as? Boolean ?: false
+                    runOnUiThread {
+                        if (on) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        }
+                    }
+                    result.success(null)
                 }
                 else -> result.notImplemented()
             }

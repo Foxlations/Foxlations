@@ -1,0 +1,39 @@
+Implement ucontext_get_pc / ucontext_set_pc for the Zero VM on Darwin/arm64.
+
+Zero leaves both as ShouldNotCall() stubs. But HotSpot's crash/signal handler
+calls os::Posix::ucontext_get_pc the instant ANY signal reaches it, so on iOS
+(bsd-aarch64) the stub aborts the whole process:
+
+    Internal Error (os_bsd_zero.cpp:91), Error: ShouldNotCall()
+    Current thread is native thread; VM state: not at safepoint (normal execution)
+
+Returning the real program counter from the Darwin/arm64 machine context lets
+signal handling proceed normally instead of aborting. Applied in CI
+(build-ios-jvm.yml) against openjdk/mobile @ c1ed06a before configure/make.
+
+--- a/src/hotspot/os_cpu/bsd_zero/os_bsd_zero.cpp
++++ b/src/hotspot/os_cpu/bsd_zero/os_bsd_zero.cpp
+@@ -90,8 +90,20 @@
+ address os::Posix::ucontext_get_pc(const ucontext_t* uc) {
+-  ShouldNotCallThis();
+-  return nullptr;
++#if defined(__APPLE__) && defined(__aarch64__)
++  // Zero normally never needs the PC, but HotSpot's crash/signal handler calls
++  // this as soon as any signal arrives; on iOS the ShouldNotCall() stub then
++  // aborts the whole process (os_bsd_zero.cpp:91). Hand back the real PC from
++  // the Darwin/arm64 machine context so signal handling can continue.
++  return (address) uc->uc_mcontext->__ss.__pc;
++#else
++  ShouldNotCallThis();
++  return nullptr;
++#endif
+ }
+
+ void os::Posix::ucontext_set_pc(ucontext_t * uc, address pc) {
+-  ShouldNotCallThis();
++#if defined(__APPLE__) && defined(__aarch64__)
++  uc->uc_mcontext->__ss.__pc = (uint64_t) pc;
++#else
++  ShouldNotCallThis();
++#endif
+ }

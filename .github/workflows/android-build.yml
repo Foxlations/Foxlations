@@ -86,11 +86,23 @@ jobs:
           } > android/key.properties
           echo "Release signing configured."
 
+      - name: Free up disk space
+        # The onnxruntime/sherpa-onnx native libs (for every ABI from the plugin
+        # AARs) tip the runner over "No space left on device" during the native
+        # lib merge/strip. Reclaim ~25-30 GB of preinstalled tooling we don't use
+        # (leaves the Android SDK/NDK + Flutter intact).
+        run: |
+          echo "Before:"; df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /usr/local/share/powershell /usr/share/swift \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost 2>/dev/null || true
+          echo "After:"; df -h /
+
       - name: Build APK (arm64)
         run: |
           set -euo pipefail
           flutter pub get
-          flutter build apk --release --target-platform android-arm64
+          flutter build apk --release --target-platform android-arm64 --dart-define=FOX_DEV=true
           ls -lh build/app/outputs/flutter-apk/
 
       - name: Upload APK

@@ -46,6 +46,15 @@ class WebViewService {
 
   final Set<String> _cleared = {};
 
+  // Bumped to abort in-flight Cloudflare solves. Each running resolveCloudflare
+  // captures the value at start and bails (stops polling, disposes its headless
+  // WebView) the moment it changes — e.g. the user backed out of global search
+  // while a batch of sources were still churning through CF challenges.
+  int _cancelGeneration = 0;
+
+  /// Abort every Cloudflare solve currently in progress.
+  void cancelPending() => _cancelGeneration++;
+
   String normalizeDomain(String domain) =>
       domain.startsWith('www.') ? domain.substring(4) : domain;
 
@@ -67,16 +76,30 @@ class WebViewService {
 
     debugPrint('[WebView] Resolving Cloudflare for $url');
 
+    // Load the headless solver with a real browser UA. Without one, WKWebView's
+    // default UA (no Version/Safari tokens) looks bot-like to Cloudflare, so the
+    // automatic bypass fails on iOS and forces users to the manual WebView.
+    final ua = await CookieStore().getUserAgent();
+
     HeadlessInAppWebView? headlessWebView;
     bool isCloudflare = true;
     bool timedOut = false;
     int elapsed = 0;
-    final completer = Completer<bool>();
+    // Snapshot the cancel generation; if cancelPending() bumps it we stop.
+    final gen = _cancelGeneration;
+    bool cancelled() => gen != _cancelGeneration;
 
     try {
       headlessWebView = HeadlessInAppWebView(
         webViewEnvironment: webViewEnvironment,
         initialUrlRequest: URLRequest(url: WebUri(url)),
+        initialSettings: InAppWebViewSettings(
+          userAgent: ua,
+          javaScriptEnabled: true,
+          domStorageEnabled: true,
+          thirdPartyCookiesEnabled: true,
+          sharedCookiesEnabled: true,
+        ),
         onLoadStop: (controller, loadedUrl) async {
           // Check if still on Cloudflare challenge page.
           // CF challenge pages have title "Just a moment..." or similar.
@@ -108,13 +131,13 @@ class WebViewService {
 
           isCloudflare = await isCfChallenge();
 
-          // Poll until challenge is resolved
-          while (isCloudflare && !timedOut) {
+          // Poll until challenge is resolved (or cancelled / timed out)
+          while (isCloudflare && !timedOut && !cancelled()) {
             await Future.delayed(const Duration(milliseconds: 500));
             isCloudflare = await isCfChallenge();
           }
 
-          if (!timedOut && !isCloudflare) {
+          if (!timedOut && !cancelled() && !isCloudflare) {
             // Challenge solved! Extract cookies via native CookieManager
             final ua = await controller.evaluateJavascript(
                     source: "navigator.userAgent") ??
@@ -133,8 +156,8 @@ class WebViewService {
 
       await headlessWebView.run();
 
-      // Wait for resolution with timeout
-      while (isCloudflare && !timedOut) {
+      // Wait for resolution (timeout, or an external cancel)
+      while (isCloudflare && !timedOut && !cancelled()) {
         await Future.delayed(const Duration(seconds: 1));
         elapsed++;
         timedOut = elapsed >= 30;
@@ -144,7 +167,7 @@ class WebViewService {
         await headlessWebView.dispose();
       } catch (_) {}
 
-      final success = !isCloudflare && !timedOut;
+      final success = !isCloudflare && !timedOut && !cancelled();
       debugPrint(
           '[WebView] Cloudflare resolution ${success ? "succeeded" : "failed"} for $domain');
       return success;
@@ -306,6 +329,7 @@ class WebViewService {
     }
 
     // Now fetch via a headless WebView
+    final fetchUa = await CookieStore().getUserAgent();
     HeadlessInAppWebView? webView;
     String? html;
     bool loaded = false;
@@ -314,6 +338,13 @@ class WebViewService {
       webView = HeadlessInAppWebView(
         webViewEnvironment: webViewEnvironment,
         initialUrlRequest: URLRequest(url: WebUri(url)),
+        initialSettings: InAppWebViewSettings(
+          userAgent: fetchUa,
+          javaScriptEnabled: true,
+          domStorageEnabled: true,
+          thirdPartyCookiesEnabled: true,
+          sharedCookiesEnabled: true,
+        ),
         onLoadStop: (controller, loadedUrl) async {
           try {
             html = await controller.evaluateJavascript(
@@ -480,7 +511,7 @@ class WebViewService {
         await Future.delayed(const Duration(milliseconds: 250));
         try {
           // Check both our hooked __vrfCaptured and video.currentSrc directly
-          final result = await webView!.webViewController?.evaluateJavascript(
+          final result = await webView.webViewController?.evaluateJavascript(
               source: '''
                 (function() {
                   if (window.__vrfCaptured) return window.__vrfCaptured;
@@ -497,10 +528,10 @@ class WebViewService {
           if (result != null && result.toString().isNotEmpty && result.toString() != '""' && result.toString() != 'null') {
             captured = result.toString();
             // Strip surrounding quotes if present
-            if (captured!.startsWith('"') && captured!.endsWith('"')) {
-              captured = captured!.substring(1, captured!.length - 1);
+            if (captured.startsWith('"') && captured.endsWith('"')) {
+              captured = captured.substring(1, captured.length - 1);
             }
-            if (captured!.isNotEmpty) {
+            if (captured.isNotEmpty) {
               done = true;
               debugPrint('[WebView] Captured: $captured');
             }

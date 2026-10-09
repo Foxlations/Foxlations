@@ -19,7 +19,10 @@ abstract interface class ExtensionService {
 
   Future<MPages> search(String query, int page, List<dynamic> filters);
 
-  Future<MManga> getDetail(String url);
+  /// [fullChapters] false = a lightweight fetch that only needs the NEWEST
+  /// chapters (used by library update checks); true = the complete list (the
+  /// detail screen). Only matters for paginated sources (LNReader novels).
+  Future<MManga> getDetail(String url, {bool fullChapters = true});
 
   Future<List<PageUrl>> getPageList(String url);
 
@@ -36,6 +39,13 @@ abstract interface class ExtensionService {
   /// For novel sources: the chapter's HTML/text content at [url]. Empty for
   /// non-novel sources.
   Future<String> getHtmlContent(String url);
+
+  /// The source's own browsable page URL for an item ("Open in browser"), given
+  /// its stored url/path. LNReader uses the plugin's `resolveUrl`; manga/anime
+  /// re-home the path onto the current base URL (Mihon-style). Resolved on
+  /// demand so it's correct even for a library item shown from cache before a
+  /// refresh. Returns null if it can't be determined (caller falls back).
+  Future<String?> getWebUrl(String url);
 
   FilterList getFilterList();
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/settings_store.dart';
 
 /// Holds the user-selected app UI language.
 ///
@@ -15,8 +15,7 @@ class LocaleProvider extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final code = prefs.getString(_prefsKey);
+      final code = SettingsStore.instance.getString(_prefsKey);
       if (code != null && code.isNotEmpty) {
         _locale = _parse(code);
         notifyListeners();
@@ -32,11 +31,10 @@ class LocaleProvider extends ChangeNotifier {
     _locale = locale;
     notifyListeners();
     try {
-      final prefs = await SharedPreferences.getInstance();
       if (locale == null) {
-        await prefs.remove(_prefsKey);
+        await SettingsStore.instance.remove(_prefsKey);
       } else {
-        await prefs.setString(_prefsKey, _format(locale));
+        await SettingsStore.instance.setString(_prefsKey, _format(locale));
       }
     } catch (_) {
       // Persisting is best-effort; the in-memory choice still applies this run.

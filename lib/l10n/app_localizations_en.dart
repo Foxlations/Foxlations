@@ -183,6 +183,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String libraryEpisodeProgress(Object read, Object total) {
+    return 'Ep. $read/$total';
+  }
+
+  @override
   String libraryChaptersAbbrev(Object n) {
     return '$n ch';
   }
@@ -204,6 +209,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryContinueReading => 'Continue Reading';
+
+  @override
+  String get libraryContinueWatching => 'Continue Watching';
+
+  @override
+  String get readerListen => 'Listen';
+
+  @override
+  String get readerTtsStop => 'Stop';
+
+  @override
+  String get readerTtsSpeed => 'Speed';
+
+  @override
+  String get readerTtsVoice => 'Voice';
+
+  @override
+  String get readerTtsNoVoices => 'No voices available on this device';
+
+  @override
+  String get readerTtsSystemVoice => 'System default';
 
   @override
   String get libraryCoverSize => 'Cover Size';
@@ -435,6 +461,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryTotalChapters => 'Total Chapters';
 
   @override
+  String get libraryTypeMenuBarrier => 'Library type';
+
+  @override
   String libraryTypeBreakdown(Object type) {
     return '$type Breakdown';
   }
@@ -526,6 +555,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get detailDownloadNextChapter => 'Next chapter';
+
+  @override
+  String get detailDownloadNextEpisode => 'Next episode';
+
+  @override
+  String get detailDownloadNext5Episodes => 'Next 5 episodes';
+
+  @override
+  String get detailDownloadNext10Episodes => 'Next 10 episodes';
+
+  @override
+  String get detailDownloadAllEpisodes => 'All episodes';
+
+  @override
+  String get detailSelectEpisodes => 'Select episodes';
 
   @override
   String get detailEditCategories => 'Edit categories';
@@ -644,6 +688,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get detailOpenInBrowser => 'Open in browser';
+
+  @override
+  String get webviewOpenFailed => 'Couldn\'t open the browser';
 
   @override
   String detailPage(Object page) {
@@ -889,6 +936,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readerGrayscaleSubtitle => 'Display pages in grayscale';
 
   @override
+  String get readerAutoCrop => 'Auto-crop borders';
+
+  @override
+  String get readerAutoCropSubtitle =>
+      'Trim solid white/black margins so pages fill the screen';
+
+  @override
   String get readerInvertColors => 'Invert Colors';
 
   @override
@@ -956,10 +1010,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readerSourceNotInstalled => 'Source not installed';
 
   @override
+  String get readerSourceNotInstalledHint =>
+      'This title\'s source isn\'t installed — this can happen after restoring a backup. Install it from Extensions, then try again.';
+
+  @override
   String get readerTranslating => 'Translating…';
 
   @override
   String get readerRetry => 'Retry';
+
+  @override
+  String get readerPageShare => 'Share';
+
+  @override
+  String get readerPageSave => 'Save image';
+
+  @override
+  String get readerPageSetCover => 'Set as cover';
+
+  @override
+  String get readerPageRecognizeText => 'Recognize text';
+
+  @override
+  String get readerPageSaved => 'Saved to gallery';
+
+  @override
+  String get readerPageSaveFailed => 'Couldn\'t save the image';
+
+  @override
+  String get readerPageCoverSet => 'Cover updated';
+
+  @override
+  String get readerPageCoverNeedsLibrary =>
+      'Add this title to your library first';
+
+  @override
+  String get readerPageImageUnavailable => 'Image isn\'t available yet';
+
+  @override
+  String get readerPageOcrTitle => 'Recognized text';
+
+  @override
+  String get readerPageOcrEmpty => 'No text found on this page';
+
+  @override
+  String get readerPageOcrCopy => 'Copy';
 
   @override
   String get readerLoadingNextChapter => 'Loading next chapter...';
@@ -1543,6 +1638,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get browseNoResultsFound => 'No results found';
 
   @override
+  String get globalSearchSourceNoResults => 'No results';
+
+  @override
+  String get globalSearchSourceFailed => 'Couldn\'t search this source';
+
+  @override
   String get browseSectionSources => 'Sources';
 
   @override
@@ -1614,6 +1715,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setxAdvancedDnsProviderTitle => 'DNS Provider';
+
+  @override
+  String get commonBeta => 'BETA';
+
+  @override
+  String get setxAdvancedSectionBeta => 'Experimental';
+
+  @override
+  String get setxAdvancedBeta => 'Beta features';
+
+  @override
+  String get setxAdvancedBetaDesc =>
+      'Show experimental features — hands-free & volume-key scrolling, RepoForge, AI translation and auto-crop. They may be unstable or change.';
 
   @override
   String get setxAdvancedSectionExtensions => 'Extensions';
@@ -1791,6 +1905,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setxSecuritySectionPrivacy => 'Privacy';
 
   @override
+  String get setxSecurityIncognitoTitle => 'Incognito mode';
+
+  @override
+  String get setxSecurityIncognitoSubtitle =>
+      'Don\'t save reading history or update trackers';
+
+  @override
+  String get libraryIncognitoActive => 'Incognito mode on';
+
+  @override
   String get setxSecuritySecureScreenTitle => 'Secure Screen';
 
   @override
@@ -1802,6 +1926,88 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setxSecurityHideNotifSubtitle => 'Show generic notification text';
+
+  @override
+  String get notifChannelUpdatesName => 'Library updates';
+
+  @override
+  String get notifChannelUpdatesDesc => 'New chapters and update summaries';
+
+  @override
+  String get notifChannelDownloadsName => 'Downloads';
+
+  @override
+  String get notifChannelDownloadsDesc => 'Download completion and errors';
+
+  @override
+  String get notifDownloadCompleteTitle => 'Download complete';
+
+  @override
+  String get notifDownloadFailedTitle => 'Download failed';
+
+  @override
+  String get notifDownloadsDoneTitle => 'Downloads complete';
+
+  @override
+  String notifDownloadsDoneBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items downloaded',
+      one: '1 item downloaded',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String notifDownloadsDoneBodyFailed(int count, int failed) {
+    return '$count downloaded · $failed failed';
+  }
+
+  @override
+  String notifNewChapters(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count new chapters',
+      one: '1 new chapter',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notifLibraryUpdatedTitle => 'Library updated';
+
+  @override
+  String notifLibrarySummaryBody(int count, int titles) {
+    return '$count new chapters across $titles titles';
+  }
+
+  @override
+  String get notifHiddenBody => 'New activity';
+
+  @override
+  String get notifExtensionUpdatesTitle => 'Extension updates';
+
+  @override
+  String notifExtensionUpdates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count extension updates available',
+      one: '1 extension update available',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get securityLockedTitle => 'Foxlations is locked';
+
+  @override
+  String get securityUnlock => 'Unlock';
+
+  @override
+  String get securityUnlockReason => 'Unlock Foxlations';
 
   @override
   String get setxBackupTitle => 'Backup & Restore';
@@ -1820,11 +2026,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setxBackupRestoreTitle => 'Restore backup';
 
   @override
+  String get backupIncludeVault => 'Include vault';
+
+  @override
+  String get backupIncludeVaultSubtitle =>
+      'Adds your vault titles under “Vault-” categories — requires unlocking';
+
+  @override
+  String get backupUnlockVaultTitle => 'Unlock vault';
+
+  @override
+  String get backupUnlockVaultHint => 'Vault password';
+
+  @override
+  String get backupRestoreConfirmTitle => 'Restore this backup?';
+
+  @override
+  String backupRestoreConfirmBody(String name) {
+    return 'This adds “$name” to your library. You can cancel if you changed your mind.';
+  }
+
+  @override
   String get setxBackupRestoreSubtitle =>
       'Restore from a Foxlations .fxbackup file';
 
   @override
-  String get setxBackupSectionTachiyomi => 'Tachiyomi / Mihon & forks';
+  String get setxBackupSectionTachiyomi => 'Import from other apps';
 
   @override
   String get setxBackupCreateCompatTitle => 'Create compatible backup';
@@ -1834,11 +2061,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Export a .tachibk you can import into Tachiyomi, Mihon and forks';
 
   @override
-  String get setxBackupRestoreTachiyomiTitle => 'Restore from Tachiyomi/Mihon';
+  String get setxBackupRestoreTachiyomiTitle => 'Import from another app';
 
   @override
   String get setxBackupRestoreTachiyomiSubtitle =>
-      'Import a .tachibk / .tmb / .proto.gz backup (matches sources by name)';
+      'Mihon / Tachiyomi & forks, Aniyomi, Tachimanga, Mangayomi (matches sources by name)';
 
   @override
   String get setxBackupSectionAutomatic => 'Automatic backup';
@@ -1884,6 +2111,58 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setxBackupRestoreComplete => 'Restore complete';
+
+  @override
+  String get backupOrganizeTitle => 'Organize imported categories';
+
+  @override
+  String backupOrganizePrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'The backup added $count categories. Keep each, or send it to one of yours.',
+      one: 'The backup added 1 category. Keep it, or send it to one of yours.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get backupOrganizeKeepAll => 'Keep as-is';
+
+  @override
+  String get backupOrganizeApply => 'Apply';
+
+  @override
+  String get backupOrganizeKeep => 'Keep';
+
+  @override
+  String get backupOrganizeShowVault => 'Show vault categories';
+
+  @override
+  String get backupOrganizeUnlockVault =>
+      'Unlock the vault to use its categories';
+
+  @override
+  String backupOrganizeVaultPrefix(String name) {
+    return 'Vault: $name';
+  }
+
+  @override
+  String backupOrganizeItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count titles',
+      one: '1 title',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String backupOrganizeDone(int count) {
+    return 'Reorganized $count titles';
+  }
 
   @override
   String setxBackupRestoreFailed(Object error) {
@@ -2813,6 +3092,61 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get dlQueueTitle => 'Downloads';
+
+  @override
+  String get dlQueueSettingsTooltip => 'Download settings';
+
+  @override
+  String get dlQueueRecent => 'Recently Downloaded';
+
+  @override
+  String get dlQueueResume => 'Resume';
+
+  @override
+  String get dlQueuePause => 'Pause';
+
+  @override
+  String dlQueueConcurrent(Object count) {
+    return 'Concurrent downloads: $count';
+  }
+
+  @override
+  String get dlQueueEmpty => 'No Downloads';
+
+  @override
+  String get dlQueuePaused => 'Downloads paused';
+
+  @override
+  String get dlQueueStatusQueued => 'Queued';
+
+  @override
+  String get dlQueueStatusDownloading => 'Downloading';
+
+  @override
+  String get dlQueueCancelAll => 'Cancel all';
+
+  @override
+  String get dlQueueCancelItem => 'Cancel download';
+
+  @override
+  String dlQueueProgress(Object done, Object total) {
+    return '$done / $total';
+  }
+
+  @override
+  String get dlQueueRecentTitle => 'Recently Downloaded';
+
+  @override
+  String get dlQueueRecentEmpty => 'Nothing downloaded yet';
+
+  @override
+  String get dlQueueRecentClear => 'Clear';
+
+  @override
+  String get dlQueueRecentNote => 'This session only';
+
+  @override
   String get setdVaultTitle => 'Vault';
 
   @override
@@ -3153,6 +3487,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setdPlayerSkipAmountTitle => 'Skip amount';
 
   @override
+  String get setdPlayerShowSkipButton => 'Skip-intro button';
+
+  @override
+  String get setdPlayerShowSkipButtonDesc =>
+      'Show a Skip Intro button near the start, even when the source has no markers';
+
+  @override
   String get setdPlayerSpeedTitle => 'Speed';
 
   @override
@@ -3169,6 +3510,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setdAppearanceInvertColorsDesc => 'Inverts the entire app UI';
+
+  @override
+  String get setdAppearanceOledBlack => 'Pure black (OLED)';
+
+  @override
+  String get setdAppearanceOledBlackDesc =>
+      'True-black background in dark mode — saves power on OLED screens';
+
+  @override
+  String get setdAppearanceNavOrder => 'Navigation bar';
+
+  @override
+  String get setdAppearanceNavOrderDesc =>
+      'Drag to arrange the bottom tabs in any order';
+
+  @override
+  String get setdAppearanceNavOrderReset => 'Reset';
 
   @override
   String get setdAppearanceDarkMode => 'Dark Mode';
@@ -3317,4 +3675,111 @@ class AppLocalizationsEn extends AppLocalizations {
   String discoverBecauseYouRead(String title) {
     return 'Because you read $title';
   }
+
+  @override
+  String get readerGazeScroll => 'Hands-free scrolling';
+
+  @override
+  String get readerGazeScrollSubtitle =>
+      'Scroll by looking toward the top or bottom of the screen. Uses the front camera.';
+
+  @override
+  String get readerGazeCameraTitle => 'Use the front camera?';
+
+  @override
+  String get readerGazeCameraWarning =>
+      'Hands-free scrolling watches your gaze with the front camera while you read. It runs entirely on your device — nothing is recorded or sent anywhere — but it uses extra battery.';
+
+  @override
+  String get readerGazeMode => 'Control with';
+
+  @override
+  String get readerGazeSensitivity => 'Sensitivity';
+
+  @override
+  String get readerGazeHoldTime => 'Hold time';
+
+  @override
+  String get readerGazeSmoothing => 'Smoothing';
+
+  @override
+  String get readerGazeCalibrate => 'Calibrate';
+
+  @override
+  String get readerGazeCalibrateSubtitle =>
+      'Set your resting gaze and head position as the baseline.';
+
+  @override
+  String get readerGazeCalibrating => 'Look at the centre and hold still…';
+
+  @override
+  String get readerTiltScroll => 'Tilt to scroll';
+
+  @override
+  String get readerTiltScrollSubtitle =>
+      'Scroll by tilting the phone forward or back. Works on any phone.';
+
+  @override
+  String get readerTiltCalibrateSubtitle =>
+      'Hold the phone at your reading angle, then set it as the baseline.';
+
+  @override
+  String get readerTiltCalibrating =>
+      'Hold the phone still at your reading angle…';
+
+  @override
+  String get readerScrollSpeed => 'Scroll speed';
+
+  @override
+  String get readerHandsFreeOptions => 'Hands-free options';
+
+  @override
+  String get readerCalibrateTitle => 'Gaze calibration';
+
+  @override
+  String get readerCalibrateInstruction => 'Look at the dot and hold still';
+
+  @override
+  String get readerCalibrateSuccess => 'Calibrated!';
+
+  @override
+  String get readerCalibrateTestPrompt => 'Try it — look up or down to scroll';
+
+  @override
+  String get readerCalibrateKeep => 'Save';
+
+  @override
+  String get readerCalibrateRedo => 'Recalibrate';
+
+  @override
+  String get readerCalibrateDoneTest => 'Done testing';
+
+  @override
+  String readerCalibratePointOf(int n, int total) {
+    return 'Point $n of $total';
+  }
+
+  @override
+  String get readerRadialMenu => 'Radial menu';
+
+  @override
+  String get readerRadialMenuSubtitle =>
+      'Replace the reader bars with a back button and a corner wheel. Hold the wheel for quick actions and the page slider.';
+
+  @override
+  String get readerRadialCorner => 'Wheel corner';
+
+  @override
+  String get readerCalibrateGetReady => 'Follow the dot to each corner';
+
+  @override
+  String get readerCalibrateDarkTitle => 'Too dark for eye tracking';
+
+  @override
+  String get readerCalibrateDarkBody =>
+      'Your eyes need some light to track. Switched to head-tilt — it works in any light. Tilt your head up or down to scroll.';
+
+  @override
+  String get readerCalibrateTestPromptHead =>
+      'Tilt your head up or down to scroll';
 }

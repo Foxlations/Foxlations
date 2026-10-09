@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/manga_image.dart';
 import '../../core/models/manga_model.dart';
+import '../../core/utils/external_browser.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/library_provider.dart';
 import '../../core/services/app_logger.dart';
 import '../../core/providers/tracking_provider.dart';
 import '../../core/providers/vault_provider.dart';
 import '../../core/utils/html_util.dart';
+import '../../core/utils/url_utils.dart';
 import '../tracking/tracking_sheet.dart';
 import '../../core/providers/download_provider.dart';
 import '../../core/services/local_source_service.dart';
@@ -28,12 +30,17 @@ class MangaDetailScreen extends StatefulWidget {
   final String? title;
   final String? coverUrl;
 
+  /// When true (opened from the library's Continue banner), jump straight into
+  /// the last-read chapter once the chapter list loads.
+  final bool resume;
+
   const MangaDetailScreen({
     super.key,
     required this.mangaUrl,
     required this.sourceId,
     this.title,
     this.coverUrl,
+    this.resume = false,
   });
 
   @override
@@ -68,11 +75,81 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     try { return uri.origin; } catch (_) { return ''; }
   }
 
+  /// Absolute URL for "Open in WebView". A library item's url is often a
+  /// source-relative path (LNReader novels especially), which WebView can't
+  /// load (blank/error) — resolve it against the source's base URL. Opening the
+  /// source directly works because it already uses the full base URL.
+  /// The URL to open for "Open in browser" / WebView. Prefers the source's own
+  /// browsable page URL (getMangaUrl / getAnimeUrl / resolveUrl, carried on
+  /// [_manga.webUrl]) — sources that fetch details from an API return a page
+  /// that differs from baseUrl+url, so the naive join 404s. Falls back to
+  /// joining the stored item url onto the source base URL when the source
+  /// didn't supply one (older hosts, cached-only library view).
+  String _webviewUrl() {
+    final wu = _manga?.webUrl;
+    if (wu != null && wu.isNotEmpty) return wu;
+    final base = context
+            .read<SourceProvider>()
+            .resolveInstalled(widget.sourceId)
+            ?.source
+            .baseUrl ??
+        '';
+    if (base.isEmpty) return widget.mangaUrl;
+    // Mihon/Mangayomi method: strip any domain off the stored url and re-home it
+    // onto the source's current base URL.
+    return rehomeUrl(base, widget.mangaUrl);
+  }
+
+  /// Open this item's source page. Prefers a cached source-resolved URL
+  /// ([_manga.webUrl]); otherwise asks the source to resolve it on demand —
+  /// LNReader's `resolveUrl`, or base+path for manga/anime — so a library item
+  /// opened from cache (before its background refresh) still lands on the right
+  /// page instead of a 404. [external] routes through ExternalBrowser (honours
+  /// the "external browser" setting); otherwise the in-app WebView.
+  Future<void> _openWebView({bool external = false}) async {
+    final title = _manga?.name ?? widget.title ?? '';
+    // Read everything that touches `context` BEFORE the await — the user can
+    // leave the screen while getWebUrl resolves, and State.context throws once
+    // the widget is unmounted.
+    final isNovel = _isNovel;
+    final storedWebUrl = _manga?.webUrl;
+    var url = _webviewUrl();
+    if (storedWebUrl == null || storedWebUrl.isEmpty) {
+      try {
+        final installed =
+            context.read<SourceProvider>().resolveInstalled(widget.sourceId);
+        if (installed != null) {
+          final resolved = await withExtensionService(
+            installed.source,
+            installed.sourceCode,
+            (s) => s.getWebUrl(widget.mangaUrl),
+          );
+          if (resolved != null && resolved.isNotEmpty) url = resolved;
+        }
+      } catch (e) {
+        logger.warning('WebView: getWebUrl failed: $e',
+            category: LogCategory.network, detail: widget.mangaUrl);
+      }
+    }
+    if (!mounted) return;
+    logger.info('WebView: opening $url',
+        category: LogCategory.network,
+        detail:
+            'source=${widget.sourceId} stored=${widget.mangaUrl} webUrl=$storedWebUrl novel=$isNovel external=$external');
+    if (external) {
+      ExternalBrowser.openLink(context, url, title: title);
+    } else {
+      Navigator.pushNamed(context, AppRoutes.webview,
+          arguments: {'url': url, 'title': title});
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _loadDetail();
     _loadNote();
+    _loadBookmarks();
   }
 
   String get _noteKey => 'manga_note_${widget.sourceId}_${widget.mangaUrl}';
@@ -97,6 +174,34 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     } catch (_) {}
   }
 
+  // Per-manga chapter bookmarks (persisted; keyed like the note above).
+  String get _bookmarkKey =>
+      'manga_bookmarks_${widget.sourceId}_${widget.mangaUrl}';
+
+  Future<void> _loadBookmarks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList(_bookmarkKey) ?? const [];
+      if (mounted && list.isNotEmpty) {
+        setState(() => _bookmarkedChapterUrls
+          ..clear()
+          ..addAll(list));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveBookmarks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_bookmarkedChapterUrls.isEmpty) {
+        await prefs.remove(_bookmarkKey);
+      } else {
+        await prefs.setStringList(
+            _bookmarkKey, _bookmarkedChapterUrls.toList());
+      }
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _chapterSearchController.dispose();
@@ -106,13 +211,35 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   /// Anime sources reuse this manga detail screen; flip the reader-centric
   /// labels (Chapters → Episodes) when the source's content type is anime.
   bool get _isAnime =>
-      context.read<SourceProvider>().getInstalledSource(widget.sourceId)?.source.isAnime ?? false;
+      context.read<SourceProvider>().resolveInstalled(widget.sourceId)?.source.isAnime ?? false;
 
   bool get _isNovel =>
-      context.read<SourceProvider>().getInstalledSource(widget.sourceId)?.source.isNovel ?? false;
+      context.read<SourceProvider>().resolveInstalled(widget.sourceId)?.source.isNovel ?? false;
 
   List<MChapter> _getFilteredChapters(LibraryProvider libraryProvider) {
     var chapters = List<MChapter>.from(_manga?.chapters ?? []);
+    // Novels: LNReader plugins return chapters in an inconsistent order and the
+    // cache's sourceIndex can be duplicated, which scrambled the list (and
+    // toggling sort only "fixed" it by chance after a refresh). Impose a
+    // deterministic newest-first order by the real chapter number parsed from
+    // the name (then URL as a unique tiebreak) before the asc/desc reverse.
+    // Manga/anime keep the source's own order (sourceIndex), which is reliable.
+    if (_isNovel) {
+      double? numOf(MChapter c) =>
+          _parseLeadingNumber(c.name ?? '') ?? _parseLeadingNumber(c.url ?? '');
+      chapters.sort((a, b) {
+        final na = numOf(a);
+        final nb = numOf(b);
+        if (na != null && nb != null) {
+          if (na != nb) return nb.compareTo(na); // highest (newest) first
+        } else if (na != null) {
+          return -1; // numbered chapters above un-numbered
+        } else if (nb != null) {
+          return 1;
+        }
+        return (a.url ?? '').compareTo(b.url ?? ''); // deterministic tiebreak
+      });
+    }
     if (_sortAscending) chapters = chapters.reversed.toList();
     if (_filterUnread) {
       chapters = chapters.where((c) =>
@@ -130,6 +257,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     return chapters;
   }
 
+  /// First number in [s] (e.g. "Chapter 97: ..." -> 97), used to order novel
+  /// chapters deterministically. Null when the string has no digits.
+  double? _parseLeadingNumber(String s) {
+    final m = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(s);
+    return m != null ? double.tryParse(m.group(1)!) : null;
+  }
+
   // ── Chapter actions ─────────────────────────────────────────
   void _toggleBookmark(String chapterUrl) {
     setState(() {
@@ -139,6 +273,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         _bookmarkedChapterUrls.add(chapterUrl);
       }
     });
+    _saveBookmarks();
   }
 
   Future<void> _setChapterRead(
@@ -170,8 +305,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     if (chapterUrl.isEmpty) return;
     final dlProvider = context.read<DownloadProvider>();
     final title = _manga?.name ?? widget.title ?? 'Unknown';
-    final isAnime = context.read<SourceProvider>()
-        .getInstalledSource(widget.sourceId)?.source.isAnime ?? false;
+    final src = context.read<SourceProvider>()
+        .resolveInstalled(widget.sourceId)?.source;
+    final isAnime = src?.isAnime ?? false;
+    final isNovel = src?.isNovel ?? false;
     if (isAnime) {
       dlProvider.enqueueEpisode(
         sourceId: widget.sourceId,
@@ -179,6 +316,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         animeTitle: title,
         episodeUrl: chapterUrl,
         episodeName: chapter.name ?? 'Episode',
+      );
+    } else if (isNovel) {
+      dlProvider.enqueueNovelChapter(
+        sourceId: widget.sourceId,
+        novelUrl: widget.mangaUrl,
+        novelTitle: title,
+        chapterUrl: chapterUrl,
+        chapterName: chapter.name ?? 'Chapter',
       );
     } else {
       dlProvider.enqueueChapter(
@@ -319,6 +464,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         }
       }
     });
+    _saveBookmarks();
     _exitSelectionMode();
   }
 
@@ -509,6 +655,56 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     );
   }
 
+  bool _didAutoResume = false;
+
+  void _resumeReading(LibraryManga libraryManga, String title) {
+    final chapters = _manga!.chapters!;
+    final lastUrl = libraryManga.lastReadChapterUrl!;
+    final idx = chapters.indexWhere((c) => c.url == lastUrl);
+    final sp = context.read<SourceProvider>();
+    final src = sp.resolveInstalled(widget.sourceId)?.source;
+    final isAnime = src?.isAnime ?? false;
+    final isNovel = src?.isNovel ?? false;
+    final chapterMaps = chapters.map((c) => {'url': c.url, 'name': c.name}).toList();
+    if (isNovel) {
+      Navigator.pushNamed(context, AppRoutes.novelReader, arguments: {
+        'chapterUrl': lastUrl,
+        'sourceId': widget.sourceId,
+        'mangaUrl': widget.mangaUrl,
+        'chapterTitle': idx >= 0 ? chapters[idx].name : null,
+        'mangaTitle': title,
+        'chapters': chapterMaps,
+        'currentIndex': idx >= 0 ? idx : 0,
+        'startOffset': libraryManga.novelOffsetOr,
+        'startFraction': libraryManga.novelProgressFraction,
+      });
+    } else if (isAnime) {
+      Navigator.pushNamed(context, AppRoutes.player, arguments: {
+        'episodeUrl': lastUrl,
+        'sourceId': widget.sourceId,
+        'episodeTitle': idx >= 0 ? chapters[idx].name : null,
+        'animeTitle': title,
+        'mangaUrl': widget.mangaUrl,
+        'episodes': chapterMaps,
+        'currentIndex': idx >= 0 ? idx : 0,
+      });
+    } else {
+      logger.info(
+          'Resume manga: startPage=${libraryManga.lastReadPage} chapter=$lastUrl',
+          category: LogCategory.library);
+      Navigator.pushNamed(context, AppRoutes.reader, arguments: {
+        'chapterUrl': lastUrl,
+        'sourceId': widget.sourceId,
+        'mangaUrl': widget.mangaUrl,
+        'chapterTitle': idx >= 0 ? chapters[idx].name : null,
+        'mangaTitle': title,
+        'chapters': chapterMaps,
+        'currentIndex': idx >= 0 ? idx : 0,
+        'startPage': libraryManga.lastReadPage,
+      });
+    }
+  }
+
   Future<void> _loadDetail({bool forceRefresh = false}) async {
     final libraryProvider = context.read<LibraryProvider>();
     final inLibrary = libraryProvider.isInLibrary(widget.sourceId, widget.mangaUrl);
@@ -528,6 +724,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           cachedManga.author = lm.author;
           cachedManga.description = lm.description;
           cachedManga.genre = lm.genres;
+          // Cached browsable URL → "Open in WebView" is instant on cold start
+          // without waiting for the JVM to boot and re-resolve it.
+          cachedManga.webUrl = lm.webUrl;
         }
         cachedManga.chapters = cached.map((c) => MChapter(
           url: c.chapterUrl,
@@ -535,6 +734,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           dateUpload: c.dateUpload,
         )).toList();
         setState(() { _manga = cachedManga; _isLoading = false; });
+        _reconcileDownloads();
         // Refresh in background
         _refreshInBackground();
         return;
@@ -568,7 +768,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       }
 
       final sourceProvider = context.read<SourceProvider>();
-      final installed = sourceProvider.getInstalledSource(widget.sourceId);
+      final installed = sourceProvider.resolveInstalled(widget.sourceId);
       if (installed == null) throw Exception('Source not installed');
       final manga = await withExtensionService(
         installed.source, installed.sourceCode,
@@ -576,6 +776,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       );
       if (mounted) {
         setState(() => _manga = manga);
+        _reconcileDownloads();
+        _persistWebUrl(manga.webUrl);
         // Cache chapters if in library
         if (inLibrary && manga.chapters != null) {
           libraryProvider.cacheChapters(widget.sourceId, widget.mangaUrl,
@@ -593,10 +795,29 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
+  /// Re-detect downloads already on disk for this title, in case the app's
+  /// tracking index was lost (reinstall / data wipe) — the provider heals its
+  /// index and notifies, so chapter checkmarks come back without re-downloading.
+  /// Fire-and-forget; safe to call whenever chapters (re)load.
+  void _reconcileDownloads() {
+    final chapters = _manga?.chapters;
+    if (chapters == null || chapters.isEmpty) return;
+    final title = _manga?.name ?? widget.title ?? '';
+    if (title.isEmpty) return;
+    context.read<DownloadProvider>().reconcileDownloads(
+          widget.sourceId,
+          widget.mangaUrl,
+          title,
+          chapters
+              .map((c) => (url: c.url ?? '', name: c.name ?? ''))
+              .where((c) => c.url.isNotEmpty),
+        );
+  }
+
   Future<void> _refreshInBackground() async {
     try {
       final sourceProvider = context.read<SourceProvider>();
-      final installed = sourceProvider.getInstalledSource(widget.sourceId);
+      final installed = sourceProvider.resolveInstalled(widget.sourceId);
       if (installed == null) return;
       final manga = await withExtensionService(
         installed.source, installed.sourceCode,
@@ -604,6 +825,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       );
       if (mounted) {
         setState(() => _manga = manga);
+        _reconcileDownloads();
+        _persistWebUrl(manga.webUrl);
         final libraryProvider = context.read<LibraryProvider>();
         if (manga.chapters != null) {
           libraryProvider.cacheChapters(widget.sourceId, widget.mangaUrl,
@@ -613,6 +836,19 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     } catch (_) {
       // Silent fail — cached data is already showing
     }
+  }
+
+  /// Persist the source-resolved browsable URL onto the stored library/vault
+  /// entry so a later cold-start "Open in WebView" is instant. Writes to both
+  /// providers; each no-ops when it doesn't hold this entry.
+  void _persistWebUrl(String? webUrl) {
+    if (webUrl == null || webUrl.isEmpty || !mounted) return;
+    context
+        .read<LibraryProvider>()
+        .setWebUrl(widget.sourceId, widget.mangaUrl, webUrl);
+    context
+        .read<VaultProvider>()
+        .setWebUrl(widget.sourceId, widget.mangaUrl, webUrl);
   }
 
   @override
@@ -628,6 +864,18 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             (m) => m!.sourceId == widget.sourceId && m.url == widget.mangaUrl,
             orElse: () => null)
         : null;
+
+    // Auto-resume from the library's Continue banner.
+    if (widget.resume &&
+        !_didAutoResume &&
+        _manga?.chapters != null &&
+        libraryManga?.lastReadChapterUrl != null) {
+      _didAutoResume = true;
+      final resumeManga = libraryManga!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _resumeReading(resumeManga, title);
+      });
+    }
 
     return Scaffold(
       bottomNavigationBar: _selectionMode
@@ -649,12 +897,28 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 icon: const Icon(Icons.download_rounded),
                 tooltip: t.detailDownload,
                 itemBuilder: (_) => [
-                  PopupMenuItem(value: 'dl_next_1', child: Text(t.detailDownloadNextChapter)),
-                  PopupMenuItem(value: 'dl_next_5', child: Text(t.detailDownloadNext5)),
-                  PopupMenuItem(value: 'dl_next_10', child: Text(t.detailDownloadNext10)),
+                  PopupMenuItem(
+                      value: 'dl_next_1',
+                      child: Text(_isAnime
+                          ? t.detailDownloadNextEpisode
+                          : t.detailDownloadNextChapter)),
+                  PopupMenuItem(
+                      value: 'dl_next_5',
+                      child: Text(_isAnime
+                          ? t.detailDownloadNext5Episodes
+                          : t.detailDownloadNext5)),
+                  PopupMenuItem(
+                      value: 'dl_next_10',
+                      child: Text(_isAnime
+                          ? t.detailDownloadNext10Episodes
+                          : t.detailDownloadNext10)),
                   const PopupMenuDivider(),
                   PopupMenuItem(value: 'dl_unread', child: Text(t.detailDownloadAllUnread)),
-                  PopupMenuItem(value: 'dl_all', child: Text(t.detailDownloadAllChapters)),
+                  PopupMenuItem(
+                      value: 'dl_all',
+                      child: Text(_isAnime
+                          ? t.detailDownloadAllEpisodes
+                          : t.detailDownloadAllChapters)),
                 ],
                 onSelected: (v) => _handleBulkDownload(v, context, libraryProvider),
               ),
@@ -669,7 +933,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   ],
                   PopupMenuItem(value: 'refresh', child: Text(t.detailRefresh)),
                   if ((_manga?.chapters?.isNotEmpty ?? false))
-                    PopupMenuItem(value: 'select', child: Text(t.detailSelectChapters)),
+                    PopupMenuItem(
+                        value: 'select',
+                        child: Text(_isAnime
+                            ? t.detailSelectEpisodes
+                            : t.detailSelectChapters)),
                   if (inLibrary)
                     PopupMenuItem(value: 'remove', child: Text(t.detailRemoveFromLibrary)),
                   const PopupMenuDivider(),
@@ -677,8 +945,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 ],
                 onSelected: (v) {
                   if (v == 'webview') {
-                    Navigator.pushNamed(context, AppRoutes.webview,
-                        arguments: {'url': widget.mangaUrl, 'title': title});
+                    _openWebView(external: true);
                   } else if (v == 'refresh') {
                     _loadDetail(forceRefresh: true);
                   } else if (v == 'edit_category') {
@@ -735,8 +1002,15 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: GoogleFonts.manrope(
-                    fontSize: 22, fontWeight: FontWeight.w800, color: cs.onSurface)),
+                // Long-press the title to search it across all sources.
+                GestureDetector(
+                  onLongPress: title.trim().isEmpty
+                      ? null
+                      : () => Navigator.pushNamed(context, AppRoutes.globalSearch,
+                          arguments: {'query': title}),
+                  child: Text(title, style: GoogleFonts.manrope(
+                      fontSize: 22, fontWeight: FontWeight.w800, color: cs.onSurface)),
+                ),
                 const SizedBox(height: 6),
                 if (_manga?.author != null && _manga!.author!.isNotEmpty)
                   Row(children: [
@@ -750,6 +1024,22 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   const SizedBox(width: 4),
                   Text(_statusLabel(t, _manga?.status ?? MangaStatus.unknown),
                       style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                ]),
+                const SizedBox(height: 4),
+                // Which source this title is from — handy after a backup restore
+                // for finding/installing the right extension.
+                Row(children: [
+                  Icon(Icons.extension_rounded, size: 14, color: cs.outline),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      context
+                          .read<SourceProvider>()
+                          .sourceDisplayName(widget.sourceId),
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
+                    ),
+                  ),
                 ]),
               ]),
             )),
@@ -766,7 +1056,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   cs: cs,
                   onTap: () {
                     if (inLibrary) {
-                      libraryProvider.removeFromLibrary(widget.sourceId, widget.mangaUrl);
+                      _removeFromLibraryWithUndo(libraryProvider);
                     } else {
                       _addToLibrary(context);
                     }
@@ -809,8 +1099,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   label: t.detailWebView,
                   active: false,
                   cs: cs,
-                  onTap: () => Navigator.pushNamed(context, AppRoutes.webview,
-                      arguments: {'url': widget.mangaUrl, 'title': title}),
+                  onTap: () => _openWebView(),
                 )),
               ]),
             )),
@@ -862,14 +1151,27 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
               SliverToBoxAdapter(child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Wrap(spacing: 6, runSpacing: 6, children: _manga!.genre!.map((g) =>
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: cs.outlineVariant),
+                  // Long-press a tag to search it across all sources, auto-scoped
+                  // to this title's content type (manga / anime / novel).
+                  GestureDetector(
+                    onLongPress: g.trim().isEmpty
+                        ? null
+                        : () => Navigator.pushNamed(
+                            context, AppRoutes.globalSearch, arguments: {
+                            'query': g,
+                            'type': _isNovel
+                                ? 'novel'
+                                : (_isAnime ? 'anime' : 'manga'),
+                          }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: cs.outlineVariant),
+                      ),
+                      child: Text(g, style: GoogleFonts.manrope(fontSize: 11, color: cs.onSurface)),
                     ),
-                    child: Text(g, style: GoogleFonts.manrope(fontSize: 11, color: cs.onSurface)),
                   ),
                 ).toList()),
               )),
@@ -975,7 +1277,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
               SliverToBoxAdapter(child: Builder(builder: (context) {
                 final installed = context
                     .read<SourceProvider>()
-                    .getInstalledSource(widget.sourceId);
+                    .resolveInstalled(widget.sourceId);
                 final loginUrl = installed?.source.config['loginUrl'] as String?;
                 final hasLogin = loginUrl != null && loginUrl.isNotEmpty;
                 return Padding(
@@ -1052,53 +1354,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
               foregroundColor: Colors.white,
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(t.detailResume, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
-              onPressed: () {
-                final chapters = _manga!.chapters!;
-                final lastUrl = libraryManga!.lastReadChapterUrl!;
-                final idx = chapters.indexWhere((c) => c.url == lastUrl);
-                final sp = context.read<SourceProvider>();
-                final src = sp.getInstalledSource(widget.sourceId)?.source;
-                final isAnime = src?.isAnime ?? false;
-                final isNovel = src?.isNovel ?? false;
-                final chapterMaps = chapters.map((c) => {'url': c.url, 'name': c.name}).toList();
-                if (isNovel) {
-                  Navigator.pushNamed(context, AppRoutes.novelReader, arguments: {
-                    'chapterUrl': lastUrl,
-                    'sourceId': widget.sourceId,
-                    'mangaUrl': widget.mangaUrl,
-                    'chapterTitle': idx >= 0 ? chapters[idx].name : null,
-                    'mangaTitle': title,
-                    'chapters': chapterMaps,
-                    'currentIndex': idx >= 0 ? idx : 0,
-                    'startOffset': libraryManga.novelOffsetOr,
-                    'startFraction': libraryManga.novelProgressFraction,
-                  });
-                } else if (isAnime) {
-                  Navigator.pushNamed(context, AppRoutes.player, arguments: {
-                    'episodeUrl': lastUrl,
-                    'sourceId': widget.sourceId,
-                    'episodeTitle': idx >= 0 ? chapters[idx].name : null,
-                    'animeTitle': title,
-                    'mangaUrl': widget.mangaUrl,
-                    'episodes': chapterMaps,
-                    'currentIndex': idx >= 0 ? idx : 0,
-                  });
-                } else {
-                  logger.info(
-                      'Resume manga: startPage=${libraryManga.lastReadPage} chapter=$lastUrl',
-                      category: LogCategory.library);
-                  Navigator.pushNamed(context, AppRoutes.reader, arguments: {
-                    'chapterUrl': lastUrl,
-                    'sourceId': widget.sourceId,
-                    'mangaUrl': widget.mangaUrl,
-                    'chapterTitle': idx >= 0 ? chapters[idx].name : null,
-                    'mangaTitle': title,
-                    'chapters': chapterMaps,
-                    'currentIndex': idx >= 0 ? idx : 0,
-                    'startPage': libraryManga.lastReadPage,
-                  });
-                }
-              },
+              onPressed: () => _resumeReading(libraryManga!, title),
             )
           : null,
     );
@@ -1138,7 +1394,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         if (_selectionMode) { _toggleSelection(chapterUrl); return; }
         final src2 = context
             .read<SourceProvider>()
-            .getInstalledSource(widget.sourceId)
+            .resolveInstalled(widget.sourceId)
             ?.source;
         final isAnime = src2?.isAnime ?? false;
         final isNovel = src2?.isNovel ?? false;
@@ -1266,25 +1522,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   dlProvider.deleteDownload(
                     widget.sourceId, title, chapter.name ?? 'Chapter', chapterUrl);
                 } else {
-                  final isAnime = context.read<SourceProvider>()
-                      .getInstalledSource(widget.sourceId)?.source.isAnime ?? false;
-                  if (isAnime) {
-                    dlProvider.enqueueEpisode(
-                      sourceId: widget.sourceId,
-                      animeUrl: widget.mangaUrl,
-                      animeTitle: title,
-                      episodeUrl: chapterUrl,
-                      episodeName: chapter.name ?? 'Episode',
-                    );
-                  } else {
-                    dlProvider.enqueueChapter(
-                      sourceId: widget.sourceId,
-                      mangaUrl: widget.mangaUrl,
-                      mangaTitle: title,
-                      chapterUrl: chapterUrl,
-                      chapterName: chapter.name ?? 'Chapter',
-                    );
-                  }
+                  _downloadChapter(chapter);
                 }
               },
             );
@@ -1346,8 +1584,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       return;
     }
 
-    final isAnime = context.read<SourceProvider>()
-        .getInstalledSource(widget.sourceId)?.source.isAnime ?? false;
+    final src = context.read<SourceProvider>()
+        .resolveInstalled(widget.sourceId)?.source;
+    final isAnime = src?.isAnime ?? false;
+    final isNovel = src?.isNovel ?? false;
 
     if (isAnime) {
       for (final c in toDownload) {
@@ -1359,6 +1599,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           episodeName: c.name ?? 'Episode',
         );
       }
+    } else if (isNovel) {
+      dlProvider.enqueueNovelChapters(toDownload.map((c) => {
+        'sourceId': widget.sourceId,
+        'mangaUrl': widget.mangaUrl,
+        'mangaTitle': mangaTitle,
+        'chapterUrl': c.url ?? '',
+        'chapterName': c.name ?? 'Chapter',
+      }).toList());
     } else {
       dlProvider.enqueueChapters(toDownload.map((c) => {
         'sourceId': widget.sourceId,
@@ -1374,6 +1622,36 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         content: Text(AppLocalizations.of(context).detailDownloadingChapters(toDownload.length)),
         duration: const Duration(seconds: 2)),
     );
+  }
+
+  /// Remove with a snackbar + Undo (the remove was instant, silent and
+  /// un-undoable — a mis-tap on the heart dropped the title and its progress
+  /// with no acknowledgement). Snapshots the entry + chapters so Undo restores
+  /// read state exactly.
+  Future<void> _removeFromLibraryWithUndo(LibraryProvider lib) async {
+    LibraryManga? entry;
+    for (final m in lib.manga) {
+      if (m.sourceId == widget.sourceId && m.url == widget.mangaUrl) {
+        entry = m;
+        break;
+      }
+    }
+    final snapshot = entry?.clone();
+    final chapters = lib.fullChapters(widget.sourceId, widget.mangaUrl);
+    await lib.removeFromLibrary(widget.sourceId, widget.mangaUrl);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+        content: const Text('Removed from library'),
+        duration: const Duration(seconds: 4),
+        action: snapshot == null
+            ? null
+            : SnackBarAction(
+                label: 'Undo',
+                onPressed: () => lib.addEntryWithChapters(snapshot, chapters),
+              ),
+      ));
   }
 
   void _addToLibrary(BuildContext context) {

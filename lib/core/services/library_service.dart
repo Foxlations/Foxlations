@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:hive/hive.dart';
 import 'app_logger.dart';
 import '../models/manga_model.dart';
@@ -13,11 +14,24 @@ class LibraryService {
   Box<LibraryChapter>? _chapterBox;
   Box<Category>? _categoryBox;
 
+  // Cached per-entry read/total tally, so [unreadCount] (hit once per library
+  // card on every rebuild, and folded over the whole library for the header)
+  // is an O(1) map lookup instead of an O(all chapters) box scan each call.
+  // Built lazily in one pass and dropped whenever the chapter box changes
+  // (the watch() below fires on every put/delete/save, including direct writes
+  // from a backup restore), so it can never serve a stale count.
+  Map<String, int>? _readTally;
+  Map<String, int>? _totalTally;
+  StreamSubscription<BoxEvent>? _chapterWatch;
+
   bool get isOpen => _mangaBox?.isOpen ?? false;
 
   /// Closes the boxes and drops the in-memory copies, so locking the vault
   /// actually evicts its data rather than just hiding it behind a flag.
   Future<void> close() async {
+    await _chapterWatch?.cancel();
+    _chapterWatch = null;
+    _readTally = _totalTally = null;
     await _mangaBox?.close();
     await _chapterBox?.close();
     await _categoryBox?.close();
@@ -38,12 +52,25 @@ class LibraryService {
   /// open an encrypted box with the wrong key, so this is the actual access
   /// control, not the password prompt in the UI.
   Future<void> init({HiveAesCipher? cipher}) async {
-    _mangaBox = await Hive.openBox<LibraryManga>('${_prefix}_manga',
+    // Open the three boxes concurrently (start all, then await) — opening a box
+    // deserializes its whole contents, and doing them in series added each box's
+    // load to startup. They're independent, so overlap them.
+    final mangaF = Hive.openBox<LibraryManga>('${_prefix}_manga',
         encryptionCipher: cipher);
-    _chapterBox = await Hive.openBox<LibraryChapter>('${_prefix}_chapters',
+    final chapterF = Hive.openBox<LibraryChapter>('${_prefix}_chapters',
         encryptionCipher: cipher);
-    _categoryBox = await Hive.openBox<Category>('${_prefix}_categories',
+    final categoryF = Hive.openBox<Category>('${_prefix}_categories',
         encryptionCipher: cipher);
+    _mangaBox = await mangaF;
+    _chapterBox = await chapterF;
+    _categoryBox = await categoryF;
+    // Drop the cached read tally on any chapter change so it's rebuilt fresh.
+    _chapterWatch?.cancel();
+    _readTally = _totalTally = null;
+    _chapterWatch = _chapterBox!.watch().listen((_) {
+      _readTally = null;
+      _totalTally = null;
+    });
     // Seed default categories on first run
     if (_categoryBox!.isEmpty) {
       for (int i = 0; i < _defaultCategories.length; i++) {
@@ -117,16 +144,26 @@ class LibraryService {
   }
 
   LibraryManga? getManga(String sourceId, String url) {
-    final key = '${sourceId}_$url';
-    try {
-      return _mangaBox?.values.firstWhere((m) => m.uniqueKey == key);
-    } catch (_) {
-      return null;
-    }
+    // The box is keyed by uniqueKey ('${sourceId}_$url'), so this is a direct
+    // O(1) get — it used to scan every value (O(N)), which made per-card and
+    // per-page-turn callers pay O(N) (and the unread badge O(N²)).
+    return _mangaBox?.get('${sourceId}_$url');
   }
 
   bool isInLibrary(String sourceId, String url) {
     return getManga(sourceId, url) != null;
+  }
+
+  /// Cache the source's browsable page URL on the stored entry so "Open in
+  /// WebView" is instant after a cold start (no embedded-JVM re-resolve).
+  /// No-ops if the entry isn't in this box or the url is unchanged.
+  Future<void> setWebUrl(String sourceId, String url, String? webUrl) async {
+    if (webUrl == null || webUrl.isEmpty) return;
+    final m = getManga(sourceId, url);
+    if (m != null && m.webUrl != webUrl) {
+      m.webUrl = webUrl;
+      await m.save();
+    }
   }
 
   Future<void> addManga(LibraryManga manga) async {
@@ -150,6 +187,68 @@ class LibraryService {
     }
   }
 
+  /// Permanently re-link entries a Tachiyomi/Mihon restore left pointing at a
+  /// source NAME (because the matching source wasn't installed at restore time)
+  /// onto the now-installed source id, rewriting the manga AND its chapters under
+  /// the new id so library grouping / unread badges are correct too — not just
+  /// opening (that's the runtime fallback in SourceProvider.resolveInstalled).
+  ///
+  /// [installedIdToName] is id → display name. Idempotent: entries already on an
+  /// installed id, with no name match, or whose target key already exists (a real
+  /// entry for that source — never clobbered), are left untouched. Returns the
+  /// number of entries healed.
+  Future<int> relinkSources(Map<String, String> installedIdToName) async {
+    final box = _mangaBox;
+    if (box == null || installedIdToName.isEmpty) return 0;
+    final installedIds = installedIdToName.keys.toSet();
+    String norm(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    String? matchId(String strayId) {
+      final want = norm(strayId);
+      if (want.isEmpty) return null;
+      for (final e in installedIdToName.entries) {
+        if (norm(e.value) == want) return e.key;
+      }
+      for (final e in installedIdToName.entries) {
+        final n = norm(e.value);
+        if (n.isNotEmpty && (n.contains(want) || want.contains(n))) return e.key;
+      }
+      return null;
+    }
+
+    // Snapshot first — we mutate the boxes while iterating.
+    final strays =
+        box.values.where((m) => !installedIds.contains(m.sourceId)).toList();
+    var healed = 0;
+    for (final m in strays) {
+      final newId = matchId(m.sourceId);
+      if (newId == null || newId == m.sourceId) continue;
+      final newMangaKey = '${newId}_${m.url}';
+      // Don't clobber a real entry that already exists for the installed source.
+      if (box.containsKey(newMangaKey)) continue;
+
+      final oldSourceId = m.sourceId;
+      // Re-key this entry's chapters (clone — Hive won't re-put a bound object).
+      final chs = _chapterBox?.values
+              .where((c) => c.sourceId == oldSourceId && c.mangaUrl == m.url)
+              .toList() ??
+          const <LibraryChapter>[];
+      for (final c in chs) {
+        await _chapterBox?.delete(c.uniqueKey);
+        final nc = c.clone()..sourceId = newId;
+        await _chapterBox?.put(nc.uniqueKey, nc);
+      }
+      // Re-key the manga.
+      final nm = m.clone()..sourceId = newId;
+      await box.delete(m.uniqueKey);
+      await box.put(nm.uniqueKey, nm);
+      healed++;
+    }
+    if (healed > 0) _readTally = _totalTally = null; // chapter keys changed
+    return healed;
+  }
+
   /// The full chapter objects for an entry (with read state), for moving.
   List<LibraryChapter> getFullChapters(String sourceId, String mangaUrl) {
     return _chapterBox?.values
@@ -167,12 +266,26 @@ class LibraryService {
       return chapter?.sourceId == sourceId && chapter?.mangaUrl == url;
     }).toList();
     if (chapterKeys != null) {
-      await _mangaBox?.deleteAll(chapterKeys);
+      // Delete from the CHAPTER box — this deleted from the manga box before,
+      // so removed titles leaked their chapters forever and the chapter box
+      // (which several O(N) scans walk) only ever grew.
+      await _chapterBox?.deleteAll(chapterKeys);
     }
   }
 
   Future<void> updateManga(LibraryManga manga) async {
     await _mangaBox?.put(manga.uniqueKey, manga);
+  }
+
+  /// Overrides a library entry's cover with a local file (reader "Set as cover").
+  /// [coverPath] is a filesystem path; stored as a `file://` URL that MangaImage
+  /// renders directly. Returns false if the manga isn't in the library.
+  Future<bool> setCover(String sourceId, String mangaUrl, String coverPath) async {
+    final manga = getManga(sourceId, mangaUrl);
+    if (manga == null) return false;
+    manga.coverUrl = 'file://$coverPath';
+    await updateManga(manga);
+    return true;
   }
 
   Future<void> updateReadingProgress(
@@ -283,6 +396,35 @@ class LibraryService {
     await _recountReadChapters(sourceId, mangaUrl);
   }
 
+  /// Mark many chapters of one entry read in a single pass, recounting ONCE at
+  /// the end. [markChapterRead] recounts after every chapter (an O(all chapters)
+  /// box scan each time), so replaying a long read-history one chapter at a time
+  /// — e.g. during a migrate — was O(matched × library). This keeps it O(library).
+  Future<void> markChaptersRead(
+      String sourceId, String mangaUrl, Iterable<String> chapterUrls) async {
+    for (final chapterUrl in chapterUrls) {
+      final key = '${sourceId}_$chapterUrl';
+      var chapter = _chapterBox?.get(key);
+      if (chapter != null) {
+        chapter.isRead = true;
+        chapter.readAt = DateTime.now();
+        await chapter.save();
+      } else {
+        await _chapterBox?.put(
+            key,
+            LibraryChapter(
+              sourceId: sourceId,
+              mangaUrl: mangaUrl,
+              chapterUrl: chapterUrl,
+              title: '',
+              isRead: true,
+              readAt: DateTime.now(),
+            ));
+      }
+    }
+    await _recountReadChapters(sourceId, mangaUrl);
+  }
+
   /// Keep the denormalized `manga.readChapters` counter — which the library
   /// badge reads as `totalChapters - readChapters` — in step with the per-chapter
   /// `isRead` flags. Called whenever a single chapter's read state changes, so
@@ -315,18 +457,29 @@ class LibraryService {
   /// recount), which is what left the badge stuck at "99+" even after reading
   /// most chapters. When chapters are cached (the manga's detail was opened),
   /// this is ground truth; otherwise it falls back to the counters.
-  int unreadCount(String sourceId, String mangaUrl) {
-    var total = 0;
-    var read = 0;
+  /// Build the per-entry read/total tally in a single pass over the chapter box.
+  /// Cached until the box next changes (see the watch() in [init]).
+  void _ensureTally() {
+    if (_readTally != null && _totalTally != null) return;
+    final read = <String, int>{};
+    final total = <String, int>{};
     final values = _chapterBox?.values;
     if (values != null) {
       for (final c in values) {
-        if (c.sourceId == sourceId && c.mangaUrl == mangaUrl) {
-          total++;
-          if (c.isRead) read++;
-        }
+        final k = '${c.sourceId}\u0001${c.mangaUrl}';
+        total[k] = (total[k] ?? 0) + 1;
+        if (c.isRead) read[k] = (read[k] ?? 0) + 1;
       }
     }
+    _readTally = read;
+    _totalTally = total;
+  }
+
+  int unreadCount(String sourceId, String mangaUrl) {
+    _ensureTally();
+    final k = '$sourceId\u0001$mangaUrl';
+    var total = _totalTally![k] ?? 0;
+    var read = _readTally![k] ?? 0;
     if (total == 0) {
       // No cached chapters yet — fall back to the denormalized counters.
       final manga = getManga(sourceId, mangaUrl);
@@ -383,19 +536,27 @@ class LibraryService {
   /// rather than Hive's key insertion order (which causes alphabetical
   /// "Chapter 1, 10, 100, 101..." flickering on first load).
   Future<void> cacheChapters(String sourceId, String mangaUrl, List<LibraryChapter> chapters) async {
+    final box = _chapterBox;
+    if (box == null) return;
+    // Build the whole batch first, then write it in ONE putAll. A per-chapter
+    // `await put` was O(N) separate disk/encryption transactions — on the
+    // encrypted vault box a 3000-chapter title took many seconds (and could
+    // appear to hang/error); putAll commits it as a single write.
+    final batch = <dynamic, LibraryChapter>{};
     for (var i = 0; i < chapters.length; i++) {
       final ch = chapters[i];
       ch.sourceIndex = i;
       final key = ch.uniqueKey;
-      final existing = _chapterBox?.get(key);
+      final existing = box.get(key);
       if (existing != null) {
         // Preserve read state and page progress
         ch.isRead = existing.isRead;
         ch.lastPageRead = existing.lastPageRead;
         ch.readAt = existing.readAt;
       }
-      await _chapterBox?.put(key, ch);
+      batch[key] = ch;
     }
+    await box.putAll(batch);
 
     // Update total chapters count on manga
     final manga = getManga(sourceId, mangaUrl);
@@ -456,13 +617,22 @@ class LibraryService {
       manga.lastReadPage = 0;
       await manga.save();
     }
-    // Also remove individual chapter read records
-    final keysToRemove = _chapterBox?.keys.where((k) {
+    // Flip each cached chapter's read flag OFF in place — this used to DELETE
+    // the chapter records, which also dropped the cached chapter list and its
+    // source ordering, so the detail screen showed no chapters until a refetch.
+    final keys = _chapterBox?.keys.where((k) {
       final ch = _chapterBox?.get(k);
       return ch?.sourceId == sourceId && ch?.mangaUrl == mangaUrl;
     }).toList();
-    if (keysToRemove != null) {
-      await _chapterBox?.deleteAll(keysToRemove);
+    if (keys != null) {
+      for (final k in keys) {
+        final ch = _chapterBox?.get(k);
+        if (ch != null && ch.isRead) {
+          ch.isRead = false;
+          ch.readAt = null;
+          await ch.save();
+        }
+      }
     }
   }
 

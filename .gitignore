@@ -113,3 +113,6 @@ android/key.properties
 # ── Local planning docs — deliberately not published ──
 /ROADMAP.md
 /ClassicSource.json
+
+# Local Kotlin extension-survey harness (jars + downloaded extensions, ~200MB)
+.harness/

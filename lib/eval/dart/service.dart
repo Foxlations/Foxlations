@@ -174,7 +174,7 @@ class DartExtensionService implements ExtensionService {
   }
 
   @override
-  Future<MManga> getDetail(String url) async {
+  Future<MManga> getDetail(String url, {bool fullChapters = true}) async {
     await _ensurePrefs();
     return await _interpreter!.invoke('getDetail', [url]) as MManga;
   }
@@ -269,6 +269,9 @@ class DartExtensionService implements ExtensionService {
       return '';
     }
   }
+
+  @override
+  Future<String?> getWebUrl(String url) async => rehomeUrl(sourceBaseUrl, url);
 
   @override
   FilterList getFilterList() {

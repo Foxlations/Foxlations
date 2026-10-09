@@ -22,4 +22,12 @@ void FoxJvmProbeAsync(void (^completion)(NSString *report));
 // non-JVM build.
 void FoxJvmInvokeAsync(NSString *reqJson, void (^completion)(NSString *responseJson));
 
+// Re-assert the app's crash-signal handlers. Call on the iOS foreground
+// transition: the embedded Zero VM arms process-wide SIGSEGV/SIGBUS handlers
+// during a JVM op, and a benign WebKit/RunningBoard signal arriving in the
+// background->foreground window would otherwise reach the JVM handler and
+// SIGABRT (ShouldNotReachHere on bsd_zero arm64). No-op before the VM's first
+// boot. Safe to call on the main thread.
+void FoxJvmRestoreSignals(void);
+
 #endif /* FOXLATIONS_JVMBRIDGE_H */

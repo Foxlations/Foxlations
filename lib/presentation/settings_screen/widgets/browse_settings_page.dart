@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/providers/source_provider.dart';
+import '../../../core/services/settings_store.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../presentation/webview_screen/webview_screen.dart';
 import '../../../theme/app_theme.dart';
@@ -24,16 +24,15 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
   }
 
   Future<void> _loadPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _adBlockEnabled = prefs.getBool(WebViewScreen.adBlockKey) ?? true;
+      _adBlockEnabled =
+          SettingsStore.instance.getBool(WebViewScreen.adBlockKey) ?? true;
     });
   }
 
   Future<void> _setAdBlock(bool value) async {
     setState(() => _adBlockEnabled = value);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(WebViewScreen.adBlockKey, value);
+    await SettingsStore.instance.setBool(WebViewScreen.adBlockKey, value);
   }
 
   @override

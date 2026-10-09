@@ -5,6 +5,11 @@ extension‑based source system. Add sources from any site with the built‑in
 **RepoForge** generator *(beta)*, sync progress to AniList / MyAnimeList / Kitsu,
 back up and restore your library, and read behind Cloudflare‑protected sites.
 
+💬 **Join the community on [Discord](https://discord.gg/qmGB7h7vsn)** — help, requests and updates.
+
+> **Please note** that I do school and work full time, so updates might be slow. I
+> do see your messages and issues — it just might take me a bit to get to them!
+
 > **RepoForge is in beta.** It won't always generate a correct source — check
 > what it produces and adjust the selectors if a site doesn't come out right.
 

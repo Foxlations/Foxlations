@@ -24,6 +24,10 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   final Set<String> _selectedLangs = {}; // empty = all languages
   final Set<String> _selectedRepos = {}; // empty = all repositories (repo urls)
   String _typeFilter = 'manga';
+  // Extension-update progress, so the UI shows a spinner while it runs.
+  bool _updatingAll = false;
+  final Set<String> _updatingIds = {}; // per-source updates in flight
+  final Set<String> _installingIds = {}; // per-source installs in flight
 
   @override
   Widget build(BuildContext context) {
@@ -129,10 +133,20 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
         final installedRest =
             installed.where((s) => !updateIds.contains(s.id)).toList();
 
+        // Per-type update tally (across ALL types, not just the active one) so
+        // the toggle can badge the type that actually has the update — otherwise
+        // an anime/novel update is invisible behind the manga tab.
+        final updatesByType = <String, int>{'manga': 0, 'anime': 0, 'novel': 0};
+        for (final s in provider.updatesForContext(
+            vaultActive: vault.vaultActive, vaultIds: vault.vaultSourceIds)) {
+          final it = s.source.itemType;
+          updatesByType[it] = (updatesByType[it] ?? 0) + 1;
+        }
+
         return Column(
           children: [
-            // Manga / Anime type toggle
-            _buildTypeToggle(cs),
+            // Manga / Anime / Novel type toggle (badged per type with updates)
+            _buildTypeToggle(cs, updatesByType),
             // Filter bar
             if (languages.length > 2 || repoList.length > 1)
               _buildFilterBar(
@@ -172,6 +186,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                               if (updateSources.isNotEmpty) ...[
                                 _UpdatesHeader(
                                   count: updateSources.length,
+                                  updating: _updatingAll,
                                   onUpdateAll: () => _updateAll(
                                       context, provider, updateIds.toList()),
                                 ),
@@ -179,6 +194,8 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                                       source: s,
                                       isInstalled: true,
                                       needsUpdate: true,
+                                      updating: _updatingAll ||
+                                          _updatingIds.contains(s.id),
                                       onUpdate: () =>
                                           _updateOne(context, provider, s.id),
                                       onInstall: () =>
@@ -211,8 +228,10 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                                 ...available.map((s) => _ExtensionRow(
                                       source: s,
                                       isInstalled: false,
+                                      installing:
+                                          _installingIds.contains(s.id),
                                       onInstall: () =>
-                                          provider.installSource(s),
+                                          _installOne(context, provider, s),
                                       onTap: () =>
                                           _showDetail(context, s, false),
                                     )),
@@ -244,7 +263,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
     );
   }
 
-  Widget _buildTypeToggle(ColorScheme cs) {
+  Widget _buildTypeToggle(ColorScheme cs, Map<String, int> updatesByType) {
     final t = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
@@ -269,21 +288,56 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                     ),
                   ),
                 ),
-                child: Text(
-                  type == 'manga'
-                      ? t.browseManga
-                      : type == 'anime'
-                          ? t.browseAnime
-                          : t.browseNovels,
-                  style: GoogleFonts.manrope(
-                    fontSize: 13,
-                    fontWeight: _typeFilter == type ? FontWeight.w700 : FontWeight.w500,
-                    color: _typeFilter == type ? cs.primary : cs.outline,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      type == 'manga'
+                          ? t.browseManga
+                          : type == 'anime'
+                              ? t.browseAnime
+                              : t.browseNovels,
+                      style: GoogleFonts.manrope(
+                        fontSize: 13,
+                        fontWeight: _typeFilter == type
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                        color: _typeFilter == type ? cs.primary : cs.outline,
+                      ),
+                    ),
+                    if ((updatesByType[type] ?? 0) > 0) ...[
+                      const SizedBox(width: 6),
+                      _updateBadge(cs, updatesByType[type]!),
+                    ],
+                  ],
                 ),
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  /// Small count pill shown on a type tab that has pending extension updates,
+  /// so the user can see WHICH content type the update is under (the bottom-bar
+  /// badge alone doesn't say, and manga is shown first).
+  Widget _updateBadge(ColorScheme cs, int count) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: cs.primary,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Text(
+        '$count',
+        textAlign: TextAlign.center,
+        style: GoogleFonts.manrope(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: cs.onPrimary,
+          height: 1.3,
+        ),
       ),
     );
   }
@@ -552,14 +606,19 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   Future<void> _updateAll(
       BuildContext context, SourceProvider provider, List<String> ids) async {
     final t = AppLocalizations.of(context);
-    final n = await provider.updateAll(ids);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(t.browseUpdatedSources(n)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    setState(() => _updatingAll = true);
+    try {
+      final n = await provider.updateAll(ids);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(t.browseUpdatedSources(n)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _updatingAll = false);
+    }
   }
 
   /// Update a single source. Mirrors [_updateAll]: awaits, surfaces the outcome as
@@ -568,6 +627,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   Future<void> _updateOne(
       BuildContext context, SourceProvider provider, String id) async {
     final t = AppLocalizations.of(context);
+    setState(() => _updatingIds.add(id));
     try {
       final ok = await provider.updateSource(id);
       if (!mounted) return;
@@ -583,6 +643,36 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
         content: Text(t.browseUpdateFailed(e.toString())),
         duration: const Duration(seconds: 3),
       ));
+    } finally {
+      if (mounted) setState(() => _updatingIds.remove(id));
+    }
+  }
+
+  /// Install a single available source. Mirrors [_updateOne]: shows a per-row spinner
+  /// while the download/registration runs and surfaces failures instead of the button
+  /// silently doing nothing.
+  Future<void> _installOne(
+      BuildContext context, SourceProvider provider, MangaSource s) async {
+    final t = AppLocalizations.of(context);
+    final vault = context.read<VaultProvider>();
+    setState(() => _installingIds.add(s.id));
+    try {
+      await provider.installSource(s);
+      // Installed while browsing inside the vault → keep it in the vault so it
+      // stays in that private space instead of appearing in the normal list.
+      if (vault.vaultActive && !vault.isSourceInVault(s.id)) {
+        vault.toggleVaultSource(s.id);
+      }
+    } catch (e, st) {
+      logger.error('Source install failed (${s.id}): $e',
+          category: LogCategory.install, detail: st.toString());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(t.browseUpdateFailed(e.toString())),
+        duration: const Duration(seconds: 3),
+      ));
+    } finally {
+      if (mounted) setState(() => _installingIds.remove(s.id));
     }
   }
 
@@ -652,7 +742,9 @@ class _SectionHeader extends StatelessWidget {
 class _UpdatesHeader extends StatelessWidget {
   final int count;
   final VoidCallback onUpdateAll;
-  const _UpdatesHeader({required this.count, required this.onUpdateAll});
+  final bool updating;
+  const _UpdatesHeader(
+      {required this.count, required this.onUpdateAll, this.updating = false});
 
   @override
   Widget build(BuildContext context) {
@@ -675,19 +767,38 @@ class _UpdatesHeader extends StatelessWidget {
               ),
             ),
           ),
-          TextButton(
-            onPressed: onUpdateAll,
-            style: TextButton.styleFrom(
+          if (updating)
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(
+                  width: 13,
+                  height: 13,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: cs.primary),
+                ),
+                const SizedBox(width: 8),
+                Text('Updating…',
+                    style: GoogleFonts.manrope(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: cs.primary)),
+              ]),
+            )
+          else
+            TextButton(
+              onPressed: onUpdateAll,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(t.browseUpdateAll,
+                  style: GoogleFonts.manrope(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: cs.primary)),
             ),
-            child: Text(t.browseUpdateAll,
-                style: GoogleFonts.manrope(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: cs.primary)),
-          ),
         ],
       ),
     );
@@ -702,6 +813,8 @@ class _ExtensionRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool needsUpdate;
   final VoidCallback? onUpdate;
+  final bool updating;
+  final bool installing;
 
   const _ExtensionRow({
     required this.source,
@@ -711,6 +824,8 @@ class _ExtensionRow extends StatelessWidget {
     this.onTap,
     this.needsUpdate = false,
     this.onUpdate,
+    this.updating = false,
+    this.installing = false,
   });
 
   @override
@@ -822,16 +937,24 @@ class _ExtensionRow extends StatelessWidget {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  onPressed: onUpdate,
-                  child: Text(t.browseUpdate,
-                      style: GoogleFonts.manrope(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white)),
+                  onPressed: updating ? null : onUpdate,
+                  child: updating
+                      ? const SizedBox(
+                          width: 13,
+                          height: 13,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(t.browseUpdate,
+                          style: GoogleFonts.manrope(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white)),
                 )
               else
                 _InstallButton(
                   isInstalled: isInstalled,
+                  installing: installing,
                   onPressed: isInstalled ? (onSettings ?? onInstall) : onInstall,
                 ),
             ],
@@ -845,10 +968,12 @@ class _ExtensionRow extends StatelessWidget {
 class _InstallButton extends StatelessWidget {
   final bool isInstalled;
   final VoidCallback onPressed;
+  final bool installing;
 
   const _InstallButton({
     required this.isInstalled,
     required this.onPressed,
+    this.installing = false,
   });
 
   @override
@@ -857,7 +982,7 @@ class _InstallButton extends StatelessWidget {
     final color = Theme.of(context).colorScheme.primary;
 
     return GestureDetector(
-      onTap: onPressed,
+      onTap: installing ? null : onPressed,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: 80,
@@ -870,14 +995,21 @@ class _InstallButton extends StatelessWidget {
             color: color.withAlpha(isInstalled ? 102 : 128),
           ),
         ),
-        child: Text(
-          isInstalled ? t.browseSettings : t.browseInstall,
-          style: GoogleFonts.manrope(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
+        child: installing
+            ? SizedBox(
+                width: 15,
+                height: 15,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: color),
+              )
+            : Text(
+                isInstalled ? t.browseSettings : t.browseInstall,
+                style: GoogleFonts.manrope(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
       ),
     );
   }

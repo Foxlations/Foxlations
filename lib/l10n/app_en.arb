@@ -233,6 +233,18 @@
     },
     "description": "Compact chapter-progress badge on a cover; {read}=chapters read, {total}=total chapters."
   },
+  "libraryEpisodeProgress": "Ep. {read}/{total}",
+  "@libraryEpisodeProgress": {
+    "placeholders": {
+      "read": {
+        "type": "Object"
+      },
+      "total": {
+        "type": "Object"
+      }
+    },
+    "description": "Compact episode-progress badge for anime; {read}=episodes watched, {total}=total episodes."
+  },
   "libraryChaptersAbbrev": "{n} ch",
   "@libraryChaptersAbbrev": {
     "placeholders": {
@@ -265,6 +277,34 @@
   "libraryContinueReading": "Continue Reading",
   "@libraryContinueReading": {
     "description": "Section header or button to resume the last-read title."
+  },
+  "libraryContinueWatching": "Continue Watching",
+  "@libraryContinueWatching": {
+    "description": "Continue Reading variant shown when the last-touched item is anime (video)."
+  },
+  "readerListen": "Listen",
+  "@readerListen": {
+    "description": "Button to start text-to-speech reading of a light novel aloud."
+  },
+  "readerTtsStop": "Stop",
+  "@readerTtsStop": {
+    "description": "Stop the text-to-speech reading."
+  },
+  "readerTtsSpeed": "Speed",
+  "@readerTtsSpeed": {
+    "description": "Label for the text-to-speech playback speed control."
+  },
+  "readerTtsVoice": "Voice",
+  "@readerTtsVoice": {
+    "description": "Title for the text-to-speech voice picker (device voices)."
+  },
+  "readerTtsNoVoices": "No voices available on this device",
+  "@readerTtsNoVoices": {
+    "description": "Shown when the device has no selectable TTS voices."
+  },
+  "readerTtsSystemVoice": "System default",
+  "@readerTtsSystemVoice": {
+    "description": "Voice-picker option to use the device's default TTS voice."
   },
   "libraryCoverSize": "Cover Size",
   "@libraryCoverSize": {
@@ -590,6 +630,10 @@
   "@libraryTotalChapters": {
     "description": "Stats label for the total number of chapters across the library."
   },
+  "libraryTypeMenuBarrier": "Library type",
+  "@libraryTypeMenuBarrier": {
+    "description": "Accessibility label for the library-type (manga/anime/novel) picker's dismiss barrier"
+  },
   "libraryTypeBreakdown": "{type} Breakdown",
   "@libraryTypeBreakdown": {
     "placeholders": {
@@ -720,6 +764,26 @@
   "detailDownloadNextChapter": "Next chapter",
   "@detailDownloadNextChapter": {
     "description": "Download-menu option: download the next single chapter/episode"
+  },
+  "detailDownloadNextEpisode": "Next episode",
+  "@detailDownloadNextEpisode": {
+    "description": "Download-menu option (anime): download the next single episode"
+  },
+  "detailDownloadNext5Episodes": "Next 5 episodes",
+  "@detailDownloadNext5Episodes": {
+    "description": "Download-menu option (anime): download the next 5 episodes"
+  },
+  "detailDownloadNext10Episodes": "Next 10 episodes",
+  "@detailDownloadNext10Episodes": {
+    "description": "Download-menu option (anime): download the next 10 episodes"
+  },
+  "detailDownloadAllEpisodes": "All episodes",
+  "@detailDownloadAllEpisodes": {
+    "description": "Download-menu option (anime): download every episode"
+  },
+  "detailSelectEpisodes": "Select episodes",
+  "@detailSelectEpisodes": {
+    "description": "Overflow-menu option (anime): enter multi-select to pick episodes"
   },
   "detailEditCategories": "Edit categories",
   "@detailEditCategories": {
@@ -885,6 +949,10 @@
   "detailOpenInBrowser": "Open in browser",
   "@detailOpenInBrowser": {
     "description": "Menu action to open the title's page in an external browser"
+  },
+  "webviewOpenFailed": "Couldn't open the browser",
+  "@webviewOpenFailed": {
+    "description": "Snackbar shown when opening the current page in the device's default browser fails."
   },
   "detailPage": "Page {page}",
   "@detailPage": {
@@ -1228,6 +1296,14 @@
   "@readerGrayscaleSubtitle": {
     "description": "Subtitle explaining the grayscale toggle"
   },
+  "readerAutoCrop": "Auto-crop borders",
+  "@readerAutoCrop": {
+    "description": "Reader toggle: trim solid page margins."
+  },
+  "readerAutoCropSubtitle": "Trim solid white/black margins so pages fill the screen",
+  "@readerAutoCropSubtitle": {
+    "description": "Subtitle explaining the auto-crop toggle"
+  },
   "readerInvertColors": "Invert Colors",
   "@readerInvertColors": {
     "description": "Toggle label for inverting page colors"
@@ -1316,6 +1392,10 @@
   "@readerSourceNotInstalled": {
     "description": "Error/snackbar shown when the content source extension is missing"
   },
+  "readerSourceNotInstalledHint": "This title's source isn't installed — this can happen after restoring a backup. Install it from Extensions, then try again.",
+  "@readerSourceNotInstalledHint": {
+    "description": "Explanatory subtitle on the reader's 'source not installed' screen, pointing the user to Extensions"
+  },
   "readerTranslating": "Translating…",
   "@readerTranslating": {
     "description": "Transient status shown while a page is being AI-translated"
@@ -1324,6 +1404,30 @@
   "@readerRetry": {
     "description": "Button to retry a failed page load or translation"
   },
+  "readerPageShare": "Share",
+  "@readerPageShare": { "description": "Reader page long-press menu: share the page image" },
+  "readerPageSave": "Save image",
+  "@readerPageSave": { "description": "Reader page long-press menu: save the page to the gallery" },
+  "readerPageSetCover": "Set as cover",
+  "@readerPageSetCover": { "description": "Reader page long-press menu: use this page as the manga cover" },
+  "readerPageRecognizeText": "Recognize text",
+  "@readerPageRecognizeText": { "description": "Reader page long-press menu: OCR the page text" },
+  "readerPageSaved": "Saved to gallery",
+  "@readerPageSaved": { "description": "Snackbar after saving a page image" },
+  "readerPageSaveFailed": "Couldn't save the image",
+  "@readerPageSaveFailed": { "description": "Snackbar when saving a page image fails" },
+  "readerPageCoverSet": "Cover updated",
+  "@readerPageCoverSet": { "description": "Snackbar after setting a page as the cover" },
+  "readerPageCoverNeedsLibrary": "Add this title to your library first",
+  "@readerPageCoverNeedsLibrary": { "description": "Snackbar when set-as-cover is used on a non-library title" },
+  "readerPageImageUnavailable": "Image isn't available yet",
+  "@readerPageImageUnavailable": { "description": "Snackbar when the page image bytes can't be obtained" },
+  "readerPageOcrTitle": "Recognized text",
+  "@readerPageOcrTitle": { "description": "Title of the OCR result dialog" },
+  "readerPageOcrEmpty": "No text found on this page",
+  "@readerPageOcrEmpty": { "description": "Shown when OCR finds no text" },
+  "readerPageOcrCopy": "Copy",
+  "@readerPageOcrCopy": { "description": "Button to copy the recognized text" },
   "readerLoadingNextChapter": "Loading next chapter...",
   "@readerLoadingNextChapter": {
     "description": "Status shown while the next chapter is loading"
@@ -2091,6 +2195,14 @@
   "@browseNoResultsFound": {
     "description": "Empty-state when a search returns nothing"
   },
+  "globalSearchSourceNoResults": "No results",
+  "@globalSearchSourceNoResults": {
+    "description": "Shown under a source in global search when it returned no matches"
+  },
+  "globalSearchSourceFailed": "Couldn't search this source",
+  "@globalSearchSourceFailed": {
+    "description": "Shown under a source in global search when its search failed"
+  },
   "browseSectionSources": "Sources",
   "@browseSectionSources": {
     "description": "Settings section header for sources options"
@@ -2182,6 +2294,22 @@
   "setxAdvancedDnsProviderTitle": "DNS Provider",
   "@setxAdvancedDnsProviderTitle": {
     "description": "Row label to pick which DNS-over-HTTPS provider to use"
+  },
+  "commonBeta": "BETA",
+  "@commonBeta": {
+    "description": "Small badge label marking an experimental/beta feature."
+  },
+  "setxAdvancedSectionBeta": "Experimental",
+  "@setxAdvancedSectionBeta": {
+    "description": "Section header for the Beta features toggle on the Advanced page."
+  },
+  "setxAdvancedBeta": "Beta features",
+  "@setxAdvancedBeta": {
+    "description": "Toggle to show experimental features."
+  },
+  "setxAdvancedBetaDesc": "Show experimental features — hands-free & volume-key scrolling, RepoForge, AI translation and auto-crop. They may be unstable or change.",
+  "@setxAdvancedBetaDesc": {
+    "description": "Subtitle under the Beta features toggle."
   },
   "setxAdvancedSectionExtensions": "Extensions",
   "@setxAdvancedSectionExtensions": {
@@ -2399,6 +2527,18 @@
   "@setxSecuritySectionPrivacy": {
     "description": "Section header for privacy settings"
   },
+  "setxSecurityIncognitoTitle": "Incognito mode",
+  "@setxSecurityIncognitoTitle": {
+    "description": "Toggle label for incognito/private mode"
+  },
+  "setxSecurityIncognitoSubtitle": "Don't save reading history or update trackers",
+  "@setxSecurityIncognitoSubtitle": {
+    "description": "Subtitle under the Incognito mode toggle"
+  },
+  "libraryIncognitoActive": "Incognito mode on",
+  "@libraryIncognitoActive": {
+    "description": "Tooltip on the library app-bar badge shown while incognito mode is active"
+  },
   "setxSecuritySecureScreenTitle": "Secure Screen",
   "@setxSecuritySecureScreenTitle": {
     "description": "Toggle label hiding app content in the OS recent-apps view and screenshots"
@@ -2414,6 +2554,101 @@
   "setxSecurityHideNotifSubtitle": "Show generic notification text",
   "@setxSecurityHideNotifSubtitle": {
     "description": "Subtitle under the Hide Notification Content toggle"
+  },
+  "notifChannelUpdatesName": "Library updates",
+  "@notifChannelUpdatesName": {
+    "description": "Android notification channel name for library updates"
+  },
+  "notifChannelUpdatesDesc": "New chapters and update summaries",
+  "@notifChannelUpdatesDesc": {
+    "description": "Android notification channel description for library updates"
+  },
+  "notifChannelDownloadsName": "Downloads",
+  "@notifChannelDownloadsName": {
+    "description": "Android notification channel name for downloads"
+  },
+  "notifChannelDownloadsDesc": "Download completion and errors",
+  "@notifChannelDownloadsDesc": {
+    "description": "Android notification channel description for downloads"
+  },
+  "notifDownloadCompleteTitle": "Download complete",
+  "@notifDownloadCompleteTitle": {
+    "description": "Notification title when a chapter/episode finishes downloading"
+  },
+  "notifDownloadFailedTitle": "Download failed",
+  "@notifDownloadFailedTitle": {
+    "description": "Notification title when a download fails"
+  },
+  "notifDownloadsDoneTitle": "Downloads complete",
+  "@notifDownloadsDoneTitle": {
+    "description": "Notification title shown once when the whole download queue finishes"
+  },
+  "notifDownloadsDoneBody": "{count, plural, =1{1 item downloaded} other{{count} items downloaded}}",
+  "@notifDownloadsDoneBody": {
+    "description": "Notification body summarizing how many chapters/episodes finished downloading",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notifDownloadsDoneBodyFailed": "{count} downloaded · {failed} failed",
+  "@notifDownloadsDoneBodyFailed": {
+    "description": "Notification body when the queue finished with some failures",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "notifNewChapters": "{count, plural, =1{1 new chapter} other{{count} new chapters}}",
+  "@notifNewChapters": {
+    "description": "Notification body: how many new chapters were found for a title",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "notifLibraryUpdatedTitle": "Library updated",
+  "@notifLibraryUpdatedTitle": {
+    "description": "Notification title for the library-update summary"
+  },
+  "notifLibrarySummaryBody": "{count} new chapters across {titles} titles",
+  "@notifLibrarySummaryBody": {
+    "description": "Notification body summarizing a library update run",
+    "placeholders": {
+      "count": { "type": "int" },
+      "titles": { "type": "int" }
+    }
+  },
+  "notifHiddenBody": "New activity",
+  "@notifHiddenBody": {
+    "description": "Generic notification body shown when Hide Notification Content is on"
+  },
+  "notifExtensionUpdatesTitle": "Extension updates",
+  "@notifExtensionUpdatesTitle": {
+    "description": "Notification title when installed extensions have updates available"
+  },
+  "notifExtensionUpdates": "{count, plural, =1{1 extension update available} other{{count} extension updates available}}",
+  "@notifExtensionUpdates": {
+    "description": "Notification body: how many extension updates are available",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "securityLockedTitle": "Foxlations is locked",
+  "@securityLockedTitle": {
+    "description": "Heading on the app-lock screen"
+  },
+  "securityUnlock": "Unlock",
+  "@securityUnlock": {
+    "description": "Button to trigger device authentication on the app-lock screen"
+  },
+  "securityUnlockReason": "Unlock Foxlations",
+  "@securityUnlockReason": {
+    "description": "Reason string shown in the OS biometric/passcode prompt"
   },
   "setxBackupTitle": "Backup & Restore",
   "@setxBackupTitle": {
@@ -2435,13 +2670,40 @@
   "@setxBackupRestoreTitle": {
     "description": "Row label to restore from a Foxlations backup file"
   },
+  "backupIncludeVault": "Include vault",
+  "@backupIncludeVault": {
+    "description": "Checkbox to include vault titles in a backup (requires unlock)"
+  },
+  "backupIncludeVaultSubtitle": "Adds your vault titles under “Vault-” categories — requires unlocking",
+  "@backupIncludeVaultSubtitle": {
+    "description": "Subtitle explaining the Include vault checkbox"
+  },
+  "backupUnlockVaultTitle": "Unlock vault",
+  "@backupUnlockVaultTitle": {
+    "description": "Title of the prompt to unlock the vault before including it in a backup"
+  },
+  "backupUnlockVaultHint": "Vault password",
+  "@backupUnlockVaultHint": {
+    "description": "Password field hint when unlocking the vault for a backup"
+  },
+  "backupRestoreConfirmTitle": "Restore this backup?",
+  "@backupRestoreConfirmTitle": {
+    "description": "Confirmation dialog title before importing a backup"
+  },
+  "backupRestoreConfirmBody": "This adds “{name}” to your library. You can cancel if you changed your mind.",
+  "@backupRestoreConfirmBody": {
+    "placeholders": {
+      "name": { "type": "String" }
+    },
+    "description": "Confirmation body before importing a backup; {name} is the file name"
+  },
   "setxBackupRestoreSubtitle": "Restore from a Foxlations .fxbackup file",
   "@setxBackupRestoreSubtitle": {
     "description": "Subtitle explaining the restore accepts a .fxbackup file"
   },
-  "setxBackupSectionTachiyomi": "Tachiyomi / Mihon & forks",
+  "setxBackupSectionTachiyomi": "Import from other apps",
   "@setxBackupSectionTachiyomi": {
-    "description": "Section header for Tachiyomi/Mihon-compatible backups"
+    "description": "Section header for importing backups from other reader apps"
   },
   "setxBackupCreateCompatTitle": "Create compatible backup",
   "@setxBackupCreateCompatTitle": {
@@ -2451,13 +2713,13 @@
   "@setxBackupCreateCompatSubtitle": {
     "description": "Subtitle explaining the .tachibk export can be imported into Tachiyomi/Mihon/forks"
   },
-  "setxBackupRestoreTachiyomiTitle": "Restore from Tachiyomi/Mihon",
+  "setxBackupRestoreTachiyomiTitle": "Import from another app",
   "@setxBackupRestoreTachiyomiTitle": {
-    "description": "Row label to restore from a Tachiyomi/Mihon backup"
+    "description": "Row label to import a backup from another reader app"
   },
-  "setxBackupRestoreTachiyomiSubtitle": "Import a .tachibk / .tmb / .proto.gz backup (matches sources by name)",
+  "setxBackupRestoreTachiyomiSubtitle": "Mihon / Tachiyomi & forks, Aniyomi, Tachimanga, Mangayomi (matches sources by name)",
   "@setxBackupRestoreTachiyomiSubtitle": {
-    "description": "Subtitle listing accepted Tachiyomi backup formats and name-matching"
+    "description": "Subtitle listing accepted external backup formats and name-matching"
   },
   "setxBackupSectionAutomatic": "Automatic backup",
   "@setxBackupSectionAutomatic": {
@@ -2525,6 +2787,58 @@
   "setxBackupRestoreComplete": "Restore complete",
   "@setxBackupRestoreComplete": {
     "description": "Snackbar confirming a backup restore finished"
+  },
+  "backupOrganizeTitle": "Organize imported categories",
+  "@backupOrganizeTitle": {
+    "description": "Title of the dialog that maps a backup's categories after import"
+  },
+  "backupOrganizePrompt": "{count, plural, =1{The backup added 1 category. Keep it, or send it to one of yours.} other{The backup added {count} categories. Keep each, or send it to one of yours.}}",
+  "@backupOrganizePrompt": {
+    "placeholders": {
+      "count": { "type": "int" }
+    },
+    "description": "Explains the category-mapping choices after a backup import"
+  },
+  "backupOrganizeKeepAll": "Keep as-is",
+  "@backupOrganizeKeepAll": {
+    "description": "Button to leave the imported categories unchanged"
+  },
+  "backupOrganizeApply": "Apply",
+  "@backupOrganizeApply": {
+    "description": "Button to apply the category mapping"
+  },
+  "backupOrganizeKeep": "Keep",
+  "@backupOrganizeKeep": {
+    "description": "Dropdown option to keep a backup category as its own"
+  },
+  "backupOrganizeShowVault": "Show vault categories",
+  "@backupOrganizeShowVault": {
+    "description": "Toggle to include the vault's categories as mapping targets"
+  },
+  "backupOrganizeUnlockVault": "Unlock the vault to use its categories",
+  "@backupOrganizeUnlockVault": {
+    "description": "Shown when the vault is locked and its categories can't be targets yet"
+  },
+  "backupOrganizeVaultPrefix": "Vault: {name}",
+  "@backupOrganizeVaultPrefix": {
+    "placeholders": {
+      "name": { "type": "String" }
+    },
+    "description": "Label for a vault category target in the mapping dropdown"
+  },
+  "backupOrganizeItemCount": "{count, plural, =1{1 title} other{{count} titles}}",
+  "@backupOrganizeItemCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    },
+    "description": "How many titles are in a backup category being mapped"
+  },
+  "backupOrganizeDone": "Reorganized {count} titles",
+  "@backupOrganizeDone": {
+    "placeholders": {
+      "count": { "type": "int" }
+    },
+    "description": "Snackbar after applying the category mapping"
   },
   "setxBackupRestoreFailed": "Restore failed: {error}",
   "@setxBackupRestoreFailed": {
@@ -3626,6 +3940,87 @@
     },
     "description": "Storage breakdown line; {lib} = library size in MB, {vault} = vault size in MB."
   },
+  "dlQueueTitle": "Downloads",
+  "@dlQueueTitle": {
+    "description": "Title of the download queue / manager screen."
+  },
+  "dlQueueSettingsTooltip": "Download settings",
+  "@dlQueueSettingsTooltip": {
+    "description": "Tooltip for the gear icon that opens download settings from the queue screen."
+  },
+  "dlQueueRecent": "Recently Downloaded",
+  "@dlQueueRecent": {
+    "description": "Row that opens the list of chapters/episodes downloaded this session."
+  },
+  "dlQueueResume": "Resume",
+  "@dlQueueResume": {
+    "description": "Button that resumes a paused download queue."
+  },
+  "dlQueuePause": "Pause",
+  "@dlQueuePause": {
+    "description": "Button that pauses the download queue."
+  },
+  "dlQueueConcurrent": "Concurrent downloads: {count}",
+  "@dlQueueConcurrent": {
+    "placeholders": {
+      "count": {
+        "type": "Object"
+      }
+    },
+    "description": "Button showing how many downloads run at once; tapping it changes the number."
+  },
+  "dlQueueEmpty": "No Downloads",
+  "@dlQueueEmpty": {
+    "description": "Empty state when there are no active or queued downloads."
+  },
+  "dlQueuePaused": "Downloads paused",
+  "@dlQueuePaused": {
+    "description": "Banner shown over the queue while downloads are paused."
+  },
+  "dlQueueStatusQueued": "Queued",
+  "@dlQueueStatusQueued": {
+    "description": "Per-item status label for a download waiting in the queue."
+  },
+  "dlQueueStatusDownloading": "Downloading",
+  "@dlQueueStatusDownloading": {
+    "description": "Per-item status label for a download in progress."
+  },
+  "dlQueueCancelAll": "Cancel all",
+  "@dlQueueCancelAll": {
+    "description": "Overflow action that cancels every queued and active download."
+  },
+  "dlQueueCancelItem": "Cancel download",
+  "@dlQueueCancelItem": {
+    "description": "Tooltip for the per-item cancel button."
+  },
+  "dlQueueProgress": "{done} / {total}",
+  "@dlQueueProgress": {
+    "placeholders": {
+      "done": {
+        "type": "Object"
+      },
+      "total": {
+        "type": "Object"
+      }
+    },
+    "description": "Per-item progress; {done} pages/parts completed out of {total}."
+  },
+  "dlQueueRecentTitle": "Recently Downloaded",
+  "@dlQueueRecentTitle": {
+    "description": "Title of the recently-downloaded list screen."
+  },
+  "dlQueueRecentEmpty": "Nothing downloaded yet",
+  "@dlQueueRecentEmpty": {
+    "description": "Empty state on the recently-downloaded screen (session-scoped)."
+  },
+  "dlQueueRecentClear": "Clear",
+  "@dlQueueRecentClear": {
+    "description": "Action that clears the session recently-downloaded list."
+  },
+  "dlQueueRecentNote": "This session only",
+  "@dlQueueRecentNote": {
+    "description": "Caption clarifying the recently-downloaded list resets when the app restarts."
+  },
   "setdVaultTitle": "Vault",
   "@setdVaultTitle": {
     "description": "Screen title of the Vault settings page."
@@ -4070,6 +4465,14 @@
   "@setdPlayerSkipAmountTitle": {
     "description": "Dialog/picker title for choosing a skip duration."
   },
+  "setdPlayerShowSkipButton": "Skip-intro button",
+  "@setdPlayerShowSkipButton": {
+    "description": "Toggle: show a manual Skip Intro button near the start of an episode."
+  },
+  "setdPlayerShowSkipButtonDesc": "Show a Skip Intro button near the start, even when the source has no markers",
+  "@setdPlayerShowSkipButtonDesc": {
+    "description": "Subtitle under the Skip-intro button toggle."
+  },
   "setdPlayerSpeedTitle": "Speed",
   "@setdPlayerSpeedTitle": {
     "description": "Dialog/picker title for choosing a playback speed."
@@ -4093,6 +4496,26 @@
   "setdAppearanceInvertColorsDesc": "Inverts the entire app UI",
   "@setdAppearanceInvertColorsDesc": {
     "description": "Subtitle under the Invert Colors toggle."
+  },
+  "setdAppearanceOledBlack": "Pure black (OLED)",
+  "@setdAppearanceOledBlack": {
+    "description": "Toggle for a true-black dark-mode background."
+  },
+  "setdAppearanceOledBlackDesc": "True-black background in dark mode — saves power on OLED screens",
+  "@setdAppearanceOledBlackDesc": {
+    "description": "Subtitle under the OLED pure-black toggle."
+  },
+  "setdAppearanceNavOrder": "Navigation bar",
+  "@setdAppearanceNavOrder": {
+    "description": "Title for the bottom-nav reorder setting/page."
+  },
+  "setdAppearanceNavOrderDesc": "Drag to arrange the bottom tabs in any order",
+  "@setdAppearanceNavOrderDesc": {
+    "description": "Subtitle/description for the bottom-nav reorder page."
+  },
+  "setdAppearanceNavOrderReset": "Reset",
+  "@setdAppearanceNavOrderReset": {
+    "description": "Button to reset the nav tab order to default."
   },
   "setdAppearanceDarkMode": "Dark Mode",
   "@setdAppearanceDarkMode": {
@@ -4273,5 +4696,75 @@
         "type": "String"
       }
     }
-  }
+  },
+  "readerGazeScroll": "Hands-free scrolling",
+  "@readerGazeScroll": { "description": "Reader setting: scroll by looking toward the top/bottom of the screen (iOS front-camera gaze tracking)." },
+  "readerGazeScrollSubtitle": "Scroll by looking toward the top or bottom of the screen. Uses the front camera.",
+  "@readerGazeScrollSubtitle": { "description": "Subtitle for the hands-free scrolling reader toggle." },
+  "readerGazeCameraTitle": "Use the front camera?",
+  "@readerGazeCameraTitle": { "description": "Title of the consent dialog shown before enabling gaze scrolling." },
+  "readerGazeCameraWarning": "Hands-free scrolling watches your gaze with the front camera while you read. It runs entirely on your device — nothing is recorded or sent anywhere — but it uses extra battery.",
+  "@readerGazeCameraWarning": { "description": "Body of the consent dialog explaining the camera + battery use of gaze scrolling." },
+  "readerGazeMode": "Control with",
+  "@readerGazeMode": { "description": "Reader setting: which signal drives gaze scrolling (eyes, head tilt, or both)." },
+  "readerGazeSensitivity": "Sensitivity",
+  "@readerGazeSensitivity": { "description": "Reader slider: how far you must look to trigger a gaze scroll." },
+  "readerGazeHoldTime": "Hold time",
+  "@readerGazeHoldTime": { "description": "Reader slider: how long a look must be held before scrolling starts." },
+  "readerGazeSmoothing": "Smoothing",
+  "@readerGazeSmoothing": { "description": "Reader slider: how much the gaze signal is smoothed." },
+  "readerGazeCalibrate": "Calibrate",
+  "@readerGazeCalibrate": { "description": "Reader action: record the resting gaze/head position as the baseline." },
+  "readerGazeCalibrateSubtitle": "Set your resting gaze and head position as the baseline.",
+  "@readerGazeCalibrateSubtitle": { "description": "Subtitle for the gaze calibration action." },
+  "readerGazeCalibrating": "Look at the centre and hold still…",
+  "@readerGazeCalibrating": { "description": "Message shown while gaze calibration samples the neutral position." },
+  "readerTiltScroll": "Tilt to scroll",
+  "@readerTiltScroll": { "description": "Reader setting: scroll by tilting the phone forward/back (accelerometer)." },
+  "readerTiltScrollSubtitle": "Scroll by tilting the phone forward or back. Works on any phone.",
+  "@readerTiltScrollSubtitle": { "description": "Subtitle for the tilt-to-scroll reader toggle." },
+  "readerTiltCalibrateSubtitle": "Hold the phone at your reading angle, then set it as the baseline.",
+  "@readerTiltCalibrateSubtitle": { "description": "Subtitle for the tilt calibration action." },
+  "readerTiltCalibrating": "Hold the phone still at your reading angle…",
+  "@readerTiltCalibrating": { "description": "Message shown while tilt calibration samples the resting angle." },
+  "readerScrollSpeed": "Scroll speed",
+  "@readerScrollSpeed": { "description": "Reader slider: how fast hands-free (gaze/tilt) scrolling moves." },
+  "readerHandsFreeOptions": "Hands-free options",
+  "@readerHandsFreeOptions": { "description": "Title of the quick-options sheet opened by long-pressing the in-reader hands-free toggle." },
+  "readerCalibrateTitle": "Gaze calibration",
+  "@readerCalibrateTitle": { "description": "Title of the gaze calibration screen." },
+  "readerCalibrateInstruction": "Look at the dot and hold still",
+  "@readerCalibrateInstruction": { "description": "Instruction while gaze calibration samples the neutral position." },
+  "readerCalibrateSuccess": "Calibrated!",
+  "@readerCalibrateSuccess": { "description": "Shown when gaze calibration succeeds." },
+  "readerCalibrateTestPrompt": "Try it — look up or down to scroll",
+  "@readerCalibrateTestPrompt": { "description": "Prompt during the calibration test run." },
+  "readerCalibrateKeep": "Save",
+  "@readerCalibrateKeep": { "description": "Button to keep the new gaze calibration." },
+  "readerCalibrateRedo": "Recalibrate",
+  "@readerCalibrateRedo": { "description": "Button to redo gaze calibration." },
+  "readerCalibrateDoneTest": "Done testing",
+  "@readerCalibrateDoneTest": { "description": "Button to finish the calibration test run." },
+  "readerCalibratePointOf": "Point {n} of {total}",
+  "@readerCalibratePointOf": {
+    "description": "Progress label during multi-point gaze calibration; {n} is the current point number and {total} the total count.",
+    "placeholders": {
+      "n": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "readerRadialMenu": "Radial menu",
+  "@readerRadialMenu": { "description": "Setting title for the opt-in in-reader radial control." },
+  "readerRadialMenuSubtitle": "Replace the reader bars with a back button and a corner wheel. Hold the wheel for quick actions and the page slider.",
+  "@readerRadialMenuSubtitle": { "description": "Explanation of the radial menu reader setting." },
+  "readerRadialCorner": "Wheel corner",
+  "@readerRadialCorner": { "description": "Setting to choose which bottom corner the radial wheel sits in (Left or Right)." },
+  "readerCalibrateGetReady": "Follow the dot to each corner",
+  "@readerCalibrateGetReady": { "description": "Sub-instruction telling the user the calibration dot will move to several positions." },
+  "readerCalibrateDarkTitle": "Too dark for eye tracking",
+  "@readerCalibrateDarkTitle": { "description": "Heading shown when gaze calibration can't detect the eyes because there is too little light." },
+  "readerCalibrateDarkBody": "Your eyes need some light to track. Switched to head-tilt — it works in any light. Tilt your head up or down to scroll.",
+  "@readerCalibrateDarkBody": { "description": "Explanation shown when calibration falls back to head-tilt control due to low light." },
+  "readerCalibrateTestPromptHead": "Tilt your head up or down to scroll",
+  "@readerCalibrateTestPromptHead": { "description": "Prompt during the calibration test run when head-tilt control is active." }
 }

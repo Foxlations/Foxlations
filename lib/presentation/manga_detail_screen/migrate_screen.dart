@@ -225,7 +225,11 @@ class _MigrateScreenState extends State<MigrateScreen> {
       final oldCachedChapters = (provider as dynamic)
           .getCachedChapters(widget.sourceId, widget.mangaUrl) as List;
       for (final ch in oldCachedChapters) {
-        if (libraryProvider.isChapterRead(widget.sourceId, ch.chapterUrl)) {
+        // Read-state lives in the SAME box as the entry — use the active
+        // provider so migrating a vaulted title reads the vault's read flags,
+        // not the (empty) library's.
+        if ((provider as dynamic)
+            .isChapterRead(widget.sourceId, ch.chapterUrl)) {
           final num = _extractChapterNumber(ch.title);
           if (num != null) readChapterNumbers[num] = true;
         }
@@ -276,13 +280,17 @@ class _MigrateScreenState extends State<MigrateScreen> {
           await (provider as dynamic).cacheChapters(target.sourceId, target.url,
               detail.chapters!.map((c) => c.toJson()).toList());
 
-          // Mark matching chapters as read
+          // Mark matching chapters as read — collect then mark in one pass
+          // (per-chapter marking recounts the whole chapter box each time).
+          final toMark = <String>[];
           for (final ch in detail.chapters!) {
             final num = _extractChapterNumber(ch.name ?? '');
             if (num != null && readChapterNumbers.containsKey(num)) {
-              await libraryProvider.markChapterRead(target.sourceId, target.url, ch.url ?? '');
+              toMark.add(ch.url ?? '');
             }
           }
+          await (provider as dynamic)
+              .markChaptersRead(target.sourceId, target.url, toMark);
         }
       }
     } catch (e) {

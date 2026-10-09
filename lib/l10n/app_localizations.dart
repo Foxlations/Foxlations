@@ -442,6 +442,12 @@ abstract class AppLocalizations {
   /// **'Ch. {read}/{total}'**
   String libraryChapterProgress(Object read, Object total);
 
+  /// Compact episode-progress badge for anime; {read}=episodes watched, {total}=total episodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Ep. {read}/{total}'**
+  String libraryEpisodeProgress(Object read, Object total);
+
   /// Abbreviated chapter count, e.g. in stats; {n} is the number of chapters.
   ///
   /// In en, this message translates to:
@@ -483,6 +489,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Continue Reading'**
   String get libraryContinueReading;
+
+  /// Continue Reading variant shown when the last-touched item is anime (video).
+  ///
+  /// In en, this message translates to:
+  /// **'Continue Watching'**
+  String get libraryContinueWatching;
+
+  /// Button to start text-to-speech reading of a light novel aloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen'**
+  String get readerListen;
+
+  /// Stop the text-to-speech reading.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get readerTtsStop;
+
+  /// Label for the text-to-speech playback speed control.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get readerTtsSpeed;
+
+  /// Title for the text-to-speech voice picker (device voices).
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get readerTtsVoice;
+
+  /// Shown when the device has no selectable TTS voices.
+  ///
+  /// In en, this message translates to:
+  /// **'No voices available on this device'**
+  String get readerTtsNoVoices;
+
+  /// Voice-picker option to use the device's default TTS voice.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get readerTtsSystemVoice;
 
   /// Setting label controlling the size of cover thumbnails in the grid.
   ///
@@ -898,6 +946,12 @@ abstract class AppLocalizations {
   /// **'Total Chapters'**
   String get libraryTotalChapters;
 
+  /// Accessibility label for the library-type (manga/anime/novel) picker's dismiss barrier
+  ///
+  /// In en, this message translates to:
+  /// **'Library type'**
+  String get libraryTypeMenuBarrier;
+
   /// Stats section heading; {type} is the content type (Manga/Anime/Novel).
   ///
   /// In en, this message translates to:
@@ -1071,6 +1125,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Next chapter'**
   String get detailDownloadNextChapter;
+
+  /// Download-menu option (anime): download the next single episode
+  ///
+  /// In en, this message translates to:
+  /// **'Next episode'**
+  String get detailDownloadNextEpisode;
+
+  /// Download-menu option (anime): download the next 5 episodes
+  ///
+  /// In en, this message translates to:
+  /// **'Next 5 episodes'**
+  String get detailDownloadNext5Episodes;
+
+  /// Download-menu option (anime): download the next 10 episodes
+  ///
+  /// In en, this message translates to:
+  /// **'Next 10 episodes'**
+  String get detailDownloadNext10Episodes;
+
+  /// Download-menu option (anime): download every episode
+  ///
+  /// In en, this message translates to:
+  /// **'All episodes'**
+  String get detailDownloadAllEpisodes;
+
+  /// Overflow-menu option (anime): enter multi-select to pick episodes
+  ///
+  /// In en, this message translates to:
+  /// **'Select episodes'**
+  String get detailSelectEpisodes;
 
   /// Menu/button to change which categories this title belongs to
   ///
@@ -1287,6 +1371,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open in browser'**
   String get detailOpenInBrowser;
+
+  /// Snackbar shown when opening the current page in the device's default browser fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the browser'**
+  String get webviewOpenFailed;
 
   /// Reading-progress label on a chapter row; {page} is current page number
   ///
@@ -1732,6 +1822,18 @@ abstract class AppLocalizations {
   /// **'Display pages in grayscale'**
   String get readerGrayscaleSubtitle;
 
+  /// Reader toggle: trim solid page margins.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-crop borders'**
+  String get readerAutoCrop;
+
+  /// Subtitle explaining the auto-crop toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Trim solid white/black margins so pages fill the screen'**
+  String get readerAutoCropSubtitle;
+
   /// Toggle label for inverting page colors
   ///
   /// In en, this message translates to:
@@ -1864,6 +1966,12 @@ abstract class AppLocalizations {
   /// **'Source not installed'**
   String get readerSourceNotInstalled;
 
+  /// Explanatory subtitle on the reader's 'source not installed' screen, pointing the user to Extensions
+  ///
+  /// In en, this message translates to:
+  /// **'This title\'s source isn\'t installed — this can happen after restoring a backup. Install it from Extensions, then try again.'**
+  String get readerSourceNotInstalledHint;
+
   /// Transient status shown while a page is being AI-translated
   ///
   /// In en, this message translates to:
@@ -1875,6 +1983,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get readerRetry;
+
+  /// Reader page long-press menu: share the page image
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get readerPageShare;
+
+  /// Reader page long-press menu: save the page to the gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Save image'**
+  String get readerPageSave;
+
+  /// Reader page long-press menu: use this page as the manga cover
+  ///
+  /// In en, this message translates to:
+  /// **'Set as cover'**
+  String get readerPageSetCover;
+
+  /// Reader page long-press menu: OCR the page text
+  ///
+  /// In en, this message translates to:
+  /// **'Recognize text'**
+  String get readerPageRecognizeText;
+
+  /// Snackbar after saving a page image
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to gallery'**
+  String get readerPageSaved;
+
+  /// Snackbar when saving a page image fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the image'**
+  String get readerPageSaveFailed;
+
+  /// Snackbar after setting a page as the cover
+  ///
+  /// In en, this message translates to:
+  /// **'Cover updated'**
+  String get readerPageCoverSet;
+
+  /// Snackbar when set-as-cover is used on a non-library title
+  ///
+  /// In en, this message translates to:
+  /// **'Add this title to your library first'**
+  String get readerPageCoverNeedsLibrary;
+
+  /// Snackbar when the page image bytes can't be obtained
+  ///
+  /// In en, this message translates to:
+  /// **'Image isn\'t available yet'**
+  String get readerPageImageUnavailable;
+
+  /// Title of the OCR result dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Recognized text'**
+  String get readerPageOcrTitle;
+
+  /// Shown when OCR finds no text
+  ///
+  /// In en, this message translates to:
+  /// **'No text found on this page'**
+  String get readerPageOcrEmpty;
+
+  /// Button to copy the recognized text
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get readerPageOcrCopy;
 
   /// Status shown while the next chapter is loading
   ///
@@ -2842,6 +3022,18 @@ abstract class AppLocalizations {
   /// **'No results found'**
   String get browseNoResultsFound;
 
+  /// Shown under a source in global search when it returned no matches
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get globalSearchSourceNoResults;
+
+  /// Shown under a source in global search when its search failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t search this source'**
+  String get globalSearchSourceFailed;
+
   /// Settings section header for sources options
   ///
   /// In en, this message translates to:
@@ -2979,6 +3171,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'DNS Provider'**
   String get setxAdvancedDnsProviderTitle;
+
+  /// Small badge label marking an experimental/beta feature.
+  ///
+  /// In en, this message translates to:
+  /// **'BETA'**
+  String get commonBeta;
+
+  /// Section header for the Beta features toggle on the Advanced page.
+  ///
+  /// In en, this message translates to:
+  /// **'Experimental'**
+  String get setxAdvancedSectionBeta;
+
+  /// Toggle to show experimental features.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta features'**
+  String get setxAdvancedBeta;
+
+  /// Subtitle under the Beta features toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show experimental features — hands-free & volume-key scrolling, RepoForge, AI translation and auto-crop. They may be unstable or change.'**
+  String get setxAdvancedBetaDesc;
 
   /// Section header for extension settings on the Advanced page
   ///
@@ -3304,6 +3520,24 @@ abstract class AppLocalizations {
   /// **'Privacy'**
   String get setxSecuritySectionPrivacy;
 
+  /// Toggle label for incognito/private mode
+  ///
+  /// In en, this message translates to:
+  /// **'Incognito mode'**
+  String get setxSecurityIncognitoTitle;
+
+  /// Subtitle under the Incognito mode toggle
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t save reading history or update trackers'**
+  String get setxSecurityIncognitoSubtitle;
+
+  /// Tooltip on the library app-bar badge shown while incognito mode is active
+  ///
+  /// In en, this message translates to:
+  /// **'Incognito mode on'**
+  String get libraryIncognitoActive;
+
   /// Toggle label hiding app content in the OS recent-apps view and screenshots
   ///
   /// In en, this message translates to:
@@ -3327,6 +3561,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show generic notification text'**
   String get setxSecurityHideNotifSubtitle;
+
+  /// Android notification channel name for library updates
+  ///
+  /// In en, this message translates to:
+  /// **'Library updates'**
+  String get notifChannelUpdatesName;
+
+  /// Android notification channel description for library updates
+  ///
+  /// In en, this message translates to:
+  /// **'New chapters and update summaries'**
+  String get notifChannelUpdatesDesc;
+
+  /// Android notification channel name for downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get notifChannelDownloadsName;
+
+  /// Android notification channel description for downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Download completion and errors'**
+  String get notifChannelDownloadsDesc;
+
+  /// Notification title when a chapter/episode finishes downloading
+  ///
+  /// In en, this message translates to:
+  /// **'Download complete'**
+  String get notifDownloadCompleteTitle;
+
+  /// Notification title when a download fails
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed'**
+  String get notifDownloadFailedTitle;
+
+  /// Notification title shown once when the whole download queue finishes
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads complete'**
+  String get notifDownloadsDoneTitle;
+
+  /// Notification body summarizing how many chapters/episodes finished downloading
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 item downloaded} other{{count} items downloaded}}'**
+  String notifDownloadsDoneBody(int count);
+
+  /// Notification body when the queue finished with some failures
+  ///
+  /// In en, this message translates to:
+  /// **'{count} downloaded · {failed} failed'**
+  String notifDownloadsDoneBodyFailed(int count, int failed);
+
+  /// Notification body: how many new chapters were found for a title
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 new chapter} other{{count} new chapters}}'**
+  String notifNewChapters(int count);
+
+  /// Notification title for the library-update summary
+  ///
+  /// In en, this message translates to:
+  /// **'Library updated'**
+  String get notifLibraryUpdatedTitle;
+
+  /// Notification body summarizing a library update run
+  ///
+  /// In en, this message translates to:
+  /// **'{count} new chapters across {titles} titles'**
+  String notifLibrarySummaryBody(int count, int titles);
+
+  /// Generic notification body shown when Hide Notification Content is on
+  ///
+  /// In en, this message translates to:
+  /// **'New activity'**
+  String get notifHiddenBody;
+
+  /// Notification title when installed extensions have updates available
+  ///
+  /// In en, this message translates to:
+  /// **'Extension updates'**
+  String get notifExtensionUpdatesTitle;
+
+  /// Notification body: how many extension updates are available
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 extension update available} other{{count} extension updates available}}'**
+  String notifExtensionUpdates(int count);
+
+  /// Heading on the app-lock screen
+  ///
+  /// In en, this message translates to:
+  /// **'Foxlations is locked'**
+  String get securityLockedTitle;
+
+  /// Button to trigger device authentication on the app-lock screen
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get securityUnlock;
+
+  /// Reason string shown in the OS biometric/passcode prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock Foxlations'**
+  String get securityUnlockReason;
 
   /// Screen title for the Backup & Restore settings page
   ///
@@ -3358,16 +3700,52 @@ abstract class AppLocalizations {
   /// **'Restore backup'**
   String get setxBackupRestoreTitle;
 
+  /// Checkbox to include vault titles in a backup (requires unlock)
+  ///
+  /// In en, this message translates to:
+  /// **'Include vault'**
+  String get backupIncludeVault;
+
+  /// Subtitle explaining the Include vault checkbox
+  ///
+  /// In en, this message translates to:
+  /// **'Adds your vault titles under “Vault-” categories — requires unlocking'**
+  String get backupIncludeVaultSubtitle;
+
+  /// Title of the prompt to unlock the vault before including it in a backup
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock vault'**
+  String get backupUnlockVaultTitle;
+
+  /// Password field hint when unlocking the vault for a backup
+  ///
+  /// In en, this message translates to:
+  /// **'Vault password'**
+  String get backupUnlockVaultHint;
+
+  /// Confirmation dialog title before importing a backup
+  ///
+  /// In en, this message translates to:
+  /// **'Restore this backup?'**
+  String get backupRestoreConfirmTitle;
+
+  /// Confirmation body before importing a backup; {name} is the file name
+  ///
+  /// In en, this message translates to:
+  /// **'This adds “{name}” to your library. You can cancel if you changed your mind.'**
+  String backupRestoreConfirmBody(String name);
+
   /// Subtitle explaining the restore accepts a .fxbackup file
   ///
   /// In en, this message translates to:
   /// **'Restore from a Foxlations .fxbackup file'**
   String get setxBackupRestoreSubtitle;
 
-  /// Section header for Tachiyomi/Mihon-compatible backups
+  /// Section header for importing backups from other reader apps
   ///
   /// In en, this message translates to:
-  /// **'Tachiyomi / Mihon & forks'**
+  /// **'Import from other apps'**
   String get setxBackupSectionTachiyomi;
 
   /// Row label to export a Tachiyomi/Mihon-compatible backup
@@ -3382,16 +3760,16 @@ abstract class AppLocalizations {
   /// **'Export a .tachibk you can import into Tachiyomi, Mihon and forks'**
   String get setxBackupCreateCompatSubtitle;
 
-  /// Row label to restore from a Tachiyomi/Mihon backup
+  /// Row label to import a backup from another reader app
   ///
   /// In en, this message translates to:
-  /// **'Restore from Tachiyomi/Mihon'**
+  /// **'Import from another app'**
   String get setxBackupRestoreTachiyomiTitle;
 
-  /// Subtitle listing accepted Tachiyomi backup formats and name-matching
+  /// Subtitle listing accepted external backup formats and name-matching
   ///
   /// In en, this message translates to:
-  /// **'Import a .tachibk / .tmb / .proto.gz backup (matches sources by name)'**
+  /// **'Mihon / Tachiyomi & forks, Aniyomi, Tachimanga, Mangayomi (matches sources by name)'**
   String get setxBackupRestoreTachiyomiSubtitle;
 
   /// Section header for automatic scheduled backups
@@ -3471,6 +3849,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restore complete'**
   String get setxBackupRestoreComplete;
+
+  /// Title of the dialog that maps a backup's categories after import
+  ///
+  /// In en, this message translates to:
+  /// **'Organize imported categories'**
+  String get backupOrganizeTitle;
+
+  /// Explains the category-mapping choices after a backup import
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{The backup added 1 category. Keep it, or send it to one of yours.} other{The backup added {count} categories. Keep each, or send it to one of yours.}}'**
+  String backupOrganizePrompt(int count);
+
+  /// Button to leave the imported categories unchanged
+  ///
+  /// In en, this message translates to:
+  /// **'Keep as-is'**
+  String get backupOrganizeKeepAll;
+
+  /// Button to apply the category mapping
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get backupOrganizeApply;
+
+  /// Dropdown option to keep a backup category as its own
+  ///
+  /// In en, this message translates to:
+  /// **'Keep'**
+  String get backupOrganizeKeep;
+
+  /// Toggle to include the vault's categories as mapping targets
+  ///
+  /// In en, this message translates to:
+  /// **'Show vault categories'**
+  String get backupOrganizeShowVault;
+
+  /// Shown when the vault is locked and its categories can't be targets yet
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the vault to use its categories'**
+  String get backupOrganizeUnlockVault;
+
+  /// Label for a vault category target in the mapping dropdown
+  ///
+  /// In en, this message translates to:
+  /// **'Vault: {name}'**
+  String backupOrganizeVaultPrefix(String name);
+
+  /// How many titles are in a backup category being mapped
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 title} other{{count} titles}}'**
+  String backupOrganizeItemCount(int count);
+
+  /// Snackbar after applying the category mapping
+  ///
+  /// In en, this message translates to:
+  /// **'Reorganized {count} titles'**
+  String backupOrganizeDone(int count);
 
   /// Snackbar when restore fails; {error} is the error message
   ///
@@ -5080,6 +5518,108 @@ abstract class AppLocalizations {
   /// **'Library: {lib} MB  |  Vault: {vault} MB'**
   String setdDownloadsLibraryVaultSize(Object lib, Object vault);
 
+  /// Title of the download queue / manager screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads'**
+  String get dlQueueTitle;
+
+  /// Tooltip for the gear icon that opens download settings from the queue screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Download settings'**
+  String get dlQueueSettingsTooltip;
+
+  /// Row that opens the list of chapters/episodes downloaded this session.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently Downloaded'**
+  String get dlQueueRecent;
+
+  /// Button that resumes a paused download queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get dlQueueResume;
+
+  /// Button that pauses the download queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get dlQueuePause;
+
+  /// Button showing how many downloads run at once; tapping it changes the number.
+  ///
+  /// In en, this message translates to:
+  /// **'Concurrent downloads: {count}'**
+  String dlQueueConcurrent(Object count);
+
+  /// Empty state when there are no active or queued downloads.
+  ///
+  /// In en, this message translates to:
+  /// **'No Downloads'**
+  String get dlQueueEmpty;
+
+  /// Banner shown over the queue while downloads are paused.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloads paused'**
+  String get dlQueuePaused;
+
+  /// Per-item status label for a download waiting in the queue.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get dlQueueStatusQueued;
+
+  /// Per-item status label for a download in progress.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading'**
+  String get dlQueueStatusDownloading;
+
+  /// Overflow action that cancels every queued and active download.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel all'**
+  String get dlQueueCancelAll;
+
+  /// Tooltip for the per-item cancel button.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel download'**
+  String get dlQueueCancelItem;
+
+  /// Per-item progress; {done} pages/parts completed out of {total}.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {total}'**
+  String dlQueueProgress(Object done, Object total);
+
+  /// Title of the recently-downloaded list screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently Downloaded'**
+  String get dlQueueRecentTitle;
+
+  /// Empty state on the recently-downloaded screen (session-scoped).
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing downloaded yet'**
+  String get dlQueueRecentEmpty;
+
+  /// Action that clears the session recently-downloaded list.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get dlQueueRecentClear;
+
+  /// Caption clarifying the recently-downloaded list resets when the app restarts.
+  ///
+  /// In en, this message translates to:
+  /// **'This session only'**
+  String get dlQueueRecentNote;
+
   /// Screen title of the Vault settings page.
   ///
   /// In en, this message translates to:
@@ -5674,6 +6214,18 @@ abstract class AppLocalizations {
   /// **'Skip amount'**
   String get setdPlayerSkipAmountTitle;
 
+  /// Toggle: show a manual Skip Intro button near the start of an episode.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip-intro button'**
+  String get setdPlayerShowSkipButton;
+
+  /// Subtitle under the Skip-intro button toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a Skip Intro button near the start, even when the source has no markers'**
+  String get setdPlayerShowSkipButtonDesc;
+
   /// Dialog/picker title for choosing a playback speed.
   ///
   /// In en, this message translates to:
@@ -5709,6 +6261,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Inverts the entire app UI'**
   String get setdAppearanceInvertColorsDesc;
+
+  /// Toggle for a true-black dark-mode background.
+  ///
+  /// In en, this message translates to:
+  /// **'Pure black (OLED)'**
+  String get setdAppearanceOledBlack;
+
+  /// Subtitle under the OLED pure-black toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'True-black background in dark mode — saves power on OLED screens'**
+  String get setdAppearanceOledBlackDesc;
+
+  /// Title for the bottom-nav reorder setting/page.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation bar'**
+  String get setdAppearanceNavOrder;
+
+  /// Subtitle/description for the bottom-nav reorder page.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to arrange the bottom tabs in any order'**
+  String get setdAppearanceNavOrderDesc;
+
+  /// Button to reset the nav tab order to default.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get setdAppearanceNavOrderReset;
 
   /// Option label selecting the dark theme.
   ///
@@ -5949,6 +6531,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Because you read {title}'**
   String discoverBecauseYouRead(String title);
+
+  /// Reader setting: scroll by looking toward the top/bottom of the screen (iOS front-camera gaze tracking).
+  ///
+  /// In en, this message translates to:
+  /// **'Hands-free scrolling'**
+  String get readerGazeScroll;
+
+  /// Subtitle for the hands-free scrolling reader toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll by looking toward the top or bottom of the screen. Uses the front camera.'**
+  String get readerGazeScrollSubtitle;
+
+  /// Title of the consent dialog shown before enabling gaze scrolling.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the front camera?'**
+  String get readerGazeCameraTitle;
+
+  /// Body of the consent dialog explaining the camera + battery use of gaze scrolling.
+  ///
+  /// In en, this message translates to:
+  /// **'Hands-free scrolling watches your gaze with the front camera while you read. It runs entirely on your device — nothing is recorded or sent anywhere — but it uses extra battery.'**
+  String get readerGazeCameraWarning;
+
+  /// Reader setting: which signal drives gaze scrolling (eyes, head tilt, or both).
+  ///
+  /// In en, this message translates to:
+  /// **'Control with'**
+  String get readerGazeMode;
+
+  /// Reader slider: how far you must look to trigger a gaze scroll.
+  ///
+  /// In en, this message translates to:
+  /// **'Sensitivity'**
+  String get readerGazeSensitivity;
+
+  /// Reader slider: how long a look must be held before scrolling starts.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold time'**
+  String get readerGazeHoldTime;
+
+  /// Reader slider: how much the gaze signal is smoothed.
+  ///
+  /// In en, this message translates to:
+  /// **'Smoothing'**
+  String get readerGazeSmoothing;
+
+  /// Reader action: record the resting gaze/head position as the baseline.
+  ///
+  /// In en, this message translates to:
+  /// **'Calibrate'**
+  String get readerGazeCalibrate;
+
+  /// Subtitle for the gaze calibration action.
+  ///
+  /// In en, this message translates to:
+  /// **'Set your resting gaze and head position as the baseline.'**
+  String get readerGazeCalibrateSubtitle;
+
+  /// Message shown while gaze calibration samples the neutral position.
+  ///
+  /// In en, this message translates to:
+  /// **'Look at the centre and hold still…'**
+  String get readerGazeCalibrating;
+
+  /// Reader setting: scroll by tilting the phone forward/back (accelerometer).
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt to scroll'**
+  String get readerTiltScroll;
+
+  /// Subtitle for the tilt-to-scroll reader toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll by tilting the phone forward or back. Works on any phone.'**
+  String get readerTiltScrollSubtitle;
+
+  /// Subtitle for the tilt calibration action.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold the phone at your reading angle, then set it as the baseline.'**
+  String get readerTiltCalibrateSubtitle;
+
+  /// Message shown while tilt calibration samples the resting angle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hold the phone still at your reading angle…'**
+  String get readerTiltCalibrating;
+
+  /// Reader slider: how fast hands-free (gaze/tilt) scrolling moves.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll speed'**
+  String get readerScrollSpeed;
+
+  /// Title of the quick-options sheet opened by long-pressing the in-reader hands-free toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hands-free options'**
+  String get readerHandsFreeOptions;
+
+  /// Title of the gaze calibration screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Gaze calibration'**
+  String get readerCalibrateTitle;
+
+  /// Instruction while gaze calibration samples the neutral position.
+  ///
+  /// In en, this message translates to:
+  /// **'Look at the dot and hold still'**
+  String get readerCalibrateInstruction;
+
+  /// Shown when gaze calibration succeeds.
+  ///
+  /// In en, this message translates to:
+  /// **'Calibrated!'**
+  String get readerCalibrateSuccess;
+
+  /// Prompt during the calibration test run.
+  ///
+  /// In en, this message translates to:
+  /// **'Try it — look up or down to scroll'**
+  String get readerCalibrateTestPrompt;
+
+  /// Button to keep the new gaze calibration.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get readerCalibrateKeep;
+
+  /// Button to redo gaze calibration.
+  ///
+  /// In en, this message translates to:
+  /// **'Recalibrate'**
+  String get readerCalibrateRedo;
+
+  /// Button to finish the calibration test run.
+  ///
+  /// In en, this message translates to:
+  /// **'Done testing'**
+  String get readerCalibrateDoneTest;
+
+  /// Progress label during multi-point gaze calibration; {n} is the current point number and {total} the total count.
+  ///
+  /// In en, this message translates to:
+  /// **'Point {n} of {total}'**
+  String readerCalibratePointOf(int n, int total);
+
+  /// Setting title for the opt-in in-reader radial control.
+  ///
+  /// In en, this message translates to:
+  /// **'Radial menu'**
+  String get readerRadialMenu;
+
+  /// Explanation of the radial menu reader setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the reader bars with a back button and a corner wheel. Hold the wheel for quick actions and the page slider.'**
+  String get readerRadialMenuSubtitle;
+
+  /// Setting to choose which bottom corner the radial wheel sits in (Left or Right).
+  ///
+  /// In en, this message translates to:
+  /// **'Wheel corner'**
+  String get readerRadialCorner;
+
+  /// Sub-instruction telling the user the calibration dot will move to several positions.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow the dot to each corner'**
+  String get readerCalibrateGetReady;
+
+  /// Heading shown when gaze calibration can't detect the eyes because there is too little light.
+  ///
+  /// In en, this message translates to:
+  /// **'Too dark for eye tracking'**
+  String get readerCalibrateDarkTitle;
+
+  /// Explanation shown when calibration falls back to head-tilt control due to low light.
+  ///
+  /// In en, this message translates to:
+  /// **'Your eyes need some light to track. Switched to head-tilt — it works in any light. Tilt your head up or down to scroll.'**
+  String get readerCalibrateDarkBody;
+
+  /// Prompt during the calibration test run when head-tilt control is active.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt your head up or down to scroll'**
+  String get readerCalibrateTestPromptHead;
 }
 
 class _AppLocalizationsDelegate

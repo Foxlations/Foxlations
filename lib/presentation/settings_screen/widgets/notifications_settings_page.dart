@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/settings_store.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
 
-/// Notification preference keys. Toggling these only persists the user's
-/// choice — actual delivery requires the flutter_local_notifications plugin
-/// (not yet wired up).
+/// Notification preference keys. Delivered via [NotificationService]
+/// (flutter_local_notifications); each toggle gates whether its event fires.
 class NotificationPrefs {
   static const newChapters = 'notif_new_chapters';
   static const libraryUpdate = 'notif_library_update';
@@ -37,24 +37,34 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
   void initState() {
     super.initState();
     _loadPrefs();
+    // Prompt for OS notification permission when the user opens this page.
+    NotificationService.instance.requestPermission();
   }
 
   Future<void> _loadPrefs() async {
-    final p = await SharedPreferences.getInstance();
     setState(() {
-      _newChapters = p.getBool(NotificationPrefs.newChapters) ?? true;
-      _libraryUpdate = p.getBool(NotificationPrefs.libraryUpdate) ?? false;
-      _downloadComplete = p.getBool(NotificationPrefs.downloadComplete) ?? true;
-      _downloadError = p.getBool(NotificationPrefs.downloadError) ?? true;
-      _sound = p.getBool(NotificationPrefs.sound) ?? true;
-      _vibration = p.getBool(NotificationPrefs.vibration) ?? true;
-      _groupNotifications = p.getBool(NotificationPrefs.groupNotifications) ?? true;
+      _newChapters =
+          SettingsStore.instance.getBool(NotificationPrefs.newChapters) ?? true;
+      _libraryUpdate =
+          SettingsStore.instance.getBool(NotificationPrefs.libraryUpdate) ??
+              false;
+      _downloadComplete =
+          SettingsStore.instance.getBool(NotificationPrefs.downloadComplete) ??
+              true;
+      _downloadError =
+          SettingsStore.instance.getBool(NotificationPrefs.downloadError) ??
+              true;
+      _sound = SettingsStore.instance.getBool(NotificationPrefs.sound) ?? true;
+      _vibration =
+          SettingsStore.instance.getBool(NotificationPrefs.vibration) ?? true;
+      _groupNotifications =
+          SettingsStore.instance.getBool(NotificationPrefs.groupNotifications) ??
+              true;
     });
   }
 
   Future<void> _setBool(String key, bool value) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool(key, value);
+    await SettingsStore.instance.setBool(key, value);
   }
 
   @override

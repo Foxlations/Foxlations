@@ -46,7 +46,13 @@ class AppRoutes {
       case AppRoutes.settings:
         return _fadeSlide(const SettingsScreen(), settings);
       case globalSearch:
-        return _fadeSlide(const GlobalSearchScreen(), settings);
+        final args = settings.arguments as Map<String, dynamic>?;
+        return _fadeSlide(
+            GlobalSearchScreen(
+              initialQuery: args?['query'] as String?,
+              initialType: args?['type'] as String?,
+            ),
+            settings);
       case sourceCatalog:
         final args = settings.arguments as Map<String, dynamic>;
         return _fadeSlide(
@@ -65,6 +71,7 @@ class AppRoutes {
             sourceId: args['sourceId'] as String,
             title: args['title'] as String?,
             coverUrl: args['coverUrl'] as String?,
+            resume: args['resume'] as bool? ?? false,
           ),
           settings,
         );

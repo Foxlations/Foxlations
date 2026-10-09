@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/services/library_update_service.dart';
 import '../../core/providers/library_provider.dart';
 import '../../core/providers/source_provider.dart';
+import '../../core/providers/download_provider.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import '../../l10n/app_localizations.dart';
@@ -43,13 +44,15 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
     final sourceProvider = context.read<SourceProvider>();
     _totalCount = libraryProvider.manga.length;
 
-    final newUpdates = await LibraryUpdateService.checkForUpdates(
+    final result = await LibraryUpdateService.checkForUpdates(
       libraryProvider: libraryProvider,
       sourceProvider: sourceProvider,
-      onProgress: (checked, total) {
+      downloadProvider: context.read<DownloadProvider>(),
+      onProgress: (checked, total, _) {
         if (mounted) setState(() { _checkedCount = checked; _totalCount = total; });
       },
     );
+    final newUpdates = result.updates;
 
     await _loadUpdates();
     if (mounted) {

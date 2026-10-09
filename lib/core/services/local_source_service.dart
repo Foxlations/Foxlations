@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/portable_path.dart';
+import 'ios_folder_access.dart';
 
 /// Represents a locally stored manga series.
 class LocalManga {
@@ -63,6 +64,9 @@ class LocalSourceService {
   LocalSourceService._();
 
   static const _foldersKey = 'local_source_folders';
+  // iOS only: {stored-folder-entry -> base64 security-scoped bookmark}. Lets us
+  // re-open a folder the user picked outside our sandbox on a later launch.
+  static const _bookmarksKey = 'local_source_bookmarks';
   static const _imageExts = {'jpg', 'jpeg', 'png', 'webp', 'gif'};
   static const _archiveExts = {'cbz', 'zip', 'cbr', 'rar', 'epub'};
   static const _docExts = {'pdf'};
@@ -76,39 +80,88 @@ class LocalSourceService {
       .replaceAll(RegExp(r'\.+$'), '')
       .trim();
 
+  Map<String, String> _decodeBookmarks(SharedPreferences prefs) {
+    final raw = prefs.getString(_bookmarksKey);
+    if (raw == null || raw.isEmpty) return {};
+    try {
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      return m.map((k, v) => MapEntry(k, v.toString()));
+    } catch (_) {
+      return {};
+    }
+  }
+
   /// Get saved local source folder paths, resolved for the current container.
   ///
   /// Stored entries go through [PortablePath] because the iOS app container is
   /// re-created on every re-sign; without this, imported manga silently
   /// disappears roughly weekly on a sideloaded build.
+  ///
+  /// On iOS, a folder picked OUTSIDE the sandbox is also re-opened here via its
+  /// security-scoped bookmark — which both yields the live path and re-acquires
+  /// read access for the session (a stale bookmark is refreshed and saved back).
   Future<List<String>> getFolders() async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getStringList(_foldersKey) ?? [];
-    return [for (final entry in stored) await PortablePath.resolve(entry)];
+    if (!Platform.isIOS) {
+      return [for (final entry in stored) await PortablePath.resolve(entry)];
+    }
+    final bm = _decodeBookmarks(prefs);
+    var changed = false;
+    final out = <String>[];
+    for (final entry in stored) {
+      var path = await PortablePath.resolve(entry);
+      final bookmark = bm[entry];
+      if (bookmark != null) {
+        final live = await IosFolderAccess.instance.resolve(bookmark);
+        if (live != null) {
+          path = live.path;
+          if (live.bookmark != bookmark) {
+            bm[entry] = live.bookmark;
+            changed = true;
+          }
+        }
+      }
+      out.add(path);
+    }
+    if (changed) await prefs.setString(_bookmarksKey, jsonEncode(bm));
+    return out;
   }
 
-  /// Add a local source folder.
-  Future<void> addFolder(String path) async {
+  /// Add a local source folder. On iOS [bookmark] is the security-scoped
+  /// bookmark from the native folder picker (null elsewhere).
+  Future<void> addFolder(String path, {String? bookmark}) async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getStringList(_foldersKey) ?? [];
     for (final entry in stored) {
       if (await PortablePath.resolve(entry) == path) return;
     }
-    stored.add(await PortablePath.store(path));
+    final entry = await PortablePath.store(path);
+    stored.add(entry);
     await prefs.setStringList(_foldersKey, stored);
+    if (bookmark != null && bookmark.isNotEmpty) {
+      final bm = _decodeBookmarks(prefs);
+      bm[entry] = bookmark;
+      await prefs.setString(_bookmarksKey, jsonEncode(bm));
+    }
   }
 
   /// Remove a local source folder. [path] is an absolute (resolved) path.
   Future<void> removeFolder(String path) async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getStringList(_foldersKey) ?? [];
+    final bm = _decodeBookmarks(prefs);
     final kept = <String>[];
     for (final entry in stored) {
       if (entry != path && await PortablePath.resolve(entry) != path) {
         kept.add(entry);
+      } else {
+        final b = bm.remove(entry);
+        if (b != null) await IosFolderAccess.instance.release(b);
       }
     }
     await prefs.setStringList(_foldersKey, kept);
+    await prefs.setString(_bookmarksKey, jsonEncode(bm));
   }
 
   /// Scan all local source folders for manga.

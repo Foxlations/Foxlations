@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../core/providers/beta_provider.dart';
 import './widgets/about_settings_page.dart';
+import './widgets/help_tips_page.dart';
 import './widgets/library_settings_page.dart';
 import './widgets/reader_settings_page.dart';
 import './widgets/player_settings_page.dart';
 import './widgets/downloads_settings_page.dart';
+import './widgets/download_queue_page.dart';
 import './widgets/browse_settings_page.dart';
 import './widgets/appearance_settings_page.dart';
 import './widgets/language_settings_page.dart';
@@ -26,6 +30,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final beta = context.watch<BetaProvider>().enabled;
     final t = AppLocalizations.of(context);
 
     return Scaffold(
@@ -146,7 +151,7 @@ class SettingsScreen extends StatelessWidget {
             title: t.settingsDownloadsTitle,
             subtitle: t.settingsDownloadsSubtitle,
             onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const DownloadsSettingsPage())),
+                MaterialPageRoute(builder: (_) => const DownloadQueuePage())),
           ),
           _SettingsNavTile(
             icon: Icons.track_changes_rounded,
@@ -159,17 +164,18 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const TrackingSettingsPage())),
           ),
-          _SettingsNavTile(
-            icon: Icons.translate_rounded,
-            iconColor: const Color(0xFF7C6FF7),
-            iconBg: isDark
-                ? const Color(0xFF1A1530)
-                : const Color(0xFFF0EDFF),
-            title: t.settingsAiTitle,
-            subtitle: t.settingsAiSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AiSettingsPage())),
-          ),
+          if (beta)
+            _SettingsNavTile(
+              icon: Icons.translate_rounded,
+              iconColor: const Color(0xFF7C6FF7),
+              iconBg: isDark
+                  ? const Color(0xFF1A1530)
+                  : const Color(0xFFF0EDFF),
+              title: t.settingsAiTitle,
+              subtitle: t.settingsAiSubtitle,
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const AiSettingsPage())),
+            ),
           _SettingsNavTile(
             icon: Icons.explore_rounded,
             iconColor: const Color(0xFFF59E0B),
@@ -181,17 +187,18 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const BrowseSettingsPage())),
           ),
-          _SettingsNavTile(
-            icon: Icons.auto_fix_high_rounded,
-            iconColor: const Color(0xFFE0567B),
-            iconBg: isDark
-                ? const Color(0xFF2E0A16)
-                : const Color(0xFFFFE4EC),
-            title: t.settingsRepoForgeTitle,
-            subtitle: t.settingsRepoForgeSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const RepoForgeHubScreen())),
-          ),
+          if (beta)
+            _SettingsNavTile(
+              icon: Icons.auto_fix_high_rounded,
+              iconColor: const Color(0xFFE0567B),
+              iconBg: isDark
+                  ? const Color(0xFF2E0A16)
+                  : const Color(0xFFFFE4EC),
+              title: t.settingsRepoForgeTitle,
+              subtitle: t.settingsRepoForgeSubtitle,
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const RepoForgeHubScreen())),
+            ),
           const SizedBox(height: 8),
           _SettingsSectionHeader(title: t.settingsSectionSystem),
           _SettingsNavTile(
@@ -237,6 +244,17 @@ class SettingsScreen extends StatelessWidget {
             subtitle: t.settingsAboutSubtitle,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const AboutSettingsPage())),
+          ),
+          _SettingsNavTile(
+            icon: Icons.help_outline_rounded,
+            iconColor: const Color(0xFF4CAF82),
+            iconBg: isDark
+                ? const Color(0xFF0D2E1E)
+                : const Color(0xFFE6F7EF),
+            title: 'Help & Tips',
+            subtitle: 'Tutorial, Discord & quick tips',
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const HelpTipsPage())),
           ),
           const SizedBox(height: 24),
         ],

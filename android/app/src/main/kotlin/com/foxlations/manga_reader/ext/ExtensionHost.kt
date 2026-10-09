@@ -49,6 +49,11 @@ object ExtensionHost {
     private val sourceCache = HashMap<String, Any>()
     private val mangaMemoCache = java.util.concurrent.ConcurrentHashMap<String, JsonObject>()
     private val chapterMemoCache = java.util.concurrent.ConcurrentHashMap<String, JsonObject>()
+    // Remember the browse-time title so getDetail's stub carries it into the source's
+    // getMangaUpdate. On ART SManga.title is a plain `var = ""` (no crash), but a source that
+    // reads manga.title inside mangaDetailsParse still needs the real value — and this keeps
+    // the host behaviour identical to the iOS/desktop JVM runner (SourceRunner.kt).
+    private val mangaTitleCache = java.util.concurrent.ConcurrentHashMap<String, String>()
     @Volatile private var memoDir: File? = null
 
     fun init(context: Context) {
@@ -72,6 +77,13 @@ object ExtensionHost {
             val req = Json.parseToJsonElement(request).jsonObject
             val method = req.str("method", "")
             if (method == "warmup") return "{\"ok\":true}"
+            // DNS-over-HTTPS config for the OkHttp Dns (FoxDoh). init() above has
+            // already wired FoxDoh into the default client via patchDefaultClient.
+            if (method == "setDoh") {
+                val en = (req["dohEnabled"] as? JsonPrimitive)?.booleanOrNull ?: false
+                FoxDoh.configure(en, req.str("dohUrl", ""))
+                return "{\"ok\":true}"
+            }
             // Push the app's Cloudflare clearances (cookies + matching UA) into the
             // extension's OkHttp before any request — Android has no CF solver of its own.
             CloudflareCookies.apply(
@@ -158,7 +170,26 @@ object ExtensionHost {
         "getDetail" -> detailJson(cat, req.str("url", ""))
         "getPageList" -> pageListJson(cat, req.str("url", ""))
         "getHtmlContent" -> htmlContentJson(cat, req.str("url", ""))
+        "getWebUrl" -> webUrlJson(cat, req.str("url", ""))
         else -> err("unknown method: $method")
+    }
+
+    // The source's own browsable page URL for an item ("Open in browser"). Only the
+    // source knows how to turn its stored url into the readable page (e.g. AsuraScans
+    // stores "/series/<slug>" but getMangaUrl returns "$baseUrl/comics/<slug>"), so run
+    // the live source's getMangaUrl rather than guess baseUrl+url. The stub carries the
+    // url + the item's memo, ALWAYS a memo object so a source reading manga.memo[...]
+    // can't throw. Reflected + guarded (getMangaUrl is a HttpSource member).
+    private fun webUrlJson(cat: CatalogueSource, url: String): String {
+        val stub = SManga.create().apply {
+            this.url = relativize(url, cat)
+            setMemoRef(this, mangaMemoCache[url] ?: buildJsonObject {})
+        }
+        val web = runCatching {
+            cat.javaClass.getMethod("getMangaUrl", SManga::class.java)
+                .invoke(cat, stub) as? String
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+        return buildJsonObject { put("url", web ?: relativize(url, cat)) }.toString()
     }
 
     // The app can hand back an ABSOLUTE url (some sources emit SManga/SAnime.url with the
@@ -187,6 +218,7 @@ object ExtensionHost {
         val stub = SManga.create().apply {
             this.url = relativize(url, cat)
             mangaMemoCache[url]?.let { setMemoRef(this, it) }
+            this.title = mangaTitleCache[url] ?: ""
         }
         // keiyoushi 1.6 sources implement getMangaUpdate (details + chapters) and stub the classic
         // getMangaDetails/getChapterList (→ UnsupportedOperationException). Prefer it when the
@@ -200,6 +232,8 @@ object ExtensionHost {
             runBlocking { cat.getMangaDetails(stub) }
         }
         if (runCatching { details.url }.getOrNull().isNullOrBlank()) details.url = url
+        if (runCatching { details.title }.getOrNull().isNullOrBlank())
+            details.title = mangaTitleCache[url] ?: runCatching { stub.title }.getOrNull() ?: ""
         if (memoOf(details) == null) memoOf(stub)?.let { setMemoRef(details, it) }
         var chapters: List<SChapter> = emptyList()
         var chErr: String? = null
@@ -217,10 +251,19 @@ object ExtensionHost {
         memoOf(details)?.let { runCatching { mangaMemoCache[url] = it; cachedAny = true } }
         chapters.forEach { ch -> memoOf(ch)?.let { runCatching { chapterMemoCache[ch.url] = it; cachedAny = true } } }
         if (cachedAny) persistMemo()
+        // Source's browsable page URL ("Open in browser"). getMangaUrl is a HttpSource
+        // member sources override when details come from an API, so baseUrl+url would
+        // 404; reflected + guarded so a source without it just omits webUrl and the app
+        // falls back to joining the url onto the base.
+        val webUrl = runCatching {
+            cat.javaClass.getMethod("getMangaUrl", SManga::class.java)
+                .invoke(cat, details) as? String
+        }.getOrNull()?.takeIf { it.isNotBlank() }
         return buildJsonObject {
             mangaJson(details, link = url).forEach { (k, v) -> put(k, v) }
             put("chapters", buildJsonArray { chapters.forEach { add(chapterJson(it)) } })
             put("_detailUrl", details.url)
+            if (webUrl != null) put("webUrl", webUrl)
             if (chErr != null) put("_chaptersError", chErr)
         }.toString()
     }
@@ -263,7 +306,18 @@ object ExtensionHost {
         })
         "getDetail" -> animeDetailJson(cat, req.str("url", ""))
         "getVideoList" -> videoListJson(cat, req.str("url", ""))
+        "getWebUrl" -> animeWebUrlJson(cat, req.str("url", ""))
         else -> err("unknown anime method: $method")
+    }
+
+    /// Anime equivalent of [webUrlJson]: the source's getAnimeUrl for the item page.
+    private fun animeWebUrlJson(cat: AnimeCatalogueSource, url: String): String {
+        val stub = SAnime.create().apply { this.url = relativize(url, cat) }
+        val web = runCatching {
+            cat.javaClass.getMethod("getAnimeUrl", SAnime::class.java)
+                .invoke(cat, stub) as? String
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+        return buildJsonObject { put("url", web ?: relativize(url, cat)) }.toString()
     }
 
     private fun animeDetailJson(cat: AnimeCatalogueSource, url: String): String {
@@ -271,10 +325,15 @@ object ExtensionHost {
         val details = runBlocking { cat.getAnimeDetails(stub) }
         if (runCatching { details.url }.getOrNull().isNullOrBlank()) details.url = url
         val episodes = runCatching { runBlocking { cat.getEpisodeList(stub) } }.getOrDefault(emptyList())
+        val webUrl = runCatching {
+            cat.javaClass.getMethod("getAnimeUrl", SAnime::class.java)
+                .invoke(cat, details) as? String
+        }.getOrNull()?.takeIf { it.isNotBlank() }
         return buildJsonObject {
             animeJson(details, link = url).forEach { (k, v) -> put(k, v) }
             put("chapters", buildJsonArray { episodes.forEach { add(episodeJson(it)) } })
             put("_detailUrl", details.url)
+            if (webUrl != null) put("webUrl", webUrl)
         }.toString()
     }
 
@@ -337,7 +396,7 @@ object ExtensionHost {
     // ── serialization (matches SourceRunner exactly) ───────────────────────────────
 
     private fun mangaJson(m: SManga, link: String? = null): JsonObject = buildJsonObject {
-        put("name", m.title)
+        put("name", runCatching { m.title }.getOrNull() ?: "")
         put("link", link ?: m.url)
         put("imageUrl", m.thumbnail_url)
         put("description", m.description)
@@ -353,6 +412,8 @@ object ExtensionHost {
         put("list", buildJsonArray {
             p.mangas.forEach { m ->
                 memoOf(m)?.let { runCatching { mangaMemoCache[m.url] = it } }
+                runCatching { m.title }.getOrNull()?.takeIf { it.isNotBlank() }
+                    ?.let { mangaTitleCache[m.url] = it }
                 add(mangaJson(m))
             }
         })

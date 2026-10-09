@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/source_model.dart';
 import '../models/installed_source_model.dart';
 import '../models/source_settings.dart';
 import '../services/app_logger.dart';
 import '../services/repo_service.dart';
+import '../services/settings_store.dart';
 import '../services/source_manager.dart';
+import '../services/notification_service.dart';
 
 class SourceProvider extends ChangeNotifier {
   // Browse preference keys (also referenced from BrowseSettingsPage).
@@ -18,13 +19,37 @@ class SourceProvider extends ChangeNotifier {
   final SourceManager _sourceManager = SourceManager();
 
   List<String> _repoUrls = [];
-  Map<String, RepoIndexResult> _repoIndexes = {};
+  final Map<String, RepoIndexResult> _repoIndexes = {};
   List<InstalledSource> _installedSources = [];
   // Ids with an install in flight — guards against a double-tap racing two
   // concurrent installs of the same source into duplicate entries.
   final Set<String> _installing = {};
   bool _isLoading = false;
   String? _error;
+
+  /// Wired by the app shell: fired after a source is installed so library/vault
+  /// entries a restore stranded on that source's name can be re-linked to it
+  /// (see LibraryProvider.relinkSources) without waiting for the next launch.
+  void Function()? onInstalledChanged;
+
+  /// Installed sources as an id → display-name map, for the re-link pass.
+  Map<String, String> get installedIdToName =>
+      {for (final s in _installedSources) s.source.id: s.source.name};
+
+  // Cached id → itemType map so the library's content-type filter can classify
+  // each entry in O(1) instead of a linear getInstalledSource scan per item.
+  // Rebuilt only when the installed-source list is replaced (identity check).
+  List<InstalledSource>? _itemTypeCacheFor;
+  Map<String, String> _itemTypeCache = const {};
+  String installedItemType(String sourceId, [String fallback = 'manga']) {
+    if (!identical(_itemTypeCacheFor, _installedSources)) {
+      _itemTypeCache = {
+        for (final s in _installedSources) s.source.id: s.source.itemType,
+      };
+      _itemTypeCacheFor = _installedSources;
+    }
+    return _itemTypeCache[sourceId] ?? fallback;
+  }
 
   // Browse preferences (persisted)
   bool _showNsfw = false;
@@ -55,12 +80,13 @@ class SourceProvider extends ChangeNotifier {
     try {
       // Load browse preferences first so consumers see the right values on
       // their initial build.
-      final prefs = await SharedPreferences.getInstance();
-      _showNsfw = prefs.getBool(_showNsfwKey) ?? false;
-      _pinnedOnlyBrowse = prefs.getBool(_pinnedOnlyBrowseKey) ?? false;
+      _showNsfw = SettingsStore.instance.getBool(_showNsfwKey) ?? false;
+      _pinnedOnlyBrowse =
+          SettingsStore.instance.getBool(_pinnedOnlyBrowseKey) ?? false;
       _pinnedOnlyGlobalSearch =
-          prefs.getBool(_pinnedOnlyGlobalSearchKey) ?? false;
-      _autoUpdateExtensions = prefs.getBool(_autoUpdateExtKey) ?? false;
+          SettingsStore.instance.getBool(_pinnedOnlyGlobalSearchKey) ?? false;
+      _autoUpdateExtensions =
+          SettingsStore.instance.getBool(_autoUpdateExtKey) ?? false;
 
       _repoUrls = await _repoService.getSavedRepos();
       _installedSources = await _sourceManager.getInstalledSources();
@@ -92,42 +118,50 @@ class SourceProvider extends ChangeNotifier {
       refreshAllSourceCode();
     } else if (_installedSources.isNotEmpty) {
       // Otherwise just refresh the repo indexes (small JSON) in the background so
-      // the "updates available" badge reflects the latest published versions.
+      // the "updates available" badge reflects the latest published versions,
+      // then notify if any are available (Advanced > Extension update notify).
       // ignore: unawaited_futures
-      refreshReposQuiet();
+      refreshReposQuiet().then((_) => _maybeNotifyExtensionUpdates());
     }
   }
 
   Future<void> setShowNsfw(bool value) async {
     if (_showNsfw == value) return;
     _showNsfw = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_showNsfwKey, value);
+    await SettingsStore.instance.setBool(_showNsfwKey, value);
     notifyListeners();
   }
 
   Future<void> setPinnedOnlyBrowse(bool value) async {
     if (_pinnedOnlyBrowse == value) return;
     _pinnedOnlyBrowse = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_pinnedOnlyBrowseKey, value);
+    await SettingsStore.instance.setBool(_pinnedOnlyBrowseKey, value);
     notifyListeners();
   }
 
   Future<void> setPinnedOnlyGlobalSearch(bool value) async {
     if (_pinnedOnlyGlobalSearch == value) return;
     _pinnedOnlyGlobalSearch = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_pinnedOnlyGlobalSearchKey, value);
+    await SettingsStore.instance.setBool(_pinnedOnlyGlobalSearchKey, value);
     notifyListeners();
   }
 
   Future<void> setAutoUpdateExtensions(bool value) async {
     if (_autoUpdateExtensions == value) return;
     _autoUpdateExtensions = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_autoUpdateExtKey, value);
+    await SettingsStore.instance.setBool(_autoUpdateExtKey, value);
     notifyListeners();
+  }
+
+  /// Notify about available extension updates (Advanced > Extension update
+  /// notify, default off). Fired after the quiet repo-index refresh on launch.
+  void _maybeNotifyExtensionUpdates() {
+    if (!(SettingsStore.instance.getBool('adv_extension_update_notify') ??
+        false)) {
+      return;
+    }
+    final count = sourcesWithUpdates.length;
+    if (count > 0) NotificationService.instance.extensionUpdates(count);
   }
 
   Future<void> refreshRepos() async {
@@ -198,6 +232,44 @@ class SourceProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Non-destructive "reinstall": re-fetch the repo index, then re-download +
+  /// re-install the sources already installed from it (so they pick up upstream
+  /// fixes / re-convert their jar). Does NOT touch the user's other repos or
+  /// uninstall anything. Returns how many sources were reinstalled.
+  Future<int> reinstallRepo(String url) async {
+    RepoIndexResult? fresh;
+    try {
+      fresh = await _repoService.fetchRepoIndex(url);
+      _repoIndexes[url] = fresh;
+      notifyListeners();
+    } catch (e) {
+      await logger.error('Failed to refresh repo: $url',
+          category: LogCategory.repo, detail: e.toString());
+    }
+    final installedFromRepo =
+        _installedSources.where((s) => s.source.repoUrl == url).toList();
+    var done = 0;
+    for (final inst in installedFromRepo) {
+      // Prefer the fresh index entry (latest version/urls); fall back to the
+      // installed source's own config.
+      final src = fresh?.sources
+              .where((s) => s.id == inst.source.id)
+              .cast<MangaSource?>()
+              .firstWhere((_) => true, orElse: () => null) ??
+          inst.source;
+      try {
+        await _sourceManager.installSource(src);
+        done++;
+      } catch (e) {
+        await logger.error('Reinstall failed: ${inst.source.name}',
+            category: LogCategory.repo, detail: e.toString());
+      }
+    }
+    _installedSources = await _sourceManager.getInstalledSources();
+    notifyListeners();
+    return done;
+  }
+
   Future<void> installSource(MangaSource source) async {
     // Ignore a duplicate tap while this source is already installing.
     if (!_installing.add(source.id)) return;
@@ -205,6 +277,7 @@ class SourceProvider extends ChangeNotifier {
       await _sourceManager.installSource(source);
       _installedSources = await _sourceManager.getInstalledSources();
       notifyListeners();
+      onInstalledChanged?.call();
     } catch (e) {
       _error = 'Install failed: $e';
       notifyListeners();
@@ -335,6 +408,46 @@ class SourceProvider extends ChangeNotifier {
       } catch (_) {}
     }
     notifyListeners();
+  }
+
+  /// Resolve an installed source for a (possibly stranded) library source id.
+  ///
+  /// A Tachiyomi/Mihon restore that ran before the matching source was installed
+  /// saves each entry's source as the backup's source NAME (e.g. "Asura Scans"),
+  /// not an installed id — so once the source is installed, a plain id lookup
+  /// still misses and the library wrongly reports "source not installed". This
+  /// falls back to matching that stored value against installed source names so
+  /// the entry opens against the real source.
+  InstalledSource? resolveInstalled(String sourceId) {
+    final direct = getInstalledSource(sourceId);
+    if (direct != null) return direct;
+    if (sourceId.isEmpty) return null;
+    String norm(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final want = norm(sourceId);
+    if (want.isEmpty) return null;
+    // Exact normalised name first ("Asura Scans" == "asurascans")…
+    for (final s in _installedSources) {
+      if (norm(s.source.name) == want) return s;
+    }
+    // …then containment ("Asura Scans (EN)" vs "Asura Scans").
+    for (final s in _installedSources) {
+      final n = norm(s.source.name);
+      if (n.isNotEmpty && (n.contains(want) || want.contains(n))) return s;
+    }
+    return null;
+  }
+
+  /// Human name for a source id — the installed extension's name if present,
+  /// otherwise a repo entry's name if the source is known but not installed
+  /// (e.g. a title restored from a backup before its source was reinstalled),
+  /// and finally the raw id so the detail page always shows *something*.
+  String sourceDisplayName(String sourceId) {
+    final inst = resolveInstalled(sourceId);
+    if (inst != null) return inst.source.name;
+    final avail = _availableById[sourceId];
+    if (avail != null) return avail.name;
+    return sourceId;
   }
 
   bool isInstalled(String sourceId) => _sourceManager.isInstalled(sourceId);

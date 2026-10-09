@@ -12,6 +12,10 @@ import '../../eval/model/m_video.dart';
 import '../../eval/lib.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/library_provider.dart';
+import '../../core/providers/tracking_provider.dart';
+import '../../core/providers/incognito_provider.dart';
+import '../../core/services/download_service.dart';
+import '../../core/services/aniskip_service.dart';
 import '../../core/services/app_logger.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -96,8 +100,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.initState();
     _player = Player();
     _controller = VideoController(_player);
-    _episodes = widget.episodes ?? const [];
-    _epIndex = widget.currentIndex;
+    // Episodes come NEWEST-first from the source; store oldest-first and remap
+    // the opened index so "next" (index+1) is the LATER episode. Same bug/fix as
+    // the manga reader — autoplay/next used to go to the previous episode.
+    final eps = widget.episodes ?? const <Map<String, dynamic>>[];
+    _episodes = eps.reversed.toList();
+    _epIndex = eps.isEmpty
+        ? 0
+        : (eps.length - 1 - widget.currentIndex).clamp(0, eps.length - 1);
     _lib = context.read<LibraryProvider>();
     _resumeSeconds = _lib?.episodeLastPosition(widget.sourceId, _epUrl) ?? 0;
     WakelockPlus.enable();
@@ -123,9 +133,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _maybeSaveProgress(pos);
         _updateSkip(pos);
       }),
-      _player.stream.duration.listen((dur) => _duration = dur),
+      _player.stream.duration.listen((dur) {
+        _duration = dur;
+        // Fetch AniSkip intro/outro ranges once we know the episode length.
+        if (dur.inSeconds > 0 && !_aniskipTried) {
+          _aniskipTried = true;
+          _loadAniSkip();
+        }
+      }),
       _player.stream.completed.listen((done) {
-        if (done && _settings.autoplayNext && _hasNext) _playEpisode(_epIndex + 1);
+        if (done) {
+          _markSeen();
+          if (_settings.autoplayNext && _hasNext) _playEpisode(_epIndex + 1);
+        }
       }),
       // Surface libmpv playback errors (bad codec, dead stream url, HLS failure) in the
       // in-app log so player problems are diagnosable, not just a silent stall.
@@ -138,8 +158,33 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Future<void> _loadVideoList() async {
     setState(() { _isLoading = true; _error = null; });
     try {
+      // Play a DOWNLOADED episode from disk if we have it — the player used to
+      // always go to the network, so downloaded episodes couldn't be watched
+      // offline at all.
+      final localPath = await DownloadService().getEpisodePath(
+          widget.sourceId, widget.animeTitle ?? '', _epTitle ?? '');
+      if (localPath != null) {
+        final local = MVideo(localPath, 'Downloaded', localPath);
+        if (mounted) {
+          setState(() {
+            _videos = [local];
+            _currentVideoIndex = 0;
+            _stamps = const [];
+            _skipped.clear();
+            _isLoading = false;
+          });
+          if (_resumeSeconds > 10 && mounted) {
+            final resume = await _askResume(_resumeSeconds);
+            _seekTarget =
+                resume ? Duration(seconds: _resumeSeconds) : Duration.zero;
+          }
+          await _openVideo(local);
+        }
+        return;
+      }
+
       final sp = context.read<SourceProvider>();
-      final installed = sp.getInstalledSource(widget.sourceId);
+      final installed = sp.resolveInstalled(widget.sourceId);
       if (installed == null) throw Exception('Source not installed');
 
       final videos = await withExtensionService(
@@ -269,6 +314,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _seekTarget = Duration.zero;
       _lastSaved = Duration.zero;
       _position = Duration.zero;
+      _markedSeen = false;
+      _aniskipTried = false;
     });
     _resumeSeconds = _lib?.episodeLastPosition(widget.sourceId, _epUrl) ?? 0;
     await _loadVideoList();
@@ -314,6 +361,76 @@ class _PlayerScreenState extends State<PlayerScreen> {
         atEnd ? 0 : _position.inSeconds,
         totalSeconds: _duration.inSeconds,
         notify: notify);
+    if (atEnd) _markSeen();
+  }
+
+  // Mark the episode seen + push to trackers once, when it finishes. The player
+  // only ever saved the resume position, so anime never auto-advanced "seen",
+  // library unread counts stayed wrong, and bound trackers never updated.
+  bool _markedSeen = false;
+  void _markSeen() {
+    final mangaUrl = widget.mangaUrl;
+    if (_markedSeen || mangaUrl == null || _lib == null) return;
+    _markedSeen = true;
+    if (!IncognitoProvider.active) {
+      _lib!.markChapterRead(widget.sourceId, mangaUrl, _epUrl);
+    }
+    try {
+      final n = _episodeNumberOf(_epTitle ?? '');
+      if (n > 0) {
+        context
+            .read<TrackingProvider>()
+            .syncChapterRead('${widget.sourceId}_$mangaUrl', n);
+      }
+    } catch (_) {}
+  }
+
+  /// Best-effort episode number from its title (prefers an ep/episode-labelled
+  /// number, else the last number).
+  int _episodeNumberOf(String name) {
+    final labeled = RegExp(
+            r'(?:episode|epis|ep|e|#)\s*[.:]?\s*(\d+(?:\.\d+)?)',
+            caseSensitive: false)
+        .firstMatch(name);
+    String? s = labeled?.group(1);
+    if (s == null) {
+      final all = RegExp(r'(\d+(?:\.\d+)?)').allMatches(name).toList();
+      if (all.isNotEmpty) s = all.last.group(1);
+    }
+    final d = double.tryParse(s ?? '');
+    return d == null ? 0 : d.floor();
+  }
+
+  bool _aniskipTried = false;
+
+  /// Pull intro/outro skip ranges from AniSkip when the source didn't supply
+  /// its own, using the anime's MyAnimeList id from its tracker binding.
+  Future<void> _loadAniSkip() async {
+    if (_stamps.isNotEmpty) return; // the source already gave timestamps
+    final mangaUrl = widget.mangaUrl;
+    if (mangaUrl == null) return;
+    var malId = 0;
+    try {
+      final bindings = context
+          .read<TrackingProvider>()
+          .bindingsFor('${widget.sourceId}_$mangaUrl');
+      for (final b in bindings) {
+        if (b.trackerId == 'myanimelist') {
+          malId = int.tryParse(b.mediaId) ?? 0;
+          break;
+        }
+      }
+    } catch (_) {}
+    if (malId <= 0) return;
+    final ep = _episodeNumberOf(_epTitle ?? '');
+    if (ep <= 0) return;
+    final stamps = await AniSkipService.instance.fetch(
+      malId: malId,
+      episodeNumber: ep,
+      episodeLengthSeconds: _duration.inSeconds,
+    );
+    if (!mounted || stamps.isEmpty || _stamps.isNotEmpty) return;
+    setState(() => _stamps = stamps);
   }
 
   void _updateSkip(Duration pos) {
@@ -325,6 +442,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     MTimeStamp? active;
     int? idx;
     for (var i = 0; i < _stamps.length; i++) {
+      // Don't re-show a window the user already skipped/dismissed — even if a
+      // keyframe seek landed a hair before its end.
+      if (_skipped.contains(i)) continue;
       final s = _stamps[i];
       if (secs >= s.start && secs < s.end) {
         active = s;
@@ -332,12 +452,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
         break;
       }
     }
-    if (active != null && idx != null && _settings.autoSkipIntro && !_skipped.contains(idx)) {
+    if (active != null && idx != null && _settings.autoSkipIntro) {
       _skipped.add(idx);
       _player.seek(Duration(milliseconds: (active.end * 1000).round()));
+      if (_activeStamp != null) setState(() => _activeStamp = null);
       return;
     }
-    if (active != _activeStamp) setState(() => _activeStamp = active);
+    if (active != _activeStamp) {
+      setState(() => _activeStamp = active);
+    } else if (active != null) {
+      // Same window, new position — rebuild so the countdown ticks down live.
+      setState(() {});
+    }
   }
 
   void _seekBy(int seconds) {
@@ -589,6 +715,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       Positioned.fill(child: _videoWithControls()),
                       if (_activeStamp != null && !_settings.autoSkipIntro)
                         _skipButton(),
+                      // Manual Skip-Intro button near the start, for sources that
+                      // don't provide intro markers. Hidden once a source marker
+                      // is active (its own button shows) or past the intro window.
+                      if (_settings.showIntroSkipButton &&
+                          !_locked &&
+                          _activeStamp == null &&
+                          _position > const Duration(seconds: 2) &&
+                          _position < const Duration(minutes: 3))
+                        _manualSkipButton(),
                       if (_locked) Positioned.fill(child: _lockOverlay()),
                     ],
                   ),
@@ -712,6 +847,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Widget _skipButton() {
     final t = AppLocalizations.of(context);
     final s = _activeStamp!;
+    // Live countdown of the remaining window, so a user part-way through sees
+    // how much is left to skip.
+    final remaining =
+        (s.end - _position.inMilliseconds / 1000.0).ceil().clamp(0, 5999);
+    final label = s.isOutro ? t.miscSkipOutro : t.miscSkipIntro;
     return Positioned(
       right: 24,
       bottom: 96,
@@ -721,9 +861,38 @@ class _PlayerScreenState extends State<PlayerScreen> {
             backgroundColor: Colors.black.withValues(alpha: 0.6),
             foregroundColor: Colors.white,
           ),
-          onPressed: () => _player.seek(Duration(milliseconds: (s.end * 1000).round())),
+          onPressed: () {
+            // Dismiss immediately (a keyframe seek can land just before s.end
+            // and otherwise leave the button up).
+            final i = _stamps.indexOf(s);
+            if (i >= 0) _skipped.add(i);
+            _player.seek(Duration(milliseconds: (s.end * 1000).round()));
+            setState(() => _activeStamp = null);
+          },
           icon: const Icon(Icons.fast_forward_rounded, size: 18),
-          label: Text(s.isOutro ? t.miscSkipOutro : t.miscSkipIntro),
+          label: Text('$label  ${remaining}s'),
+        ),
+      ),
+    );
+  }
+
+  // Always-available manual intro skip (no source marker needed). Jumps forward
+  // by the configured amount (default 85s ≈ a typical opening).
+  Widget _manualSkipButton() {
+    final t = AppLocalizations.of(context);
+    final secs = _settings.introSkipSeconds;
+    return Positioned(
+      right: 24,
+      bottom: 96,
+      child: SafeArea(
+        child: FilledButton.icon(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.black.withValues(alpha: 0.45),
+            foregroundColor: Colors.white,
+          ),
+          onPressed: () => _seekBy(secs),
+          icon: const Icon(Icons.fast_forward_rounded, size: 18),
+          label: Text('${t.miscSkipIntro}  +${secs}s'),
         ),
       ),
     );

@@ -2,9 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
-
 import '../../presentation/webview_screen/cf_challenge_screen.dart';
+import 'app_logger.dart';
 import 'app_navigator.dart';
 import 'cookie_store.dart';
 import 'webview_service.dart';
@@ -33,6 +32,9 @@ class CfFlareSolverrServer {
 
   HttpServer? _server;
 
+  /// Serialises start/ensure so a resume-triggered rebind can't race startup.
+  Future<void>? _starting;
+
   /// Last time a Cloudflare toast was shown per host, to debounce burst solves.
   final Map<String, DateTime> _lastCfToast = {};
 
@@ -41,23 +43,81 @@ class CfFlareSolverrServer {
 
   bool get isRunning => _server != null;
 
-  /// Bind the loopback server. Safe to call once at startup; a bind failure is
-  /// swallowed (CF for Kotlin sources simply stays unavailable, as before).
+  bool get _supported => Platform.isIOS || Platform.isAndroid || Platform.isMacOS;
+
+  /// Bind the loopback server. Safe to call once at startup. A bind failure is
+  /// non-fatal (CF for Kotlin sources stays unavailable), but — unlike before —
+  /// it is surfaced to More > Debug logs instead of being silently swallowed,
+  /// so "ConnectException 127.0.0.1:52700" has a matching host-side entry.
   Future<void> start() async {
     if (_server != null) return;
-    if (!(Platform.isIOS || Platform.isAndroid || Platform.isMacOS)) {
+    if (!_supported) {
       // Desktop uses the harness/Playwright or an external proxy; the in-app
       // webview solver isn't wired for those here.
       return;
     }
+    // Collapse concurrent callers onto one in-flight bind.
+    final pending = _starting;
+    if (pending != null) return pending;
+    final run = _bind();
+    _starting = run;
+    try {
+      await run;
+    } finally {
+      if (identical(_starting, run)) _starting = null;
+    }
+  }
+
+  Future<void> _bind() async {
     try {
       final server =
           await HttpServer.bind(InternetAddress.loopbackIPv4, port, shared: true);
       _server = server;
       unawaited(_serve(server));
-      debugPrint('[CF/v1] loopback FlareSolverr listening on $url');
+      AppLogger.instance.info(
+        'Cloudflare solver listening on $url',
+        category: LogCategory.network,
+      );
     } catch (e) {
-      debugPrint('[CF/v1] failed to bind $url: $e');
+      _server = null;
+      AppLogger.instance.error(
+        'Cloudflare solver failed to bind $url',
+        category: LogCategory.network,
+        detail:
+            '$e\nKotlin/JVM sources that hit Cloudflare will fail until this '
+            'binds (ConnectException 127.0.0.1:$port). Usually transient — the '
+            'app retries it on resume.',
+      );
+    }
+  }
+
+  /// Re-bind if the loopback socket is gone. iOS tears down loopback listeners
+  /// across a background→foreground cycle, which left the JVM hitting a dead
+  /// port (`_server` was still non-null, so the old `start()` early-returned and
+  /// never rebound). Called on app resume. Dart-only — it touches no JVM op, so
+  /// it is safe inside the background-transition window that the native
+  /// signal-handler restore guards against.
+  Future<void> ensureRunning() async {
+    if (!_supported) return;
+    if (_server != null && await _isAlive()) return;
+    await stop();
+    await start();
+  }
+
+  /// Quick self-probe: is the listener actually accepting connections?
+  Future<bool> _isAlive() async {
+    try {
+      final client = HttpClient()
+        ..connectionTimeout = const Duration(milliseconds: 600);
+      final req = await client
+          .get(InternetAddress.loopbackIPv4.address, port, '/health')
+          .timeout(const Duration(milliseconds: 600));
+      final resp = await req.close().timeout(const Duration(milliseconds: 600));
+      await resp.drain<void>();
+      client.close(force: true);
+      return resp.statusCode == HttpStatus.ok;
+    } catch (_) {
+      return false;
     }
   }
 

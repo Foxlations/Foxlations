@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 
 import '../../core/services/cookie_store.dart';
 import '../../core/services/webview_service.dart';
+import '../../core/utils/url_utils.dart';
 import '../interface.dart';
 import '../model/filter.dart';
 import '../model/m_manga.dart';
@@ -119,9 +120,25 @@ class KotlinExtensionService implements ExtensionService {
       _pages('search', {'query': query, 'page': page});
 
   @override
-  Future<MManga> getDetail(String url) async {
+  Future<MManga> getDetail(String url, {bool fullChapters = true}) async {
     final r = await _send(await _req('getDetail', {'url': url}));
     return MManga.fromJson(Map<String, dynamic>.from(r as Map));
+  }
+
+  @override
+  Future<String?> getWebUrl(String url) async {
+    // Only the source knows how to turn its stored url into the browsable page
+    // (e.g. AsuraScans: "/series/<slug>" → "$baseUrl/comics/<slug>-<hash>"), so
+    // run the live source's getMangaUrl/getAnimeUrl in the JVM. Fall back to
+    // base+path if the host is older or the route errors.
+    try {
+      final r = await _send(await _req('getWebUrl', {'url': url}));
+      if (r is Map) {
+        final u = (r['url'] as String?)?.trim();
+        if (u != null && u.isNotEmpty) return u;
+      }
+    } catch (_) {}
+    return rehomeUrl(baseUrl, url);
   }
 
   @override
@@ -170,11 +187,29 @@ class KotlinExtensionService implements ExtensionService {
     }).toList();
   }
 
+  /// Browse "Categories" tab: the source's genre-style filter options, each as
+  /// {name, link}. The JVM derives these from getFilterList(); `link` encodes which
+  /// filter option to turn on (see SourceRunner.categoriesJson).
   @override
-  Future<List<Map<String, String>>> getCategories() async => [];
+  Future<List<Map<String, String>>> getCategories() async {
+    final r = await _send(await _req('getCategories'));
+    if (r is! List) return [];
+    return r
+        .map((e) {
+          final m = Map<String, dynamic>.from(e as Map);
+          return {
+            'name': (m['name'] ?? '').toString(),
+            'link': (m['link'] ?? '').toString(),
+          };
+        })
+        .where((c) => c['name']!.isNotEmpty && c['link']!.isNotEmpty)
+        .toList();
+  }
 
+  /// List a chosen category: the JVM applies that filter option and runs search.
   @override
-  Future<MPages> getListing(String listingUrl, int page) async => MPages(list: []);
+  Future<MPages> getListing(String listingUrl, int page) =>
+      _pages('getListing', {'url': listingUrl, 'page': page});
 
   /// Light-novel chapter text. The JVM runs the novel extension's getPageList →
   /// NovelSource.fetchPageText and returns the chapter HTML, which the novel reader

@@ -44,6 +44,16 @@ static void foxRestoreAppSignals(void) {
     for (int i = 0; i < kNumCrashSigs; i++) sigaction(gCrashSigs[i], &gAppSigActs[i], NULL);
 }
 
+// Exported (see JvmBridge.h): re-assert the app's crash-signal handlers from the
+// iOS foreground transition. The restore after every JVM op (jvm_worker) leaves a
+// residual window — a benign WebKit/RunningBoard signal arriving mid-op during a
+// background->foreground transition hits the JVM's handler and SIGABRTs. Calling
+// this on willEnterForeground/didBecomeActive re-asserts app ownership exactly when
+// those signals fire. No-op until the VM has booted once (snapshot not yet taken).
+void FoxJvmRestoreSignals(void) {
+    foxRestoreAppSignals();
+}
+
 static NSString *bundlePath(NSString *rel) {
     return [[NSBundle mainBundle].bundlePath stringByAppendingPathComponent:rel];
 }
@@ -102,6 +112,11 @@ static int ensureJvm(JNIEnv **outEnv) {
     // reads this to flip flareSolverrEnabled on.
     NSString *cfOpt   = @"-Dfoxlations.flareSolverrUrl=http://127.0.0.1:52700";
 
+    // NOTE on anime: Aniyomi APKs run through dex2jar, which emits frame-less bytecode the
+    // verifier rejects ("VerifyError: Expecting a stackmap frame"). -Xverify:none does NOT
+    // fix this on the iOS Zero VM (it ignores the flag and still verifies), so the real fix
+    // is in SourceRunner.convertApk: ASM COMPUTE_FRAMES regenerates a valid StackMapTable
+    // after dex2jar, and the classes then verify normally here. No verify flag needed.
     JavaVMOption opts[10];
     memset(opts, 0, sizeof(opts));
     int n = 0;

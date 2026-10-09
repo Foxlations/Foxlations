@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../core/providers/incognito_provider.dart';
+import '../../../core/providers/app_lock_provider.dart';
+import '../../../core/services/settings_store.dart';
+import '../../../core/services/secure_screen_service.dart';
 
 /// Security preference keys. Toggling persists the choice — runtime
 /// enforcement (app lock screen, biometric prompt, FLAG_SECURE) requires
@@ -21,7 +25,6 @@ class SecuritySettingsPage extends StatefulWidget {
 }
 
 class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
-  bool _appLock = false;
   bool _biometrics = false;
   bool _secureScreen = false;
   bool _hideNotificationContent = false;
@@ -29,24 +32,16 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
   @override
   void initState() {
     super.initState();
-    _loadPrefs();
+    // SettingsStore is loaded before runApp, so these reads are synchronous.
+    final s = SettingsStore.instance;
+    _biometrics = s.getBool(SecurityPrefs.biometrics) ?? false;
+    _secureScreen = s.getBool(SecurityPrefs.secureScreen) ?? false;
+    _hideNotificationContent =
+        s.getBool(SecurityPrefs.hideNotificationContent) ?? false;
   }
 
-  Future<void> _loadPrefs() async {
-    final p = await SharedPreferences.getInstance();
-    setState(() {
-      _appLock = p.getBool(SecurityPrefs.appLock) ?? false;
-      _biometrics = p.getBool(SecurityPrefs.biometrics) ?? false;
-      _secureScreen = p.getBool(SecurityPrefs.secureScreen) ?? false;
-      _hideNotificationContent =
-          p.getBool(SecurityPrefs.hideNotificationContent) ?? false;
-    });
-  }
-
-  Future<void> _setBool(String key, bool value) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool(key, value);
-  }
+  Future<void> _setBool(String key, bool value) =>
+      SettingsStore.instance.setBool(key, value);
 
   @override
   Widget build(BuildContext context) {
@@ -69,10 +64,8 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
           _SectionHeader(title: t.setxSecuritySectionAppLock),
           _SwitchTile(icon: Icons.lock_rounded, iconColor: const Color(0xFF5865F2),
               title: t.setxSecurityAppLockTitle, subtitle: t.setxSecurityAppLockSubtitle,
-              value: _appLock, onChanged: (v) {
-                setState(() => _appLock = v);
-                _setBool(SecurityPrefs.appLock, v);
-              }),
+              value: context.watch<AppLockProvider>().enabled,
+              onChanged: (v) => context.read<AppLockProvider>().setEnabled(v)),
           _SwitchTile(icon: Icons.fingerprint_rounded, iconColor: const Color(0xFF5865F2),
               title: t.setxSecurityBiometricsTitle, subtitle: t.setxSecurityBiometricsSubtitle,
               value: _biometrics, onChanged: (v) {
@@ -81,11 +74,16 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               }),
           const SizedBox(height: 8),
           _SectionHeader(title: t.setxSecuritySectionPrivacy),
-          _SwitchTile(icon: Icons.visibility_off_rounded, iconColor: AppTheme.warning,
+          _SwitchTile(icon: Icons.visibility_off_outlined, iconColor: AppTheme.warning,
+              title: t.setxSecurityIncognitoTitle, subtitle: t.setxSecurityIncognitoSubtitle,
+              value: context.watch<IncognitoProvider>().enabled,
+              onChanged: (v) => context.read<IncognitoProvider>().setEnabled(v)),
+          _SwitchTile(icon: Icons.phonelink_lock_rounded, iconColor: AppTheme.warning,
               title: t.setxSecuritySecureScreenTitle, subtitle: t.setxSecuritySecureScreenSubtitle,
               value: _secureScreen, onChanged: (v) {
                 setState(() => _secureScreen = v);
                 _setBool(SecurityPrefs.secureScreen, v);
+                SecureScreenService.setEnabled(v);
               }),
           _SwitchTile(icon: Icons.notifications_off_rounded, iconColor: AppTheme.warning,
               title: t.setxSecurityHideNotifTitle, subtitle: t.setxSecurityHideNotifSubtitle,

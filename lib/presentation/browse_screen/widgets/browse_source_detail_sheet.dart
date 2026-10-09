@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/models/source_model.dart';
 import '../../../core/providers/source_provider.dart';
+import '../../../core/providers/vault_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
@@ -383,10 +384,15 @@ class _ActionButtonState extends State<_ActionButton> {
     setState(() => _loading = true);
     try {
       final provider = context.read<SourceProvider>();
+      final vault = context.read<VaultProvider>();
       if (widget.isInstalled) {
         await provider.uninstallSource(widget.source.id);
       } else {
         await provider.installSource(widget.source);
+        // Installed while inside the vault → keep it in the vault.
+        if (vault.vaultActive && !vault.isSourceInVault(widget.source.id)) {
+          vault.toggleVaultSource(widget.source.id);
+        }
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
