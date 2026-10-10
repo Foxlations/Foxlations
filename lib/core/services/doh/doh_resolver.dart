@@ -56,17 +56,48 @@ class DohResolver {
     final cached = _cache[host];
     if (cached != null && cached.expiry.isAfter(now)) return cached.ips;
 
-    try {
-      final result = await _queryDoh(host, provider).timeout(_timeout);
-      if (result.ips.isNotEmpty) {
-        _cache[host] = _CacheEntry(result.ips, now.add(result.ttl));
-        return result.ips;
+    // Try the user's provider, then non-filtering public resolvers (literal-IP,
+    // so they keep working where a DoH hostname can't be resolved). A provider
+    // that FILTERS a source — Quad9 / filtered AdGuard block aggregator domains
+    // like natomanga.com — or a blocked resolver IP then can't break resolution.
+    for (final p in _chain(provider)) {
+      try {
+        final result = await _queryDoh(host, p).timeout(_timeout);
+        if (result.ips.isNotEmpty) {
+          _cache[host] = _CacheEntry(result.ips, now.add(result.ttl));
+          return result.ips;
+        }
+      } catch (e) {
+        logger.warning('DoH lookup failed for $host (${p.label})',
+            category: LogCategory.network, detail: e.toString());
       }
-    } catch (e) {
-      logger.warning('DoH lookup failed for $host (${provider.label})',
-          category: LogCategory.network, detail: e.toString());
     }
     return _systemLookup(host);
+  }
+
+  /// Non-filtering public resolvers used as fallbacks, as literal-IP JSON
+  /// endpoints spanning two networks (Cloudflare + Google) so neither filtering
+  /// nor a single blocked IP can stop resolution. Google serves JSON at /resolve.
+  static const _fallbacks = <DohProvider>[
+    DohProvider(
+        id: '_fb_cf1', label: 'Cloudflare 1.1.1.1',
+        queryUrl: 'https://1.1.1.1/dns-query'),
+    DohProvider(
+        id: '_fb_cf2', label: 'Cloudflare 1.0.0.1',
+        queryUrl: 'https://1.0.0.1/dns-query'),
+    DohProvider(
+        id: '_fb_g1', label: 'Google 8.8.8.8',
+        queryUrl: 'https://8.8.8.8/resolve'),
+  ];
+
+  /// The user's provider first, then the fallbacks, de-duped by endpoint host.
+  static List<DohProvider> _chain(DohProvider primary) {
+    final chain = <DohProvider>[primary];
+    final seen = <String?>{Uri.tryParse(primary.queryUrl)?.host};
+    for (final f in _fallbacks) {
+      if (seen.add(Uri.tryParse(f.queryUrl)?.host)) chain.add(f);
+    }
+    return chain;
   }
 
   Future<List<String>> _systemLookup(String host) async {

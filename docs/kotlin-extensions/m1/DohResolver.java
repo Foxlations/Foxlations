@@ -85,16 +85,41 @@ public final class DohResolver extends InetAddressResolverProvider {
         return h;
     }
 
+    // Non-filtering public resolvers (literal-IP JSON endpoints) walked in order
+    // when the user's provider returns nothing. Spanning TWO networks (Cloudflare
+    // + Google) matters: a provider that FILTERS a source (Quad9 / filtered AdGuard
+    // block aggregator domains like natomanga.com) OR a network that blocks a
+    // single resolver IP (1.1.1.1 is blocked on some ISPs/carriers) can't then
+    // break resolution. Google serves the JSON API at /resolve, not /dns-query.
+    private static final String[] FALLBACKS = {
+        "https://1.1.1.1/dns-query",
+        "https://1.0.0.1/dns-query",
+        "https://8.8.8.8/resolve",
+        "https://8.8.4.4/resolve",
+    };
+
     private Stream<InetAddress> doh(String host) throws UnknownHostException {
-        // Try the user's configured provider first; if it returns no record or
-        // errors (not every provider serves the JSON API the same way), fall back
-        // to Cloudflare's 1.1.1.1 so resolution never breaks on iOS.
+        // Try the user's configured provider first, then walk the fallback chain
+        // until one returns A records — so a filtering provider or a blocked
+        // resolver IP can't break resolution on iOS.
         List<InetAddress> out = queryOne(endpoint, host);
-        if (out.isEmpty() && !endpoint.startsWith("https://1.1.1.1/")) {
-            out = queryOne("https://1.1.1.1/dns-query", host);
+        if (out.isEmpty()) {
+            for (String fb : FALLBACKS) {
+                if (sameAuthority(fb, endpoint)) continue;   // don't re-query the primary
+                out = queryOne(fb, host);
+                if (!out.isEmpty()) break;
+            }
         }
         if (!out.isEmpty()) return out.stream();
         throw new UnknownHostException("DoH: no A record for " + host);
+    }
+
+    private static boolean sameAuthority(String a, String b) {
+        try {
+            return URI.create(a).getAuthority().equalsIgnoreCase(URI.create(b).getAuthority());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private List<InetAddress> queryOne(String base, String host) {

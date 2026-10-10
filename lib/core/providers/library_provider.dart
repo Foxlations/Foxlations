@@ -278,16 +278,7 @@ class LibraryProvider extends ChangeNotifier {
       title: c['name'] as String? ?? '',
       dateUpload: c['dateUpload'] as String?,
     )).toList();
-    await _libraryService.cacheChapters(sourceId, mangaUrl, libChapters);
-
-    // Stamp when this entry's chapter list was last pulled, so the library can
-    // sort by "Chapter fetch date". Nothing recorded this before, which is why
-    // that sort couldn't be offered.
-    final entry = _libraryService.getManga(sourceId, mangaUrl);
-    if (entry != null) {
-      entry.lastChapterFetchAt = DateTime.now();
-      await entry.save();
-    }
+    await _cacheAndStampIfNew(sourceId, mangaUrl, libChapters);
 
     _manga = _libraryService.getAllManga();
     notifyListeners();
@@ -308,7 +299,22 @@ class LibraryProvider extends ChangeNotifier {
               dateUpload: c['dateUpload'] as String?,
             ))
         .toList();
+    await _cacheAndStampIfNew(sourceId, mangaUrl, libChapters);
+  }
+
+  /// Caches [libChapters] and stamps `lastChapterFetchAt` ONLY when the list
+  /// gained chapters not already cached — so the "Chapter fetch date" sort
+  /// reflects when NEW chapters actually arrived, not merely when the app last
+  /// checked for updates (an update that finds nothing must not bump the date).
+  Future<void> _cacheAndStampIfNew(String sourceId, String mangaUrl,
+      List<LibraryChapter> libChapters) async {
+    final existingUrls = _libraryService
+        .getCachedChapters(sourceId, mangaUrl)
+        .map((c) => c.chapterUrl)
+        .toSet();
+    final hasNew = libChapters.any((c) => !existingUrls.contains(c.chapterUrl));
     await _libraryService.cacheChapters(sourceId, mangaUrl, libChapters);
+    if (!hasNew) return;
     final entry = _libraryService.getManga(sourceId, mangaUrl);
     if (entry != null) {
       entry.lastChapterFetchAt = DateTime.now();

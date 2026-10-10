@@ -268,6 +268,15 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _ChangelogItem('Fixed light-novel (LNReader) sources on iPhone/iPad — browsing a '
+                'source showed “No light novels found” because the plugin’s result wasn’t being '
+                'decoded correctly. They load again now.'),
+            _ChangelogItem('Fixed some sources (e.g. Manganato) failing to load with a “no A '
+                'record” error when DNS-over-HTTPS was set to a filtering provider like Quad9 or '
+                'AdGuard — the app now falls back across Cloudflare and Google so a blocked domain '
+                'still resolves. (Switching your DNS provider to Cloudflare in Advanced also fixes it.)'),
+            _ChangelogItem('The “Chapter fetch date” library sort now only moves a title when it '
+                'actually gets new chapters, not every time the app checks for updates.'),
             _ChangelogItem('Backups no longer include your vault unless you check “Include vault” '
                 'when making one — and it asks you to unlock first (Face/Touch ID or password). It '
                 'was previously included automatically whenever the vault happened to be unlocked.'),

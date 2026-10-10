@@ -79,6 +79,18 @@ JSON.stringify({ loaded: !!globalThis.__lnrPlugin, error: globalThis.__lnrLoadEr
   /// Source is wrapped verbatim; it already ends in `exports.default = …`.
   static String _wrapSource(String code) => code;
 
+  /// Decode the `{ok, data|error}` envelope. Some flutter_js engines (notably
+  /// iOS's JavaScriptCore) return a resolved promise's value ALREADY JSON-encoded,
+  /// so the envelope arrives double-encoded — decode once, and if that yields a
+  /// String, decode again. Android's engine single-encodes, so the guard is a
+  /// no-op there. Without this, every LNReader call throws "String is not a
+  /// subtype of Map" on iOS and the whole lane is dead.
+  static Map<String, dynamic> _decodeEnvelope(String s) {
+    dynamic d = jsonDecode(s);
+    if (d is String) d = jsonDecode(d);
+    return (d as Map).cast<String, dynamic>();
+  }
+
   /// Run an async plugin call and return its JSON. Args are JSON-encoded so a
   /// source-controlled path/query can't break out of the expression.
   Future<dynamic> _call(String method, List<dynamic> args) async {
@@ -89,7 +101,7 @@ JSON.stringify({ loaded: !!globalThis.__lnrPlugin, error: globalThis.__lnrLoadEr
     try {
       final jsResult = await runtime.evaluateAsync(expr);
       final promised = await runtime.handlePromise(jsResult);
-      final out = jsonDecode(promised.stringResult) as Map<String, dynamic>;
+      final out = _decodeEnvelope(promised.stringResult);
       if (out['ok'] == true) return out['data'];
       logger.error('LNReader $method failed: ${out['error']}',
           category: LogCategory.extension);
@@ -108,7 +120,7 @@ JSON.stringify({ loaded: !!globalThis.__lnrPlugin, error: globalThis.__lnrLoadEr
     try {
       final jsResult = await runtime.evaluateAsync(expr);
       final promised = await runtime.handlePromise(jsResult);
-      final out = jsonDecode(promised.stringResult) as Map<String, dynamic>;
+      final out = _decodeEnvelope(promised.stringResult);
       if (out['ok'] == true) return out['data'];
       logger.error('LNReader call failed: ${out['error']}',
           category: LogCategory.extension);
