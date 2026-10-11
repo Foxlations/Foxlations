@@ -24,6 +24,17 @@ import 'http.dart';
 /// supplies a `require()` shim + WHATWG `fetch`/`Response` (over the existing
 /// HTTP bridge) + the cheerio/htmlparser2/dayjs bundle (assets/js), loads the
 /// plugin, and maps its methods onto the app's [ExtensionService] interface.
+
+/// A source-side failure from an LNReader plugin call. `toString()` is the raw
+/// message (e.g. "Could not reach site (403)…") so callers can match on it and
+/// the catalog screen shows it verbatim.
+class LnrException implements Exception {
+  final String message;
+  LnrException(this.message);
+  @override
+  String toString() => message;
+}
+
 class LnrExtensionService implements ExtensionService {
   final MSource mSource;
   final String sourceCode;
@@ -41,7 +52,14 @@ class LnrExtensionService implements ExtensionService {
 
   Future<void> _ensureInit() async {
     if (_initialized) return;
-    runtime = getJavascriptRuntime();
+    // xhr:false — do NOT enable flutter_js's built-in fetch/XHR. That extension
+    // talks to the network with package:http directly, bypassing our
+    // Cloudflare-aware bridge (no CF solve, no cookies/UA/DoH) AND throwing
+    // UNCAUGHT ClientExceptions that crash the app when a request fails. It also
+    // async-loads a fetch.js polyfill that could race-overwrite our own fetch.
+    // Our preamble is self-contained (fetch/Headers/Response/URL/XHR), so we
+    // need none of it — every request goes through the bridge below.
+    runtime = getJavascriptRuntime(xhr: false);
     // Reuse the Cloudflare-aware HTTP bridge: registers onMessage HttpGet/HttpPost.
     JsHttpClient(runtime).init();
     _libsBundle ??= await rootBundle.loadString('assets/js/lnreader_libs.js');
@@ -93,42 +111,42 @@ JSON.stringify({ loaded: !!globalThis.__lnrPlugin, error: globalThis.__lnrLoadEr
 
   /// Run an async plugin call and return its JSON. Args are JSON-encoded so a
   /// source-controlled path/query can't break out of the expression.
+  ///
+  /// On a source error (e.g. a Cloudflare 403) this THROWS, mirroring the manga
+  /// lane. Swallowing it and returning an empty list made a blocked source look
+  /// merely empty ("No light novels found") with no way to solve the challenge;
+  /// propagating lets the catalog screen show the real error + the "Open in
+  /// WebView" solve button.
   Future<dynamic> _call(String method, List<dynamic> args) async {
     await _ensureInit();
     final argsJson = jsonEncode(args);
     final expr =
         '__lnrRun(function(){ return __lnrPlugin.$method.apply(__lnrPlugin, $argsJson); })';
-    try {
-      final jsResult = await runtime.evaluateAsync(expr);
-      final promised = await runtime.handlePromise(jsResult);
-      final out = _decodeEnvelope(promised.stringResult);
-      if (out['ok'] == true) return out['data'];
-      logger.error('LNReader $method failed: ${out['error']}',
-          category: LogCategory.extension);
-      return null;
-    } catch (e) {
-      logger.error('LNReader $method threw: $e', category: LogCategory.extension);
-      return null;
-    }
+    return _runEnvelope(expr, method);
   }
 
   /// Run an arbitrary JS body inside __lnrRun (for calls whose args must be built
   /// in JS, like popularNovels' resolved filter values).
   Future<dynamic> _callExpr(String body) async {
     await _ensureInit();
-    final expr = '__lnrRun(function(){ $body })';
+    return _runEnvelope('__lnrRun(function(){ $body })', 'call');
+  }
+
+  Future<dynamic> _runEnvelope(String expr, String label) async {
+    Map<String, dynamic> out;
     try {
       final jsResult = await runtime.evaluateAsync(expr);
       final promised = await runtime.handlePromise(jsResult);
-      final out = _decodeEnvelope(promised.stringResult);
-      if (out['ok'] == true) return out['data'];
-      logger.error('LNReader call failed: ${out['error']}',
-          category: LogCategory.extension);
-      return null;
+      out = _decodeEnvelope(promised.stringResult);
     } catch (e) {
-      logger.error('LNReader call threw: $e', category: LogCategory.extension);
-      return null;
+      logger.error('LNReader $label threw: $e', category: LogCategory.extension);
+      throw LnrException('$label failed: $e');
     }
+    if (out['ok'] == true) return out['data'];
+    final err = (out['error'] ?? 'unknown error').toString();
+    logger.error('LNReader $label failed: $err',
+        category: LogCategory.extension);
+    throw LnrException(err);
   }
 
   String get _popularBody =>
@@ -384,11 +402,128 @@ const String _preamble = r'''
     });
   };
 
+  // Minimal XMLHttpRequest over the SAME bridge as fetch — plugins/libs that use
+  // XHR (or a transport that falls back to it) go through our Cloudflare-aware
+  // path too, instead of flutter_js's package:http XHR (which bypasses CF and
+  // crashes uncaught on a failed request). Async only (no sync open(...,false)).
+  G.XMLHttpRequest = function () {
+    this.readyState = 0; this.status = 0; this.statusText = '';
+    this.responseText = ''; this.response = '';
+    this.onreadystatechange = null; this.onload = null;
+    this.onerror = null; this.onloadend = null;
+    this._method = 'GET'; this._url = ''; this._reqHeaders = {}; this._respHeaders = {};
+  };
+  (function (XP) {
+    function fire(self, name) {
+      var cb = self[name];
+      if (typeof cb === 'function') { try { cb.call(self); } catch (e) {} }
+    }
+    XP.open = function (method, url) {
+      this._method = String(method || 'GET').toUpperCase();
+      this._url = String(url);
+      this.readyState = 1;
+      fire(this, 'onreadystatechange');
+    };
+    XP.setRequestHeader = function (k, v) { this._reqHeaders[String(k)] = String(v); };
+    XP.abort = function () {};
+    XP.getAllResponseHeaders = function () {
+      var s = ''; for (var k in this._respHeaders) s += k + ': ' + this._respHeaders[k] + '\r\n'; return s;
+    };
+    XP.getResponseHeader = function (k) {
+      k = String(k).toLowerCase();
+      for (var h in this._respHeaders) if (h.toLowerCase() === k) return this._respHeaders[h];
+      return null;
+    };
+    XP.send = function (body) {
+      var self = this;
+      var ch = self._method === 'POST' ? 'HttpPost' : 'HttpGet';
+      var payload = JSON.stringify({
+        url: self._url, headers: self._reqHeaders,
+        body: (body == null ? null : (typeof body === 'string' ? body : String(body)))
+      });
+      sendMessage(ch, payload).then(function (raw) {
+        var r = {};
+        try { r = JSON.parse(raw) || {}; } catch (e) {}
+        self.status = r.statusCode || 0;
+        self.statusText = '';
+        self.responseText = r.body || '';
+        self.response = self.responseText;
+        self._respHeaders = r.headers || {};
+        self.readyState = 4;
+        fire(self, 'onreadystatechange');
+        fire(self, (self.status >= 200 && self.status < 300) ? 'onload' : 'onerror');
+        fire(self, 'onloadend');
+      }).catch(function () {
+        self.status = 0; self.readyState = 4;
+        fire(self, 'onreadystatechange');
+        fire(self, 'onerror');
+        fire(self, 'onloadend');
+      });
+    };
+  })(G.XMLHttpRequest.prototype);
+
   if (typeof G.FormData === 'undefined') {
     G.FormData = function () { this._d = []; };
     G.FormData.prototype.append = function (k, v) { this._d.push([k, v]); };
     G.FormData.prototype.toString = function () {
       return this._d.map(function (p) { return encodeURIComponent(p[0]) + '=' + encodeURIComponent(p[1]); }).join('&');
+    };
+  }
+
+  // URLSearchParams: QuickJS has no built-in. Many LNReader plugins build query
+  // strings via `new URLSearchParams({...}).toString()` / .append / .set, so
+  // without this they throw "URLSearchParams is not defined" and return nothing.
+  if (typeof G.URLSearchParams === 'undefined') {
+    G.URLSearchParams = function (init) {
+      this._p = [];
+      var self = this;
+      function addStr(s) {
+        s = String(s).replace(/^\?/, '');
+        if (!s) return;
+        s.split('&').forEach(function (pair) {
+          if (!pair) return;
+          var i = pair.indexOf('=');
+          var k = i < 0 ? pair : pair.slice(0, i);
+          var v = i < 0 ? '' : pair.slice(i + 1);
+          self._p.push([
+            decodeURIComponent(k.replace(/\+/g, ' ')),
+            decodeURIComponent(v.replace(/\+/g, ' '))
+          ]);
+        });
+      }
+      if (init == null) {
+        // empty
+      } else if (typeof init === 'string') {
+        addStr(init);
+      } else if (init instanceof G.URLSearchParams) {
+        this._p = init._p.map(function (e) { return [e[0], e[1]]; });
+      } else if (Object.prototype.toString.call(init) === '[object Array]') {
+        init.forEach(function (e) { self._p.push([String(e[0]), String(e[1])]); });
+      } else if (typeof init === 'object') {
+        Object.keys(init).forEach(function (k) { self._p.push([k, String(init[k])]); });
+      }
+    };
+    var SP = G.URLSearchParams.prototype;
+    SP.append = function (k, v) { this._p.push([String(k), String(v)]); };
+    SP.set = function (k, v) {
+      var done = false;
+      this._p = this._p.filter(function (e) {
+        if (e[0] === String(k)) { if (!done) { e[1] = String(v); done = true; return true; } return false; }
+        return true;
+      });
+      if (!done) this._p.push([String(k), String(v)]);
+    };
+    SP.get = function (k) { for (var i = 0; i < this._p.length; i++) if (this._p[i][0] === String(k)) return this._p[i][1]; return null; };
+    SP.getAll = function (k) { var r = []; for (var i = 0; i < this._p.length; i++) if (this._p[i][0] === String(k)) r.push(this._p[i][1]); return r; };
+    SP.has = function (k) { for (var i = 0; i < this._p.length; i++) if (this._p[i][0] === String(k)) return true; return false; };
+    SP['delete'] = function (k) { this._p = this._p.filter(function (e) { return e[0] !== String(k); }); };
+    SP.forEach = function (cb, thisArg) { for (var i = 0; i < this._p.length; i++) cb.call(thisArg, this._p[i][1], this._p[i][0], this); };
+    SP.keys = function () { return this._p.map(function (e) { return e[0]; }); };
+    SP.values = function () { return this._p.map(function (e) { return e[1]; }); };
+    SP.entries = function () { return this._p.map(function (e) { return [e[0], e[1]]; }); };
+    SP.sort = function () { this._p.sort(function (a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0; }); };
+    SP.toString = function () {
+      return this._p.map(function (e) { return encodeURIComponent(e[0]) + '=' + encodeURIComponent(e[1]); }).join('&');
     };
   }
 
@@ -402,16 +537,7 @@ const String _preamble = r'''
       this.href = url; this.protocol = m[1] || ''; this.host = m[2] || '';
       this.hostname = (m[2] || '').split(':')[0]; this.pathname = m[3] || '/';
       this.search = m[4] || ''; this.hash = m[5] || ''; this.origin = (m[1] || '') + '//' + (m[2] || '');
-      var sp = {}; (this.search.replace(/^\?/, '')).split('&').forEach(function (p) {
-        if (!p) return; var i = p.indexOf('='); var kk = decodeURIComponent(i < 0 ? p : p.slice(0, i));
-        sp[kk] = decodeURIComponent(i < 0 ? '' : p.slice(i + 1));
-      });
-      this.searchParams = {
-        get: function (k) { return sp[k] !== undefined ? sp[k] : null; },
-        has: function (k) { return sp[k] !== undefined; },
-        set: function (k, v) { sp[k] = String(v); },
-        toString: function () { return Object.keys(sp).map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(sp[k]); }).join('&'); }
-      };
+      this.searchParams = new G.URLSearchParams(this.search);
       this.toString = function () { return this.href; };
     };
   }
@@ -489,7 +615,29 @@ const String _preamble = r'''
     }).then(function (data) {
       return JSON.stringify({ ok: true, data: data });
     }).catch(function (e) {
-      return JSON.stringify({ ok: false, error: String((e && e.stack) || e) });
+      // Extract a legible message across engines. iOS JavaScriptCore often hands
+      // back a rejection whose name/message read empty while only `stack` is set
+      // (anonymous "@" frames), so String(e) / the old path produced just a wall
+      // of "@". Try every avenue and keep the first that yields real text.
+      function clean(s) { return (s == null) ? '' : String(s).trim(); }
+      var name = '';
+      var msg = '';
+      try { name = clean(e && e.name); } catch (ignored) {}
+      try { msg = clean(e && e.message); } catch (ignored) {}
+      if (!msg) { try { if (typeof e === 'string') msg = clean(e); } catch (ignored) {} }
+      if (!msg) { try { var ts = clean(e && e.toString && e.toString()); if (ts && ts !== '[object Object]') msg = ts; } catch (ignored) {} }
+      if (!msg && !name) { try { var js = clean(JSON.stringify(e)); if (js && js !== '{}' && js !== 'null') msg = js; } catch (ignored) {} }
+      var head = (name && msg)
+        ? (msg.indexOf(name) === 0 ? msg : (name + ': ' + msg))
+        : (msg || name);
+      if (!head) head = 'unknown error (' + (typeof e) + ')';
+      // Keep the stack only when it carries something beyond bare "@" frames.
+      var stack = '';
+      try { stack = clean(e && e.stack); } catch (ignored) {}
+      var useful = stack && /[A-Za-z0-9_$]+@|\bat [A-Za-z_$]/.test(stack) &&
+        clean(stack.replace(/Promise@\[native code\]/g, '').replace(/[@\s]/g, ''));
+      if (useful) head = head + '\n' + stack;
+      return JSON.stringify({ ok: false, error: head });
     });
   };
 })();

@@ -11,19 +11,27 @@ import '../services/app_logger.dart';
 class AppLockProvider extends ChangeNotifier {
   static const enabledKey = 'sec_app_lock';
   static const biometricsKey = 'sec_biometrics';
+  static const lockDelayKey = 'sec_app_lock_timeout';
 
   final LocalAuthentication _auth = LocalAuthentication();
   bool _enabled = false;
   bool _locked = false;
   bool _authInProgress = false;
+  int _lockAfterMinutes = 0;
+  DateTime? _backgroundedAt;
 
   bool get enabled => _enabled;
 
   /// Whether the lock screen should currently cover the app.
   bool get locked => _enabled && _locked;
 
+  /// Idle grace period before re-locking on resume. 0 = lock immediately on
+  /// background (the original behaviour).
+  int get lockAfterMinutes => _lockAfterMinutes;
+
   Future<void> initialize() async {
     _enabled = SettingsStore.instance.getBool(enabledKey) ?? false;
+    _lockAfterMinutes = SettingsStore.instance.getInt(lockDelayKey) ?? 0;
     _locked = _enabled; // require an unlock on cold start
     notifyListeners();
   }
@@ -36,9 +44,43 @@ class AppLockProvider extends ChangeNotifier {
     await SettingsStore.instance.setBool(enabledKey, value);
   }
 
+  Future<void> setLockAfterMinutes(int m) async {
+    final v = m < 0 ? 0 : m;
+    if (_lockAfterMinutes == v) return;
+    _lockAfterMinutes = v;
+    notifyListeners();
+    await SettingsStore.instance.setInt(lockDelayKey, v);
+  }
+
   /// Relock — call when the app goes to the background.
   void lock() {
     if (_enabled && !_locked) {
+      _locked = true;
+      notifyListeners();
+    }
+  }
+
+  /// Call when the app is backgrounded. Records the time so [onResumed] can
+  /// apply the idle grace period. With no delay set (0) this keeps today's
+  /// behaviour of locking immediately on background.
+  void onPaused() {
+    _backgroundedAt = DateTime.now();
+    if (_enabled && _lockAfterMinutes == 0 && !_locked) {
+      _locked = true;
+      notifyListeners();
+    }
+  }
+
+  /// Call when the app returns to the foreground. Re-locks only if the idle
+  /// grace period has elapsed since it was backgrounded; if already locked
+  /// (e.g. immediate lock) this does nothing.
+  void onResumed() {
+    if (_enabled &&
+        !_locked &&
+        _lockAfterMinutes > 0 &&
+        _backgroundedAt != null &&
+        DateTime.now().difference(_backgroundedAt!).inMinutes >=
+            _lockAfterMinutes) {
       _locked = true;
       notifyListeners();
     }

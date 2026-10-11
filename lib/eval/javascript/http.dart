@@ -12,6 +12,19 @@ class JsHttpClient {
 
   JsHttpClient(this._runtime);
 
+  /// Test-only seam. When non-null, every bridged fetch is served by this
+  /// backend instead of Dio, and must return the same JSON envelope
+  /// (`{statusCode, body, headers}`). The LNReader harness points this at a
+  /// real headless browser (real UA + TLS + Cloudflare solving) to measure how
+  /// many sources work once CF/TLS-fingerprint blocking is handled. Always null
+  /// in the shipped app, so production behaviour is unchanged.
+  static Future<String> Function(
+    String method,
+    String url,
+    Map<String, String> headers,
+    String? body,
+  )? testFetchBackend;
+
   static final Dio _dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
@@ -55,6 +68,10 @@ class JsHttpClient {
   static Future<String> _cfAwareFetch(
       String method, String url, Map<String, String> headers,
       [String? body]) async {
+    final backend = testFetchBackend;
+    if (backend != null) {
+      return backend(method, url, headers, body);
+    }
     Future<Response<String>> doRequest() async {
       final opts = Options(
         headers: await _buildHeaders(url, headers),
@@ -77,6 +94,21 @@ class JsHttpClient {
     try {
       resp = await doRequest();
     } catch (e) {
+      // A dart:io TLS/handshake/socket failure. Cloudflare (and some CDNs)
+      // fingerprint the TLS ClientHello and drop non-browser clients at the
+      // handshake — which is exactly where Dio dies. On the main isolate, retry
+      // the GET through the real browser (WebView): it presents a genuine UA +
+      // browser TLS and carries any cf_clearance, so it gets through where Dio
+      // can't. (A background isolate can't drive a WebView — see below.)
+      if (!isBackgroundIsolate && method == 'GET') {
+        try {
+          final html = await WebViewService().fetchHtml(url);
+          if (html != null && html.isNotEmpty) {
+            return jsonEncode(
+                {'statusCode': 200, 'body': html, 'headers': const {}});
+          }
+        } catch (_) {}
+      }
       return jsonEncode({'statusCode': 0, 'body': '', 'error': e.toString()});
     }
 

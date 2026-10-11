@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/models/manga_model.dart';
 import '../../core/providers/library_provider.dart';
 import '../../core/services/image_loader.dart';
+import '../widgets/type_toggle.dart';
 import '../../core/utils/url_utils.dart';
 import '../../core/providers/download_provider.dart';
 import '../../core/providers/source_provider.dart';
@@ -149,40 +150,34 @@ class _NovelReaderScreenState extends State<NovelReaderScreen> {
                       borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 16),
               _sheetLabel('Font', cs),
-              Wrap(spacing: 8, children: [
-                for (final (id, label) in const [
-                  ('serif', 'Serif'),
-                  ('sans', 'Sans'),
-                  ('mono', 'Mono')
-                ])
-                  ChoiceChip(
-                    label: Text(label),
-                    selected: _fontFamily == id,
-                    onSelected: (_) {
-                      setState(() => _fontFamily = id);
-                      setSheet(() {});
-                      p.setString('novel_font_family', id);
-                    },
-                  ),
-              ]),
+              TypeToggle(
+                items: const [
+                  TypeToggleItem('serif', 'Serif'),
+                  TypeToggleItem('sans', 'Sans'),
+                  TypeToggleItem('mono', 'Mono'),
+                ],
+                selectedId: _fontFamily,
+                onChanged: (id) {
+                  setState(() => _fontFamily = id);
+                  setSheet(() {});
+                  p.setString('novel_font_family', id);
+                },
+              ),
               const SizedBox(height: 12),
               _sheetLabel('Alignment', cs),
-              Wrap(spacing: 8, children: [
-                for (final (id, label) in const [
-                  ('left', 'Left'),
-                  ('justify', 'Justify'),
-                  ('center', 'Center')
-                ])
-                  ChoiceChip(
-                    label: Text(label),
-                    selected: _textAlign == id,
-                    onSelected: (_) {
-                      setState(() => _textAlign = id);
-                      setSheet(() {});
-                      p.setString('novel_text_align', id);
-                    },
-                  ),
-              ]),
+              TypeToggle(
+                items: const [
+                  TypeToggleItem('left', 'Left'),
+                  TypeToggleItem('justify', 'Justify'),
+                  TypeToggleItem('center', 'Center'),
+                ],
+                selectedId: _textAlign,
+                onChanged: (id) {
+                  setState(() => _textAlign = id);
+                  setSheet(() {});
+                  p.setString('novel_text_align', id);
+                },
+              ),
               const SizedBox(height: 8),
               _sheetLabel('Line spacing', cs),
               Slider(

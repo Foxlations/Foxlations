@@ -812,7 +812,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
       context.read<VaultProvider>().exitVault();
-      context.read<AppLockProvider>().lock();
+      context.read<AppLockProvider>().onPaused();
     }
     // On return to the foreground, check whether a library update has come due.
     // Delay it: on iOS the auto-update can reach the embedded Zero JVM, and
@@ -821,6 +821,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     // transition settle first (the native handler-restore in AppDelegate covers
     // the rest) keeps JVM work out of that window.
     if (state == AppLifecycleState.resumed) {
+      // Re-lock if the backgrounded idle grace period has elapsed (0 = already
+      // locked on pause). Synchronous + Dart-only, so safe in this window.
+      if (mounted) context.read<AppLockProvider>().onResumed();
       // Open the JVM quiet period FIRST, so any JVM op that fires during the
       // background->foreground transition (a user-triggered source call, warmup)
       // is held until the process has settled — the window behind the iOS
@@ -928,7 +931,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         activeId: _activeTabId,
         onTapId: (id) {
           _onTabTapped(id);
-          if (id != 'updates') _loadUpdatesBadge();
+          if (id != 'updates') {
+            _loadUpdatesBadge();
+          } else {
+            // The Updates screen stays alive in the IndexedStack, so nudge it
+            // to re-read the persisted feed (a category/auto update may have
+            // added entries while it wasn't visible).
+            UpdatesScreen.reloadSignal.value++;
+          }
         },
         isVaultMode: isVault,
         updatesBadge: _updatesBadge,

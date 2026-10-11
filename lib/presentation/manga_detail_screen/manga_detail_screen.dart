@@ -55,8 +55,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   // Chapter toolbar state
   bool _sortAscending = false;
+  _ChapterSort _chapterSort = _ChapterSort.source;
   bool _filterUnread = false;
   bool _filterBookmarked = false;
+  bool _filterDownloaded = false;
   bool _chapterSearchActive = false;
   String _chapterSearchQuery = '';
   final _chapterSearchController = TextEditingController();
@@ -224,21 +226,41 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     // deterministic newest-first order by the real chapter number parsed from
     // the name (then URL as a unique tiebreak) before the asc/desc reverse.
     // Manga/anime keep the source's own order (sourceIndex), which is reliable.
-    if (_isNovel) {
-      double? numOf(MChapter c) =>
-          _parseLeadingNumber(c.name ?? '') ?? _parseLeadingNumber(c.url ?? '');
-      chapters.sort((a, b) {
-        final na = numOf(a);
-        final nb = numOf(b);
-        if (na != null && nb != null) {
-          if (na != nb) return nb.compareTo(na); // highest (newest) first
-        } else if (na != null) {
-          return -1; // numbered chapters above un-numbered
-        } else if (nb != null) {
-          return 1;
+    double? numOf(MChapter c) =>
+        _parseLeadingNumber(c.name ?? '') ?? _parseLeadingNumber(c.url ?? '');
+    switch (_chapterSort) {
+      case _ChapterSort.source:
+        // Novels have no reliable source order (sourceIndex can repeat), so fall
+        // back to a deterministic newest-first number order. Manga/anime keep the
+        // source's own order.
+        if (_isNovel) {
+          chapters.sort((a, b) {
+            final na = numOf(a);
+            final nb = numOf(b);
+            if (na != null && nb != null) {
+              if (na != nb) return nb.compareTo(na);
+            } else if (na != null) {
+              return -1;
+            } else if (nb != null) {
+              return 1;
+            }
+            return (a.url ?? '').compareTo(b.url ?? '');
+          });
         }
-        return (a.url ?? '').compareTo(b.url ?? ''); // deterministic tiebreak
-      });
+        break;
+      case _ChapterSort.number:
+        chapters.sort((a, b) {
+          final na = numOf(a);
+          final nb = numOf(b);
+          if (na != null && nb != null) return nb.compareTo(na);
+          if (na != null) return -1;
+          if (nb != null) return 1;
+          return 0;
+        });
+        break;
+      case _ChapterSort.uploadDate:
+        chapters.sort((a, b) => _uploadMs(b).compareTo(_uploadMs(a)));
+        break;
     }
     if (_sortAscending) chapters = chapters.reversed.toList();
     if (_filterUnread) {
@@ -248,6 +270,12 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     if (_filterBookmarked) {
       chapters = chapters.where((c) =>
           _bookmarkedChapterUrls.contains(c.url ?? '')).toList();
+    }
+    if (_filterDownloaded) {
+      final dl = context.read<DownloadProvider>();
+      chapters = chapters
+          .where((c) => dl.isDownloaded(widget.sourceId, c.url ?? ''))
+          .toList();
     }
     if (_chapterSearchQuery.isNotEmpty) {
       final q = _chapterSearchQuery.toLowerCase();
@@ -259,6 +287,16 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   /// First number in [s] (e.g. "Chapter 97: ..." -> 97), used to order novel
   /// chapters deterministically. Null when the string has no digits.
+  /// Upload time of a chapter in ms, for the "Upload date" sort. dateUpload is
+  /// stored as either an epoch-ms string or an ISO date; 0 when absent/unparsed.
+  int _uploadMs(MChapter c) {
+    final d = c.dateUpload;
+    if (d == null || d.isEmpty) return 0;
+    final ms = int.tryParse(d);
+    if (ms != null) return ms;
+    return DateTime.tryParse(d)?.millisecondsSinceEpoch ?? 0;
+  }
+
   double? _parseLeadingNumber(String s) {
     final m = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(s);
     return m != null ? double.tryParse(m.group(1)!) : null;
@@ -1226,9 +1264,42 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         visualDensity: VisualDensity.compact,
                         onPressed: () => setState(() => _sortAscending = !_sortAscending),
                       ),
+                      PopupMenuButton<_ChapterSort>(
+                        icon: Icon(Icons.sort_rounded, size: 20,
+                            color: _chapterSort != _ChapterSort.source
+                                ? cs.primary
+                                : cs.outline),
+                        tooltip: 'Sort by',
+                        initialValue: _chapterSort,
+                        itemBuilder: (_) => [
+                          CheckedPopupMenuItem(
+                            value: _ChapterSort.source,
+                            checked: _chapterSort == _ChapterSort.source,
+                            child: Text('Source order',
+                                style: GoogleFonts.manrope(fontSize: 14)),
+                          ),
+                          CheckedPopupMenuItem(
+                            value: _ChapterSort.number,
+                            checked: _chapterSort == _ChapterSort.number,
+                            child: Text('Chapter number',
+                                style: GoogleFonts.manrope(fontSize: 14)),
+                          ),
+                          CheckedPopupMenuItem(
+                            value: _ChapterSort.uploadDate,
+                            checked: _chapterSort == _ChapterSort.uploadDate,
+                            child: Text('Upload date',
+                                style: GoogleFonts.manrope(fontSize: 14)),
+                          ),
+                        ],
+                        onSelected: (v) => setState(() => _chapterSort = v),
+                      ),
                       PopupMenuButton<String>(
                         icon: Icon(Icons.filter_list_rounded, size: 20,
-                            color: (_filterUnread || _filterBookmarked) ? cs.primary : cs.outline),
+                            color: (_filterUnread ||
+                                    _filterBookmarked ||
+                                    _filterDownloaded)
+                                ? cs.primary
+                                : cs.outline),
                         tooltip: t.detailFilter,
                         itemBuilder: (_) => [
                           CheckedPopupMenuItem<String>(
@@ -1238,6 +1309,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           CheckedPopupMenuItem<String>(
                             value: 'bookmarked', checked: _filterBookmarked,
                             child: Text(t.detailBookmarked, style: GoogleFonts.manrope(fontSize: 14)),
+                          ),
+                          CheckedPopupMenuItem<String>(
+                            value: 'downloaded', checked: _filterDownloaded,
+                            child: Text(t.detailDownloaded, style: GoogleFonts.manrope(fontSize: 14)),
                           ),
                           const PopupMenuDivider(),
                           PopupMenuItem<String>(
@@ -1260,6 +1335,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         onSelected: (value) {
                           if (value == 'unread') setState(() => _filterUnread = !_filterUnread);
                           else if (value == 'bookmarked') setState(() => _filterBookmarked = !_filterBookmarked);
+                          else if (value == 'downloaded') setState(() => _filterDownloaded = !_filterDownloaded);
                           else if (value == 'mark_all_read') libraryProvider.markAllRead(widget.sourceId, widget.mangaUrl);
                           else if (value == 'mark_all_unread') libraryProvider.markAllUnread(widget.sourceId, widget.mangaUrl);
                         },
@@ -1693,6 +1769,15 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       }
     }
 
+    // Default-category preference (normal library only — vault keeps its own
+    // flow): file the entry straight into the chosen category, no picker.
+    final preset = library.defaultCategoriesForNewEntry();
+    if (!isVault && preset.isNotEmpty) {
+      library.addToLibrary(buildManga(categories: preset));
+      afterAdd();
+      return;
+    }
+
     if (cats.length <= 1) {
       final defaultCats = cats.isNotEmpty ? [cats.first.name] : <String>[];
       if (isVault) {
@@ -1935,3 +2020,6 @@ class _ActionButton extends StatelessWidget {
     );
   }
 }
+
+/// How the chapter list is ordered (before the asc/desc reverse).
+enum _ChapterSort { source, number, uploadDate }

@@ -6,8 +6,8 @@ import '../../core/providers/discover_provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/library_type_menu.dart' show libraryTypeIcon;
 import '../widgets/manga_image.dart';
+import '../widgets/type_toggle.dart';
 import 'wishlist_page.dart';
 
 /// The Discover tab — a recommendation deck. One card at a time; Next pulls a
@@ -154,64 +154,178 @@ class _KindSelector extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      child: SegmentedButton<DiscoverKind>(
-        segments: DiscoverKind.values
-            .map((k) => ButtonSegment(
-                  value: k,
-                  label: Text(label(k)),
-                  icon: Icon(libraryTypeIcon(k.wire), size: 18),
-                ))
+      child: TypeToggle(
+        items: DiscoverKind.values
+            .map((k) => TypeToggleItem(k.wire, label(k)))
             .toList(),
-        selected: {current},
-        showSelectedIcon: false,
-        onSelectionChanged: (s) => onChanged(s.first),
+        selectedId: current.wire,
+        onChanged: (id) =>
+            onChanged(DiscoverKind.values.firstWhere((k) => k.wire == id)),
       ),
     );
   }
 }
 
-/// Horizontally scrollable genre filter chips (metadata sources only).
-class _GenreBar extends StatelessWidget {
+/// Genre filter as an expand-in-place pill: collapsed it's a single "Genres"
+/// capsule with an active count; tapping it grows the capsule and reveals the
+/// genre options inside, scrolling sideways (custom pills, not Material chips).
+class _GenreBar extends StatefulWidget {
   final DiscoverProvider provider;
   const _GenreBar({required this.provider});
 
   @override
+  State<_GenreBar> createState() => _GenreBarState();
+}
+
+class _GenreBarState extends State<_GenreBar> {
+  bool _open = false;
+
+  @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
-    return SizedBox(
-      height: 44,
+    final provider = widget.provider;
+    final count = provider.genreFilter.length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 360),
+            curve: Curves.easeOutCubic,
+            height: 38,
+            width: _open ? constraints.maxWidth : 138,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: _open
+                  ? cs.primary.withValues(alpha: 0.12)
+                  : cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: _open ? cs.primary : cs.outlineVariant,
+                width: _open ? 1.3 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                // The icon toggles the pill open/closed.
+                InkWell(
+                  borderRadius: BorderRadius.circular(999),
+                  onTap: () => setState(() => _open = !_open),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(13, 0, 7, 0),
+                    child: Icon(Icons.tune_rounded,
+                        size: 18,
+                        color: _open ? cs.primary : cs.onSurfaceVariant),
+                  ),
+                ),
+                Expanded(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, anim) => FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                                begin: const Offset(-0.06, 0), end: Offset.zero)
+                            .animate(anim),
+                        child: child,
+                      ),
+                    ),
+                    child: _open
+                        ? _chips(cs, provider)
+                        : _collapsedLabel(cs, count),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _collapsedLabel(ColorScheme cs, int count) {
+    return GestureDetector(
+      key: const ValueKey('closed'),
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _open = true),
       child: Row(
         children: [
-          const SizedBox(width: 8),
-          if (provider.genreFilter.isNotEmpty)
-            TextButton(
-              onPressed: provider.clearGenres,
-              child: Text(t.discoverClearGenres),
+          Text('Genres',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface)),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+              decoration: BoxDecoration(
+                  color: cs.primary, borderRadius: BorderRadius.circular(999)),
+              child: Text('$count',
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: cs.onPrimary)),
             ),
-          Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              itemCount: provider.availableGenres.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 6),
-              itemBuilder: (_, i) {
-                final g = provider.availableGenres[i];
-                final on = provider.genreFilter.contains(g);
-                return FilterChip(
-                  label: Text(g),
-                  selected: on,
-                  onSelected: (_) => provider.toggleGenre(g),
-                  showCheckmark: false,
-                  selectedColor: cs.primary.withValues(alpha: 0.18),
-                  labelStyle: TextStyle(
-                      color: on ? cs.primary : cs.onSurfaceVariant,
-                      fontWeight: on ? FontWeight.w700 : FontWeight.w500),
-                );
-              },
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _chips(ColorScheme cs, DiscoverProvider provider) {
+    return ListView(
+      key: const ValueKey('open'),
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.only(right: 12),
+      children: [
+        for (final g in provider.availableGenres) ...[
+          _chip(cs, g, provider.genreFilter.contains(g),
+              () => provider.toggleGenre(g)),
+          const SizedBox(width: 6),
+        ],
+        if (provider.genreFilter.isNotEmpty)
+          Center(
+            child: TextButton(
+              onPressed: provider.clearGenres,
+              style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              child: Text(AppLocalizations.of(context).discoverClearGenres,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: cs.primary)),
             ),
           ),
-        ],
+      ],
+    );
+  }
+
+  Widget _chip(ColorScheme cs, String g, bool on, VoidCallback onTap) {
+    return Center(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+          decoration: BoxDecoration(
+            color: on ? cs.primary : cs.surface,
+            borderRadius: BorderRadius.circular(999),
+            border:
+                Border.all(color: on ? Colors.transparent : cs.outlineVariant),
+          ),
+          child: Text(g,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: on ? cs.onPrimary : cs.onSurfaceVariant)),
+        ),
       ),
     );
   }

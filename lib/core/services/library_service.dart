@@ -491,6 +491,20 @@ class LibraryService {
     return unread < 0 ? 0 : unread;
   }
 
+  /// READ-chapter count from the chapter-box `isRead` tally (ground truth, like
+  /// [unreadCount]); falls back to the denormalized counter only when no
+  /// chapters are cached. The update skip rules use this so manual or imported
+  /// read marks count even when the `readChapters` counter has drifted to 0.
+  int readCount(String sourceId, String mangaUrl) {
+    _ensureTally();
+    final k = '$sourceId\u0001$mangaUrl';
+    final total = _totalTally![k] ?? 0;
+    if (total == 0) {
+      return getManga(sourceId, mangaUrl)?.readChapters ?? 0;
+    }
+    return _readTally![k] ?? 0;
+  }
+
   Future<void> markChapterUnread(
       String sourceId, String mangaUrl, String chapterUrl) async {
     final key = '${sourceId}_$chapterUrl';

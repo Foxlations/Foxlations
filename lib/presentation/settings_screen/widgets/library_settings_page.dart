@@ -18,6 +18,7 @@ class LibrarySettingsPage extends StatefulWidget {
 
 class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
   bool _hideEmptyCategories = false;
+  String _defaultCategory = '';
   bool _wifiOnly = true;
   bool _chargingOnly = false;
   String _updateFrequency = 'Manual';
@@ -36,6 +37,8 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
     setState(() {
       _hideEmptyCategories =
           SettingsStore.instance.getBool('lib_hide_empty_cats') ?? false;
+      _defaultCategory =
+          SettingsStore.instance.getString('lib_default_category') ?? '';
       _wifiOnly = SettingsStore.instance.getBool('lib_update_wifi_only') ?? true;
       _chargingOnly =
           SettingsStore.instance.getBool('lib_update_charging_only') ?? false;
@@ -139,6 +142,12 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
     final cs = Theme.of(context).colorScheme;
     final t = AppLocalizations.of(context);
 
+    // Default-category chooser: "Always ask" plus every existing category.
+    final categoryNames =
+        context.watch<LibraryProvider>().categories.map((c) => c.name).toList();
+    final defaultCategoryDisplay =
+        categoryNames.contains(_defaultCategory) ? _defaultCategory : 'Always ask';
+
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -180,6 +189,18 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
             subtitle: t.setdLibraryHideEmptyDesc,
             value: _hideEmptyCategories,
             onChanged: (v) { setState(() => _hideEmptyCategories = v); _save('lib_hide_empty_cats', v); },
+          ),
+          _ChoiceTile(
+            icon: Icons.label_rounded,
+            iconColor: cs.primary,
+            title: 'Default category',
+            value: defaultCategoryDisplay,
+            options: ['Always ask', ...categoryNames],
+            onChanged: (v) {
+              final name = v == 'Always ask' ? '' : v;
+              setState(() => _defaultCategory = name);
+              _save('lib_default_category', name);
+            },
           ),
           const SizedBox(height: 8),
           _SectionHeader(title: t.setdLibrarySectionGlobalUpdate),

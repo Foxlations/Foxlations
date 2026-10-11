@@ -144,6 +144,10 @@ class LibraryUpdateService {
     final skipCompleted =
         SettingsStore.instance.getBool('lib_skip_completed') ?? false;
 
+    // Throttle the live "a title just got new chapters" refresh — workers run
+    // concurrently and we don't want a notify per entry.
+    var lastPing = DateTime.fromMillisecondsSinceEpoch(0);
+
     Future<void> checkOne(LibraryManga m) async {
       _Outcome outcome = _Outcome.completed;
       try {
@@ -151,7 +155,11 @@ class LibraryUpdateService {
         // unless this is a forced "Update skipped" run.
         final skip = !ignoreSkipRules &&
             (SourceSettings.cached(m.sourceId).excludeFromUpdates ||
-                (skipNotStarted && m.readChapters <= 0) ||
+                // Ground-truth read count (chapter-box isRead tally), not the
+                // denormalized readChapters counter, so manual or imported read
+                // marks count — otherwise an imported-and-read title drifts to
+                // readChapters==0 and gets wrongly skipped as "not started".
+                (skipNotStarted && libraryProvider.readCountForManga(m) <= 0) ||
                 (skipHasUnread && libraryProvider.unreadForManga(m) > 0) ||
                 (skipCompleted && m.status.toLowerCase() == 'completed'));
         if (skip) {
@@ -177,6 +185,7 @@ class LibraryUpdateService {
               final cachedUrls = cached.map((c) => c.chapterUrl).toSet();
               final firstSeen = cachedUrls.isEmpty;
               final now = DateTime.now().toIso8601String();
+              final before = newUpdates.length;
               for (final ch in detail.chapters!) {
                 if (!firstSeen &&
                     ch.url != null &&
@@ -192,9 +201,22 @@ class LibraryUpdateService {
                   ));
                 }
               }
+              // Did THIS title gain chapters? (Captured before the await below,
+              // since a concurrent worker may append to newUpdates after it.)
+              final gained = newUpdates.length > before;
               if (detail.chapters!.isNotEmpty) {
                 await libraryProvider.cacheChaptersQuiet(m.sourceId, m.url,
                     detail.chapters!.map((c) => c.toJson()).toList());
+              }
+              // Refresh this title's card live (throttled) — cacheChaptersQuiet
+              // already wrote the box (invalidating the unread tally), so a bare
+              // notify repaints the badge without a full library rebuild.
+              if (gained) {
+                final t = DateTime.now();
+                if (t.difference(lastPing).inMilliseconds > 400) {
+                  lastPing = t;
+                  libraryProvider.pingListeners();
+                }
               }
               outcome = _Outcome.completed;
             }

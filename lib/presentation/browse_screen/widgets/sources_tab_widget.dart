@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/type_toggle.dart';
 import '../../../core/models/installed_source_model.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../core/providers/vault_provider.dart';
@@ -23,31 +23,6 @@ class SourcesTabWidget extends StatefulWidget {
 class _SourcesTabWidgetState extends State<SourcesTabWidget> {
   String _selectedLang = 'all';
   String _typeFilter = 'manga';
-  Set<String> _pinnedIds = {};
-  static const _pinnedKey = 'pinned_source_ids';
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPinned();
-  }
-
-  Future<void> _loadPinned() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() => _pinnedIds = (prefs.getStringList(_pinnedKey) ?? []).toSet());
-  }
-
-  Future<void> _togglePin(String sourceId) async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      if (_pinnedIds.contains(sourceId)) {
-        _pinnedIds.remove(sourceId);
-      } else {
-        _pinnedIds.add(sourceId);
-      }
-    });
-    await prefs.setStringList(_pinnedKey, _pinnedIds.toList());
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +54,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
         // Pinned-only filter (Browse settings).
         if (provider.pinnedOnlyBrowse) {
           installed = installed
-              .where((s) => _pinnedIds.contains(s.source.id))
+              .where((s) => provider.pinnedSourceIds.contains(s.source.id))
               .toList();
         }
 
@@ -135,8 +110,8 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
                         ],
                       )
                     : Builder(builder: (_) {
-                        final pinned = installed.where((s) => _pinnedIds.contains(s.source.id)).toList();
-                        final unpinned = installed.where((s) => !_pinnedIds.contains(s.source.id)).toList();
+                        final pinned = installed.where((s) => provider.pinnedSourceIds.contains(s.source.id)).toList();
+                        final unpinned = installed.where((s) => !provider.pinnedSourceIds.contains(s.source.id)).toList();
 
                         // Group unpinned by language
                         final grouped = <String, List<InstalledSource>>{};
@@ -166,7 +141,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
                                 onTap: () => Navigator.pushNamed(context, AppRoutes.sourceCatalog,
                                     arguments: {'sourceId': s.source.id, 'sourceName': s.source.name}),
                                 onLongPress: () => _showSourceDetail(context, s),
-                                onPinToggle: () => _togglePin(s.source.id),
+                                onPinToggle: () => provider.toggleSourcePin(s.source.id),
                               )),
                               Divider(height: 1, color: cs.surfaceContainerHighest),
                             ],
@@ -179,7 +154,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
                                 onTap: () => Navigator.pushNamed(context, AppRoutes.sourceCatalog,
                                     arguments: {'sourceId': s.source.id, 'sourceName': s.source.name}),
                                 onLongPress: () => _showSourceDetail(context, s),
-                                onPinToggle: () => _togglePin(s.source.id),
+                                onPinToggle: () => provider.toggleSourcePin(s.source.id),
                               )),
                             ]),
                           ],
@@ -196,42 +171,24 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
   Widget _buildTypeToggle(ColorScheme cs) {
     final t = AppLocalizations.of(context);
     return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: cs.surfaceContainerHighest)),
       ),
-      child: Row(
-        children: [
-          for (final type in ['manga', 'anime', 'novel'])
-            GestureDetector(
-              onTap: () => setState(() {
-                _typeFilter = type;
-                _selectedLang = 'all';
-              }),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: _typeFilter == type ? cs.primary : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  type == 'manga'
-                      ? t.browseManga
-                      : type == 'anime'
-                          ? t.browseAnime
-                          : t.browseNovels,
-                  style: GoogleFonts.manrope(
-                    fontSize: 13,
-                    fontWeight: _typeFilter == type ? FontWeight.w700 : FontWeight.w500,
-                    color: _typeFilter == type ? cs.primary : cs.outline,
-                  ),
-                ),
-              ),
-            ),
-        ],
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: TypeToggle(
+          items: [
+            TypeToggleItem('manga', t.browseManga),
+            TypeToggleItem('anime', t.browseAnime),
+            TypeToggleItem('novel', t.browseNovels),
+          ],
+          selectedId: _typeFilter,
+          onChanged: (type) => setState(() {
+            _typeFilter = type;
+            _selectedLang = 'all';
+          }),
+        ),
       ),
     );
   }

@@ -13,6 +13,11 @@ import '../widgets/manga_image.dart';
 class UpdatesScreen extends StatefulWidget {
   const UpdatesScreen({super.key});
 
+  /// Bumped by the nav shell when the Updates tab is selected. The screen is
+  /// kept alive in an IndexedStack, so without this it would only load its feed
+  /// once (in initState) and show a stale list after a category/auto update.
+  static final ValueNotifier<int> reloadSignal = ValueNotifier<int>(0);
+
   @override
   State<UpdatesScreen> createState() => _UpdatesScreenState();
 }
@@ -28,6 +33,17 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
   void initState() {
     super.initState();
     _loadUpdates();
+    UpdatesScreen.reloadSignal.addListener(_onReloadSignal);
+  }
+
+  @override
+  void dispose() {
+    UpdatesScreen.reloadSignal.removeListener(_onReloadSignal);
+    super.dispose();
+  }
+
+  void _onReloadSignal() {
+    if (mounted && !_isUpdating) _loadUpdates();
   }
 
   Future<void> _loadUpdates() async {

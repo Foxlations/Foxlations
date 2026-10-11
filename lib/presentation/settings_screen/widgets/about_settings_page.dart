@@ -268,9 +268,53 @@ class _AboutSettingsPageState extends State<AboutSettingsPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ChangelogItem('Fixed light-novel (LNReader) sources on iPhone/iPad — browsing a '
-                'source showed “No light novels found” because the plugin’s result wasn’t being '
-                'decoded correctly. They load again now.'),
+            _ChangelogItem('Library cards are now yours to arrange — in the library options → '
+                'Display: put the title on the cover, below it, or hide it; place the badges in a bar '
+                'under the cover, in the corner, or stacked on the cover bottom; and show reading '
+                'progress as a thin line, a mini bar, or a % badge. Local sources get a small folder '
+                'badge, and a legend spells out what each badge means.'),
+            _ChangelogItem('Library Filter / Sort / Display was restyled to match the rest of the app. '
+                'Filters are now tri-state: tap once to show only those, again to hide them, again to '
+                'clear. Sort rows show their ↑/↓ direction.'),
+            _ChangelogItem('Browse: local sources you built in RepoForge (“My Sources”) now appear in '
+                'the Repository filter.'),
+            _ChangelogItem('Discover: the genre filter is now a single “Genres” pill that expands in '
+                'place when you tap it, instead of a permanent strip of chips.'),
+            _ChangelogItem('Reader & novel settings: the font, alignment and gaze-mode pickers now use '
+                'the app’s sliding pill control instead of Material chips.'),
+            _ChangelogItem('New: a Default category so new titles file themselves automatically '
+                '(Settings → Library), and an App-lock “Lock after” timeout so a quick app-switch no '
+                'longer forces you to re-authenticate (Settings → Security).'),
+            _ChangelogItem('Library stats: “Chapters read” and “Most-read series” now count your '
+                'actual read chapters — including ones imported or marked read manually — so they '
+                'match the unread badge, streak and heatmap instead of undercounting.'),
+            _ChangelogItem('Light-novel (LNReader) sources: fixed a crash when opening some sources, '
+                'and every request now goes through the Cloudflare-aware path — so more sources load, '
+                'and a blocked one shows an “Open in WebView” button instead of silently showing nothing.'),
+            _ChangelogItem('When a source fails it now tells you why — Cloudflare, site unreachable, or '
+                '“needs an update” — instead of a blank “nothing found”. Full details stay in Debug logs.'),
+            _ChangelogItem('Browse: the Repository filter now matches the Language filter, and the '
+                'Manga / Anime / Novel switch is one consistent control (with a sliding highlight) across '
+                'Browse, Search and Discover. Pinned sources stay in sync everywhere you pin them.'),
+            _ChangelogItem('Chapter list: sort by source order, chapter number or upload date, plus a new '
+                '“Downloaded” filter.'),
+            _ChangelogItem('Removed two Security toggles that weren’t wired up yet (biometrics, hide '
+                'notification content) so nothing looks like it works when it doesn’t.'),
+            _ChangelogItem('Library updates: new chapters now show on each title the moment they’re '
+                'found instead of only when the whole check finishes; the Updates tab refreshes '
+                'when you open it (so a Category Update actually shows up there); the redundant '
+                'spinner in the Library header is gone (the progress banner covers it); and the '
+                '“skip titles you haven’t started” filter now respects chapters you’ve marked read, '
+                'including ones imported from another app, instead of skipping them.'),
+            _ChangelogItem('Browse language filter overhaul: the same language is no longer listed '
+                'twice when repositories label it differently (e.g. “English” and “EN” now merge), '
+                'languages show full names, and the picker is a searchable grid where you can pin '
+                'your languages to the top. Filtering by a repository now only shows the languages '
+                'that repository actually has.'),
+            _ChangelogItem('Light-novel (LNReader) sources: fixed a batch of sources that silently '
+                'returned nothing, clearer error messages when a source fails, and a source blocked '
+                'by Cloudflare now shows an “Open in WebView” button to solve the challenge (and '
+                'retries through the in-app browser) instead of just appearing empty.'),
             _ChangelogItem('Fixed some sources (e.g. Manganato) failing to load with a “no A '
                 'record” error when DNS-over-HTTPS was set to a filtering provider like Quad9 or '
                 'AdGuard — the app now falls back across Cloudflare and Google so a blocked domain '

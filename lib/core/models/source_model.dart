@@ -261,7 +261,7 @@ class MangaSource {
       id: resolveId(),
       name: field('name', 'Unknown'),
       baseUrl: isLNReader ? asStr(json['site']) : fieldMulti(const ['baseUrl', 'homeUrl']),
-      lang: fieldMulti(const ['lang', 'language'], 'en'),
+      lang: normalizeLang(fieldMulti(const ['lang', 'language'], 'en')),
       framework: isLNReader ? 'LNReader' : asStr(json['framework'] ?? json['typeSource'], 'custom'),
       iconUrl: resolveIconUrl(),
       sourceCodeUrl: isLNReader ? asStr(json['url']) : asStr(json['sourceCodeUrl']),
@@ -309,6 +309,92 @@ class MangaSource {
     } catch (_) {
       return '';
     }
+  }
+
+  /// Canonicalise a source's language to an ISO 639-1 code.
+  ///
+  /// Repos label languages inconsistently: Tachiyomi/keiyoushi-style indexes use
+  /// ISO codes (`en`, `es`), while LNReader's `plugins.min.json` uses display
+  /// names (`English`, `Español`) and even multi-name strings (`中文, 汉语, 漢語`).
+  /// Left as-is, the Browse language filter shows the SAME language as two
+  /// separate chips (`EN` and `ENGLISH`) and hides half the sources behind each.
+  /// Collapsing everything to one code fixes the filter and the chips. Unknown
+  /// values fall through lowercased so they at least group consistently.
+  static String normalizeLang(String raw) {
+    var s = raw.trim().toLowerCase();
+    if (s.isEmpty) return 'en';
+    if (s == 'all' || s == 'multi') return s;
+    // LNReader multi-name strings (e.g. "中文, 汉语, 漢語"): take the first name.
+    if (s.contains(',')) s = s.split(',').first.trim();
+    // Already an ISO code, optionally with a region/script suffix (es-419,
+    // zh-hant, pt-br): canonicalise to base[-region] and KEEP the region, so
+    // distinct scripts/regions (Traditional vs Simplified Chinese) stay apart.
+    final code = RegExp(r'^([a-z]{2,3})(?:[-_]([a-z0-9]{2,4}))?$').firstMatch(s);
+    if (code != null) {
+      final region = code.group(2);
+      return region == null ? code.group(1)! : '${code.group(1)}-$region';
+    }
+    // Otherwise it's a native display name (English, Español, 日本語, Bahasa
+    // Indonesia) — map to its base code. Display names carry no region.
+    const byName = {
+      'english': 'en',
+      'spanish': 'es', 'español': 'es', 'espanol': 'es', 'castellano': 'es',
+      'chinese': 'zh', '中文': 'zh', '汉语': 'zh', '漢語': 'zh', '简体中文': 'zh',
+      '繁體中文': 'zh', '官话': 'zh',
+      'arabic': 'ar', 'العربية': 'ar',
+      'indonesian': 'id', 'bahasa indonesia': 'id',
+      'vietnamese': 'vi', 'tiếng việt': 'vi', 'tieng viet': 'vi',
+      'portuguese': 'pt', 'português': 'pt', 'portugues': 'pt',
+      'french': 'fr', 'français': 'fr', 'francais': 'fr',
+      'german': 'de', 'deutsch': 'de',
+      'italian': 'it', 'italiano': 'it',
+      'russian': 'ru', 'русский': 'ru',
+      'japanese': 'ja', '日本語': 'ja',
+      'korean': 'ko', '한국어': 'ko', '조선말': 'ko',
+      'turkish': 'tr', 'türkçe': 'tr', 'turkce': 'tr',
+      'polish': 'pl', 'polski': 'pl',
+      'ukrainian': 'uk', 'українська': 'uk',
+      'thai': 'th', 'ไทย': 'th',
+      'persian': 'fa', 'farsi': 'fa', 'فارسی': 'fa',
+      'hindi': 'hi', 'हिन्दी': 'hi',
+      'dutch': 'nl', 'nederlands': 'nl',
+      'filipino': 'fil', 'tagalog': 'fil',
+    };
+    // Unknown display name: keep it (lowercased) so it at least groups together.
+    return byName[s] ?? s;
+  }
+
+  /// A friendly display name for a (normalized) language code, for filter chips
+  /// and badges. Unknown codes fall back to their upper-cased form.
+  static String languageName(String code) {
+    final c = code.trim().toLowerCase();
+    if (c == 'all') return 'All';
+    if (c == 'multi') return 'Multi-language';
+    const names = {
+      'en': 'English', 'es': 'Spanish', 'zh': 'Chinese', 'ar': 'Arabic',
+      'id': 'Indonesian', 'vi': 'Vietnamese', 'pt': 'Portuguese',
+      'fr': 'French', 'de': 'German', 'it': 'Italian', 'ru': 'Russian',
+      'ja': 'Japanese', 'ko': 'Korean', 'tr': 'Turkish', 'pl': 'Polish',
+      'uk': 'Ukrainian', 'th': 'Thai', 'fa': 'Persian', 'hi': 'Hindi',
+      'nl': 'Dutch', 'fil': 'Filipino', 'ms': 'Malay', 'bn': 'Bengali',
+      'cs': 'Czech', 'ro': 'Romanian', 'hu': 'Hungarian', 'el': 'Greek',
+      'he': 'Hebrew', 'sv': 'Swedish', 'da': 'Danish', 'fi': 'Finnish',
+      'no': 'Norwegian', 'uz': 'Uzbek', 'ca': 'Catalan', 'sr': 'Serbian',
+    };
+    // Kept region/script variants (es-419, zh-hant, pt-br): "Base (Region)".
+    const regions = {
+      '419': 'Latin America', 'br': 'Brazil', 'mx': 'Mexico', 'ar': 'Argentina',
+      'es': 'Spain', 'hant': 'Traditional', 'hans': 'Simplified',
+      'hk': 'Hong Kong', 'tw': 'Taiwan', 'cn': 'China', 'pt': 'Portugal',
+      'us': 'US', 'gb': 'UK', 'kr': '', 'rhk': 'Hong Kong',
+    };
+    final m = RegExp(r'^([a-z]{2,3})[-_]([a-z0-9]{2,4})$').firstMatch(c);
+    if (m != null) {
+      final b = names[m.group(1)] ?? m.group(1)!.toUpperCase();
+      final r = regions[m.group(2)!] ?? m.group(2)!.toUpperCase();
+      return r.isEmpty ? b : '$b ($r)';
+    }
+    return names[c] ?? c.toUpperCase();
   }
 
   Map<String, dynamic> toJson() => {

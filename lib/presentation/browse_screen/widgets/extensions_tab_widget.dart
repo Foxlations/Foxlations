@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../widgets/type_toggle.dart';
 import '../../../core/models/source_model.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../core/providers/vault_provider.dart';
@@ -23,11 +25,44 @@ class ExtensionsTabWidget extends StatefulWidget {
 class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   final Set<String> _selectedLangs = {}; // empty = all languages
   final Set<String> _selectedRepos = {}; // empty = all repositories (repo urls)
+  // Languages the user pinned to the top of the filter. Shared across all
+  // content types and persisted; the device language is always treated as
+  // pinned on top of these.
+  final Set<String> _pinnedLangs = {};
+  static const _pinnedPrefsKey = 'browse_pinned_languages';
   String _typeFilter = 'manga';
   // Extension-update progress, so the UI shows a spinner while it runs.
   bool _updatingAll = false;
   final Set<String> _updatingIds = {}; // per-source updates in flight
   final Set<String> _installingIds = {}; // per-source installs in flight
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPinnedLangs();
+  }
+
+  Future<void> _loadPinnedLangs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList(_pinnedPrefsKey) ?? const [];
+      if (!mounted || saved.isEmpty) return;
+      setState(() => _pinnedLangs
+        ..clear()
+        ..addAll(saved.map(MangaSource.normalizeLang)));
+    } catch (_) {/* prefs unavailable — pins just start empty */}
+  }
+
+  Future<void> _savePinnedLangs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_pinnedPrefsKey, _pinnedLangs.toList());
+    } catch (_) {/* best effort */}
+  }
+
+  /// The device's language as a normalized code (for the "Your languages" pin).
+  String get _deviceLang => MangaSource.normalizeLang(
+      WidgetsBinding.instance.platformDispatcher.locale.languageCode);
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +72,18 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
     return Consumer2<SourceProvider, VaultProvider>(
       builder: (_, provider, vault, _) {
         var allSources = provider.allSources;
+
+        // Fold in installed sources that aren't in any loaded repo index right
+        // now: locally-authored RepoForge sources ("My Sources"), or a repo
+        // whose index didn't load this session. Without this they'd only reach
+        // the grid through a separate orphan path and never show up in the
+        // Repository filter or respond to repo/language filtering.
+        final catalogIds = allSources.map((s) => s.id).toSet();
+        allSources = [
+          ...allSources,
+          for (final s in provider.installedSources)
+            if (!catalogIds.contains(s.source.id)) s.source,
+        ];
 
         // Filter by type (manga / anime)
         allSources = allSources
@@ -63,17 +110,14 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
               .toList();
         }
 
-        // Get languages
-        final languages = <String>{'all'};
-        for (final s in allSources) {
-          languages.add(s.lang);
-        }
+        // Sources after type/vault/nsfw/search, before the lang/repo filters.
+        final baseSources = allSources;
 
         // Repositories present for this content type (url -> friendly name), for
-        // the filter modal's Repository tab. Built before the lang/repo filters
-        // so each option list reflects the whole type, not the other filter.
+        // the filter modal's Repository tab. Independent of the language filter
+        // so the repo list always reflects the whole type.
         final repoNames = <String, String>{};
-        for (final s in allSources) {
+        for (final s in baseSources) {
           if (s.repoUrl.isNotEmpty) {
             repoNames[s.repoUrl] =
                 s.repoName.isNotEmpty ? s.repoName : _repoHost(s.repoUrl);
@@ -85,39 +129,39 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
           ..sort(
               (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
-        // Language filter
-        if (_selectedLangs.isNotEmpty) {
-          allSources =
-              allSources.where((s) => _selectedLangs.contains(s.lang)).toList();
-        }
-        // Repository filter
-        if (_selectedRepos.isNotEmpty) {
-          allSources = allSources
-              .where((s) => _selectedRepos.contains(s.repoUrl))
-              .toList();
+        // Language options + counts are scoped to the selected repositories, so
+        // the filter only offers (and counts) languages those repos actually
+        // have — pick a repo and languages it lacks disappear.
+        final repoScoped = _selectedRepos.isEmpty
+            ? baseSources
+            : baseSources
+                .where((s) => _selectedRepos.contains(s.repoUrl))
+                .toList();
+        final languages = <String>{'all'};
+        for (final s in repoScoped) {
+          languages.add(s.lang);
         }
 
-        // Split into installed / available
+        // Only apply selected languages that still exist in the repo scope, so a
+        // repo switch never silently empties the list via a now-absent language.
+        final effectiveLangs =
+            _selectedLangs.where(languages.contains).toSet();
+        allSources = effectiveLangs.isEmpty
+            ? repoScoped
+            : repoScoped
+                .where((s) => effectiveLangs.contains(s.lang))
+                .toList();
+
+        // Split into installed / available. Locally-authored and orphaned
+        // installed sources are already folded into allSources above, so they
+        // land here under the active repo/language filters like everything else.
         final installed = <MangaSource>[];
         final available = <MangaSource>[];
-        final repoIds = <String>{};
         for (final s in allSources) {
-          repoIds.add(s.id);
           if (provider.isInstalled(s.id)) {
             installed.add(s);
           } else {
             available.add(s);
-          }
-        }
-        // Add orphaned installed sources (no longer in any repo)
-        final q = widget.searchQuery.toLowerCase();
-        for (final s in provider.installedSources) {
-          if (!repoIds.contains(s.source.id)) {
-            if (!vault.vaultActive && vault.isSourceInVault(s.source.id)) continue;
-            if (s.source.itemType != _typeFilter) continue;
-            if (q.isEmpty || s.source.name.toLowerCase().contains(q)) {
-              installed.add(s.source);
-            }
           }
         }
 
@@ -148,10 +192,15 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
             // Manga / Anime / Novel type toggle (badged per type with updates)
             _buildTypeToggle(cs, updatesByType),
             // Filter bar
-            if (languages.length > 2 || repoList.length > 1)
-              _buildFilterBar(
-                  cs, languages.toList(), repoList, allSources.length),
-            if (languages.length > 2 || repoList.length > 1)
+            if (languages.length > 2 ||
+                repoList.length > 1 ||
+                _selectedLangs.isNotEmpty ||
+                _selectedRepos.isNotEmpty)
+              _buildFilterBar(cs, baseSources, repoList, allSources.length),
+            if (languages.length > 2 ||
+                repoList.length > 1 ||
+                _selectedLangs.isNotEmpty ||
+                _selectedRepos.isNotEmpty)
               Divider(height: 1, color: cs.surfaceContainerHighest),
 
             // Content
@@ -266,83 +315,33 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   Widget _buildTypeToggle(ColorScheme cs, Map<String, int> updatesByType) {
     final t = AppLocalizations.of(context);
     return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: cs.surfaceContainerHighest)),
       ),
-      child: Row(
-        children: [
-          for (final type in ['manga', 'anime', 'novel'])
-            GestureDetector(
-              onTap: () => setState(() {
-                _typeFilter = type;
-                _selectedLangs.clear();
-                _selectedRepos.clear();
-              }),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: _typeFilter == type ? cs.primary : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      type == 'manga'
-                          ? t.browseManga
-                          : type == 'anime'
-                              ? t.browseAnime
-                              : t.browseNovels,
-                      style: GoogleFonts.manrope(
-                        fontSize: 13,
-                        fontWeight: _typeFilter == type
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        color: _typeFilter == type ? cs.primary : cs.outline,
-                      ),
-                    ),
-                    if ((updatesByType[type] ?? 0) > 0) ...[
-                      const SizedBox(width: 6),
-                      _updateBadge(cs, updatesByType[type]!),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Small count pill shown on a type tab that has pending extension updates,
-  /// so the user can see WHICH content type the update is under (the bottom-bar
-  /// badge alone doesn't say, and manga is shown first).
-  Widget _updateBadge(ColorScheme cs, int count) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: cs.primary,
-        borderRadius: BorderRadius.circular(9),
-      ),
-      child: Text(
-        '$count',
-        textAlign: TextAlign.center,
-        style: GoogleFonts.manrope(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: cs.onPrimary,
-          height: 1.3,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: TypeToggle(
+          items: [
+            TypeToggleItem('manga', t.browseManga,
+                badge: updatesByType['manga'] ?? 0),
+            TypeToggleItem('anime', t.browseAnime,
+                badge: updatesByType['anime'] ?? 0),
+            TypeToggleItem('novel', t.browseNovels,
+                badge: updatesByType['novel'] ?? 0),
+          ],
+          selectedId: _typeFilter,
+          onChanged: (type) => setState(() {
+            _typeFilter = type;
+            _selectedLangs.clear();
+            _selectedRepos.clear();
+          }),
         ),
       ),
     );
   }
 
-  Widget _buildFilterBar(ColorScheme cs, List<String> languages,
+  Widget _buildFilterBar(ColorScheme cs, List<MangaSource> baseSources,
       List<({String url, String name})> repos, int resultCount) {
     final t = AppLocalizations.of(context);
     final hasFilters = _selectedLangs.isNotEmpty || _selectedRepos.isNotEmpty;
@@ -353,7 +352,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
         children: [
           // Filter button — opens a scrollable, tabbed Language / Repository sheet.
           GestureDetector(
-            onTap: () => _openFilterModal(languages, repos),
+            onTap: () => _openFilterModal(baseSources, repos),
             child: AnimatedContainer(
               duration: AppTheme.fastMicro,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -382,7 +381,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
             const SizedBox(width: 8),
             _ActiveFilterChip(
               label: _selectedLangs.length <= 2
-                  ? _selectedLangs.map((l) => l.toUpperCase()).join(', ')
+                  ? _selectedLangs.map(MangaSource.languageName).join(', ')
                   : t.browseLanguagesCount(_selectedLangs.length),
               onRemove: () => setState(() => _selectedLangs.clear()),
             ),
@@ -417,16 +416,23 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
     return t.browseReposCount(_selectedRepos.length);
   }
 
-  /// A centered floating dialog with Language + Repository tabs, each a
-  /// scrollable multi-select chip list.
+  /// A centered floating dialog with Language + Repository tabs. The Language
+  /// tab is a searchable grid with a pinned "Your languages" section; its
+  /// options are scoped live to the current repository selection.
   void _openFilterModal(
-      List<String> languages, List<({String url, String name})> repos) {
+      List<MangaSource> baseSources, List<({String url, String name})> repos) {
     final t = AppLocalizations.of(context);
     final cs = Theme.of(context).colorScheme;
-    final langs = [
-      'all',
-      ...languages.where((l) => l != 'all').toList()..sort(),
-    ];
+    final searchCtrl = TextEditingController();
+    var langQuery = '';
+    // Source count per repo (total for this content type — repos stay fully
+    // selectable regardless of the language filter).
+    final repoCounts = <String, int>{};
+    for (final s in baseSources) {
+      if (s.repoUrl.isNotEmpty) {
+        repoCounts[s.repoUrl] = (repoCounts[s.repoUrl] ?? 0) + 1;
+      }
+    }
     showDialog<void>(
       context: context,
       builder: (dctx) {
@@ -439,63 +445,217 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                 setState(() {});
               }
 
-              Widget langTab() => SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 8,
-                      children: [
-                        for (final lang in langs)
-                          _filterChip(
-                            cs,
-                            label: lang == 'all'
-                                ? t.browseAllLanguages
-                                : lang.toUpperCase(),
-                            selected: lang == 'all'
-                                ? _selectedLangs.isEmpty
-                                : _selectedLangs.contains(lang),
-                            onTap: () {
-                              if (lang == 'all') {
-                                _selectedLangs.clear();
-                              } else if (!_selectedLangs.remove(lang)) {
-                                _selectedLangs.add(lang);
-                              }
-                              refresh();
-                            },
-                          ),
-                      ],
-                    ),
-                  );
+              // Languages + counts for the current repo selection, so the grid
+              // only offers languages the chosen repos actually have.
+              final repoScoped = _selectedRepos.isEmpty
+                  ? baseSources
+                  : baseSources
+                      .where((s) => _selectedRepos.contains(s.repoUrl))
+                      .toList();
+              final counts = <String, int>{};
+              for (final s in repoScoped) {
+                counts[s.lang] = (counts[s.lang] ?? 0) + 1;
+              }
+              final device = _deviceLang;
+              int cmp(String a, String b) => MangaSource.languageName(a)
+                  .toLowerCase()
+                  .compareTo(MangaSource.languageName(b).toLowerCase());
+              final query = langQuery.trim().toLowerCase();
+              bool matches(String l) =>
+                  query.isEmpty ||
+                  MangaSource.languageName(l).toLowerCase().contains(query) ||
+                  l.toLowerCase().contains(query);
 
-              Widget repoTab() => SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 8,
-                      children: [
-                        _filterChip(
-                          cs,
-                          label: t.browseAllRepositories,
-                          selected: _selectedRepos.isEmpty,
-                          onTap: () {
-                            _selectedRepos.clear();
-                            refresh();
-                          },
-                        ),
-                        for (final r in repos)
-                          _filterChip(
-                            cs,
-                            label: r.name,
-                            selected: _selectedRepos.contains(r.url),
-                            onTap: () {
-                              if (!_selectedRepos.remove(r.url)) {
-                                _selectedRepos.add(r.url);
-                              }
-                              refresh();
-                            },
-                          ),
-                      ],
+              // "Your languages": device first, then pinned — limited to what
+              // the current repo scope actually has.
+              final pinnedAvail = <String>[
+                if (counts.containsKey(device)) device,
+                ..._pinnedLangs
+                    .where((l) => l != device && counts.containsKey(l))
+                    .toList()
+                  ..sort(cmp),
+              ].where(matches).toList();
+              final pinnedSet = pinnedAvail.toSet();
+              final rest = counts.keys
+                  .where((l) => !pinnedSet.contains(l) && matches(l))
+                  .toList()
+                ..sort(cmp);
+
+              void onStar(String lang) {
+                if (!_pinnedLangs.remove(lang)) _pinnedLangs.add(lang);
+                _savePinnedLangs();
+                refresh();
+              }
+
+              void onPick(String lang) {
+                if (!_selectedLangs.remove(lang)) _selectedLangs.add(lang);
+                refresh();
+              }
+
+              Widget langTab() {
+                final searching = query.isNotEmpty;
+                final flat = searching
+                    ? (counts.keys.where(matches).toList()
+                      ..sort((a, b) {
+                        if (a == device) return -1;
+                        if (b == device) return 1;
+                        return cmp(a, b);
+                      }))
+                    : const <String>[];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: _langSearchField(cs, searchCtrl, (v) {
+                        langQuery = v;
+                        setModal(() {});
+                      }),
                     ),
+                    Expanded(
+                      child: CustomScrollView(
+                        slivers: [
+                          if (searching) ...[
+                            _langGrid(cs, flat, counts, device, onPick, onStar),
+                            if (flat.isEmpty)
+                              SliverToBoxAdapter(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(28),
+                                  child: Text('No languages match',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.manrope(
+                                          fontSize: 13, color: cs.outline)),
+                                ),
+                              ),
+                          ] else ...[
+                            if (pinnedAvail.isNotEmpty) ...[
+                              _langHeader(cs, 'Your languages', star: true),
+                              _langGrid(cs, pinnedAvail, counts, device, onPick,
+                                  onStar),
+                            ],
+                            _langHeader(cs, t.browseAllLanguages),
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                                child: _langAllCell(cs, repoScoped.length, () {
+                                  _selectedLangs.clear();
+                                  refresh();
+                                }),
+                              ),
+                            ),
+                            _langGrid(
+                                cs, rest, counts, device, onPick, onStar),
+                          ],
+                          const SliverToBoxAdapter(child: SizedBox(height: 14)),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              // Mirrors the Language tab: an "All repositories" cell + a compact
+              // two-column grid of repo cells with source counts.
+              Widget repoTab() => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: CustomScrollView(
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                                child: _langCellBox(
+                                  cs,
+                                  selected: _selectedRepos.isEmpty,
+                                  onTap: () {
+                                    _selectedRepos.clear();
+                                    refresh();
+                                  },
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          t.browseAllRepositories,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: GoogleFonts.manrope(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: cs.onSurface,
+                                          ),
+                                        ),
+                                      ),
+                                      Text('${baseSources.length}',
+                                          style: GoogleFonts.manrope(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: cs.outline)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SliverPadding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 0, 16, 2),
+                              sliver: SliverGrid(
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  mainAxisExtent: 50,
+                                  crossAxisSpacing: 6,
+                                  mainAxisSpacing: 6,
+                                ),
+                                delegate: SliverChildBuilderDelegate(
+                                  (ctx, i) {
+                                    final r = repos[i];
+                                    return _langCellBox(
+                                      cs,
+                                      selected: _selectedRepos.contains(r.url),
+                                      onTap: () {
+                                        if (!_selectedRepos.remove(r.url)) {
+                                          _selectedRepos.add(r.url);
+                                        }
+                                        refresh();
+                                      },
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              r.name,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.manrope(
+                                                fontSize: 12.5,
+                                                height: 1.15,
+                                                fontWeight: FontWeight.w600,
+                                                color: cs.onSurface,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text('${repoCounts[r.url] ?? 0}',
+                                              style: GoogleFonts.manrope(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: cs.outline)),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  childCount: repos.length,
+                                ),
+                              ),
+                            ),
+                            const SliverToBoxAdapter(
+                                child: SizedBox(height: 14)),
+                          ],
+                        ),
+                      ),
+                    ],
                   );
 
               return Dialog(
@@ -549,29 +709,193 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
           ),
         );
       },
+    ).then((_) => searchCtrl.dispose());
+  }
+
+  // ---- Language filter grid (pinned "Your languages" + searchable list) ----
+
+  Widget _langSearchField(ColorScheme cs, TextEditingController ctrl,
+      ValueChanged<String> onChanged) {
+    return TextField(
+      controller: ctrl,
+      onChanged: onChanged,
+      style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface),
+      decoration: InputDecoration(
+        isDense: true,
+        hintText: 'Search languages',
+        hintStyle: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
+        prefixIcon: Icon(Icons.search_rounded, size: 18, color: cs.outline),
+        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        filled: true,
+        fillColor: cs.surfaceContainerHighest,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
     );
   }
 
-  Widget _filterChip(ColorScheme cs,
+  Widget _langHeader(ColorScheme cs, String text, {bool star = false}) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 10, 16, 6),
+        child: Row(
+          children: [
+            if (star) ...[
+              const Icon(Icons.star_rounded, size: 13, color: Color(0xFFF0C850)),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              text.toUpperCase(),
+              style: GoogleFonts.manrope(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+                color: cs.outline,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _langGrid(ColorScheme cs, List<String> langs, Map<String, int> counts,
+      String device, void Function(String) onPick,
+      void Function(String) onStar) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 2),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisExtent: 50,
+          crossAxisSpacing: 6,
+          mainAxisSpacing: 6,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (ctx, i) {
+            final lang = langs[i];
+            return _langCell(
+              cs,
+              label: MangaSource.languageName(lang),
+              count: counts[lang] ?? 0,
+              selected: _selectedLangs.contains(lang),
+              pinned: _pinnedLangs.contains(lang),
+              isDevice: lang == device,
+              onTap: () => onPick(lang),
+              onStar: lang == device ? null : () => onStar(lang),
+            );
+          },
+          childCount: langs.length,
+        ),
+      ),
+    );
+  }
+
+  Widget _langAllCell(ColorScheme cs, int count, VoidCallback onTap) {
+    final selected = _selectedLangs.isEmpty;
+    return _langCellBox(
+      cs,
+      selected: selected,
+      onTap: onTap,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              AppLocalizations.of(context).browseAllLanguages,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.manrope(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: cs.onSurface,
+              ),
+            ),
+          ),
+          Text('$count',
+              style: GoogleFonts.manrope(
+                  fontSize: 11, fontWeight: FontWeight.w700, color: cs.outline)),
+        ],
+      ),
+    );
+  }
+
+  Widget _langCell(ColorScheme cs,
       {required String label,
+      required int count,
       required bool selected,
-      required VoidCallback onTap}) {
+      required bool pinned,
+      required bool isDevice,
+      required VoidCallback onTap,
+      VoidCallback? onStar}) {
+    return _langCellBox(
+      cs,
+      selected: selected,
+      onTap: onTap,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.manrope(
+                fontSize: 12.5,
+                height: 1.15,
+                fontWeight: FontWeight.w600,
+                color: cs.onSurface,
+              ),
+            ),
+          ),
+          if (isDevice)
+            Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsets.only(left: 5, right: 2),
+              decoration: const BoxDecoration(
+                  color: Color(0xFF34D399), shape: BoxShape.circle),
+            ),
+          const SizedBox(width: 4),
+          Text('$count',
+              style: GoogleFonts.manrope(
+                  fontSize: 11, fontWeight: FontWeight.w700, color: cs.outline)),
+          if (onStar != null)
+            GestureDetector(
+              onTap: onStar,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Icon(
+                  pinned ? Icons.star_rounded : Icons.star_outline_rounded,
+                  size: 17,
+                  color: pinned ? const Color(0xFFF0C850) : cs.outline,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _langCellBox(ColorScheme cs,
+      {required bool selected,
+      required VoidCallback onTap,
+      required Widget child}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.fromLTRB(11, 6, 8, 6),
         decoration: BoxDecoration(
-          color: selected ? cs.primary : cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.manrope(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : cs.onSurface,
+          color:
+              selected ? cs.primary.withAlpha(46) : cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? cs.primary : cs.outline.withAlpha(36),
+            width: 1,
           ),
         ),
+        child: child,
       ),
     );
   }

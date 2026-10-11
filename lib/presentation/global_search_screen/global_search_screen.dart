@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/type_toggle.dart';
 import '../../core/models/installed_source_model.dart';
 import '../../core/models/source_settings.dart';
 import '../../core/providers/source_provider.dart';
@@ -105,8 +105,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
     // Pinned-only filter for global search (Browse settings).
     if (sourceProvider.pinnedOnlyGlobalSearch) {
-      final prefs = await SharedPreferences.getInstance();
-      final pinned = (prefs.getStringList('pinned_source_ids') ?? []).toSet();
+      final pinned = sourceProvider.pinnedSourceIds;
       sources = sources.where((s) => pinned.contains(s.source.id)).toList();
     }
 
@@ -232,42 +231,27 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     );
   }
 
-  /// Content-type scope chips under the search bar (All / Manga / Anime / Novels).
+  /// Content-type scope under the search bar (All / Manga / Anime / Novels),
+  /// using the shared [TypeToggle] so it matches Discover and Browse.
   PreferredSizeWidget _buildTypeFilterBar(ColorScheme cs) {
-    const types = [
-      ('all', 'All'),
-      ('manga', 'Manga'),
-      ('anime', 'Anime'),
-      ('novel', 'Novels'),
+    const items = [
+      TypeToggleItem('all', 'All'),
+      TypeToggleItem('manga', 'Manga'),
+      TypeToggleItem('anime', 'Anime'),
+      TypeToggleItem('novel', 'Novels'),
     ];
     return PreferredSize(
       preferredSize: const Size.fromHeight(46),
-      child: SizedBox(
-        height: 46,
-        child: ListView(
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-          children: [
-            for (final (id, label) in types) ...[
-              ChoiceChip(
-                label: Text(label),
-                selected: _typeFilter == id,
-                onSelected: (_) => _onTypeFilterChanged(id),
-                showCheckmark: false,
-                visualDensity: VisualDensity.compact,
-                labelStyle: GoogleFonts.manrope(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: _typeFilter == id ? cs.onPrimary : cs.onSurface),
-                selectedColor: cs.primary,
-                backgroundColor: cs.surfaceContainerHighest,
-                side: BorderSide(
-                    color:
-                        _typeFilter == id ? cs.primary : cs.outlineVariant),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ],
+          child: TypeToggle(
+            items: items,
+            selectedId: _typeFilter,
+            onChanged: _onTypeFilterChanged,
+          ),
         ),
       ),
     );

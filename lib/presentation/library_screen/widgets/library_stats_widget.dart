@@ -112,8 +112,17 @@ class _StatsContent extends StatelessWidget {
       return _EmptyStatsView(isVault: isVault, contentType: contentType);
     }
 
+    // Read counts come from the chapter-box isRead tally (ground truth, the same
+    // source the badge/streak/heatmap use) — NOT the denormalized m.readChapters
+    // counter, which drifts to 0 on imported/manually-marked titles and made the
+    // totals + "most-read" order wrong.
+    final libraryP = context.read<LibraryProvider>();
+    final vaultP = isVault ? context.read<VaultProvider>() : null;
+    int readOf(LibraryManga m) => isVault
+        ? vaultP!.readCountForManga(m)
+        : libraryP.readCountForManga(m);
+
     final totalChapters = manga.fold(0, (sum, m) => sum + m.totalChapters);
-    final readChapters = manga.fold(0, (sum, m) => sum + m.readChapters);
 
     // Status breakdown
     final statusCounts = <String, int>{};
@@ -122,10 +131,11 @@ class _StatsContent extends StatelessWidget {
       statusCounts[s] = (statusCounts[s] ?? 0) + 1;
     }
 
-    // Most-read series (by chapters read)
-    final sorted = List<LibraryManga>.from(manga)
-      ..sort((a, b) => b.readChapters.compareTo(a.readChapters));
-    final topSeries = sorted.take(3).toList();
+    // Most-read series (by real chapters read).
+    final withCounts = manga.map((m) => (m: m, read: readOf(m))).toList()
+      ..sort((a, b) => b.read.compareTo(a.read));
+    final readChapters = withCounts.fold(0, (sum, e) => sum + e.read);
+    final topSeries = withCounts.take(3).toList();
 
     // Pull real reading-history stats from the active provider so the
     // streak and heatmap reflect actual reads instead of hardcoded zeros.
@@ -755,7 +765,7 @@ class _LibraryBreakdownCard extends StatelessWidget {
 
 // ── Most-Read Series ─────────────────────────────────────────
 class _MostReadSeriesCard extends StatelessWidget {
-  final List<LibraryManga> series;
+  final List<({LibraryManga m, int read})> series;
 
   const _MostReadSeriesCard({required this.series});
 
@@ -791,7 +801,8 @@ class _MostReadSeriesCard extends StatelessWidget {
           const SizedBox(height: 14),
           ...series.asMap().entries.map((entry) {
             final rank = entry.key + 1;
-            final m = entry.value;
+            final m = entry.value.m;
+            final read = entry.value.read;
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
@@ -862,7 +873,7 @@ class _MostReadSeriesCard extends StatelessWidget {
                           children: [
                             _MiniStat(
                               icon: Icons.bookmark_rounded,
-                              value: t.libraryChaptersAbbrev(m.readChapters),
+                              value: t.libraryChaptersAbbrev(read),
                               color: cs.secondary,
                             ),
                             const SizedBox(width: 10),

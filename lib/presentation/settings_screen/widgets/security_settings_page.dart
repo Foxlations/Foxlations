@@ -25,19 +25,14 @@ class SecuritySettingsPage extends StatefulWidget {
 }
 
 class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
-  bool _biometrics = false;
   bool _secureScreen = false;
-  bool _hideNotificationContent = false;
 
   @override
   void initState() {
     super.initState();
     // SettingsStore is loaded before runApp, so these reads are synchronous.
-    final s = SettingsStore.instance;
-    _biometrics = s.getBool(SecurityPrefs.biometrics) ?? false;
-    _secureScreen = s.getBool(SecurityPrefs.secureScreen) ?? false;
-    _hideNotificationContent =
-        s.getBool(SecurityPrefs.hideNotificationContent) ?? false;
+    _secureScreen =
+        SettingsStore.instance.getBool(SecurityPrefs.secureScreen) ?? false;
   }
 
   Future<void> _setBool(String key, bool value) =>
@@ -66,12 +61,13 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
               title: t.setxSecurityAppLockTitle, subtitle: t.setxSecurityAppLockSubtitle,
               value: context.watch<AppLockProvider>().enabled,
               onChanged: (v) => context.read<AppLockProvider>().setEnabled(v)),
-          _SwitchTile(icon: Icons.fingerprint_rounded, iconColor: const Color(0xFF5865F2),
-              title: t.setxSecurityBiometricsTitle, subtitle: t.setxSecurityBiometricsSubtitle,
-              value: _biometrics, onChanged: (v) {
-                setState(() => _biometrics = v);
-                _setBool(SecurityPrefs.biometrics, v);
-              }),
+          if (context.watch<AppLockProvider>().enabled)
+            _LockDelayTile(
+                value: context.watch<AppLockProvider>().lockAfterMinutes,
+                onChanged: (v) =>
+                    context.read<AppLockProvider>().setLockAfterMinutes(v)),
+          // Biometrics unlock is not wired (local_auth) yet — hidden rather than
+          // shipped as a toggle that does nothing. Re-add when enforcement lands.
           const SizedBox(height: 8),
           _SectionHeader(title: t.setxSecuritySectionPrivacy),
           _SwitchTile(icon: Icons.visibility_off_outlined, iconColor: AppTheme.warning,
@@ -85,12 +81,8 @@ class _SecuritySettingsPageState extends State<SecuritySettingsPage> {
                 _setBool(SecurityPrefs.secureScreen, v);
                 SecureScreenService.setEnabled(v);
               }),
-          _SwitchTile(icon: Icons.notifications_off_rounded, iconColor: AppTheme.warning,
-              title: t.setxSecurityHideNotifTitle, subtitle: t.setxSecurityHideNotifSubtitle,
-              value: _hideNotificationContent, onChanged: (v) {
-                setState(() => _hideNotificationContent = v);
-                _setBool(SecurityPrefs.hideNotificationContent, v);
-              }),
+          // "Hide notification content" isn't wired to the notification builder
+          // yet — hidden rather than shown as a non-functional toggle.
           const SizedBox(height: 24),
         ],
       ),
@@ -136,6 +128,51 @@ class _SwitchTile extends StatelessWidget {
           Text(subtitle, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
         ])),
         Switch(value: value, onChanged: onChanged, activeThumbColor: cs.onPrimary, activeTrackColor: cs.primary),
+      ]),
+    );
+  }
+}
+
+/// "Lock after" idle-timeout selector. Mirrors [_SwitchTile]'s styling but
+/// trails a popup menu of grace-period options instead of a switch.
+class _LockDelayTile extends StatelessWidget {
+  final int value; final ValueChanged<int> onChanged;
+  const _LockDelayTile({required this.value, required this.onChanged});
+
+  static const _options = <int>[0, 1, 2, 5, 10];
+  static String _label(int m) => m == 0 ? 'Immediately' : '$m minute${m == 1 ? '' : 's'}';
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          border: Border.all(color: cs.outlineVariant)),
+      child: Row(children: [
+        Container(width: 36, height: 36,
+            decoration: BoxDecoration(color: const Color(0xFF5865F2).withAlpha(25), borderRadius: BorderRadius.circular(10)),
+            child: const Icon(Icons.timer_outlined, color: Color(0xFF5865F2), size: 18)),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Lock after', style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+          Text('Wait this long before re-locking on reopen', style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+        ])),
+        PopupMenuButton<int>(
+          initialValue: value,
+          onSelected: onChanged,
+          itemBuilder: (_) => [
+            for (final m in _options)
+              PopupMenuItem<int>(value: m,
+                  child: Text(_label(m), style: GoogleFonts.manrope(fontSize: 14))),
+          ],
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(_label(value), style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w600, color: cs.primary)),
+            Icon(Icons.arrow_drop_down_rounded, color: cs.primary, size: 20),
+          ]),
+        ),
       ]),
     );
   }

@@ -539,6 +539,12 @@ class VaultProvider extends ChangeNotifier {
   }
 
   // ── Reading stats ──────────────────────────────────────────────────
+  /// Ground-truth read-chapter count for a vault entry (chapter-box isRead
+  /// tally), mirroring [LibraryProvider.readCountForManga] so vault stats use
+  /// the same source of truth as the badge/streak/heatmap.
+  int readCountForManga(LibraryManga m) =>
+      _vaultService.readCount(m.sourceId, m.url);
+
   Map<DateTime, int> getReadActivityByDay({int days = 365, Set<String>? sourceIds}) =>
       _vaultService.getReadActivityByDay(days: days, sourceIds: sourceIds);
 

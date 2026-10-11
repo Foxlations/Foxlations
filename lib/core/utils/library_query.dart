@@ -19,14 +19,30 @@ List<LibraryManga> applyLibraryQuery(
 
   var list = input;
 
-  if (settings.filterUnread) {
-    list = list.where((m) => unreadOf(m) > 0).toList();
-  }
-  if (settings.filterCompleted) {
-    list = list.where((m) => m.status.toLowerCase() == 'completed').toList();
-  }
-  if (settings.filterDownloaded) {
-    list = list.where((m) => downloadedKeys.contains(keyOf(m))).toList();
+  // Tri-state: off = keep all, include = keep only matches, exclude = drop
+  // matches.
+  bool pass(LibraryFilterState state, bool matches) => switch (state) {
+        LibraryFilterState.off => true,
+        LibraryFilterState.include => matches,
+        LibraryFilterState.exclude => !matches,
+      };
+
+  if (settings.filterUnread.isActive ||
+      settings.filterCompleted.isActive ||
+      settings.filterDownloaded.isActive) {
+    list = list.where((m) {
+      if (!pass(settings.filterUnread, unreadOf(m) > 0)) {
+        return false;
+      }
+      if (!pass(
+          settings.filterCompleted, m.status.toLowerCase() == 'completed')) {
+        return false;
+      }
+      if (!pass(settings.filterDownloaded, downloadedKeys.contains(keyOf(m)))) {
+        return false;
+      }
+      return true;
+    }).toList();
   }
   if (settings.filterSourceIds.isNotEmpty) {
     list = list

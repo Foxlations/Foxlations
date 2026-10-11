@@ -1333,6 +1333,13 @@ class _LibraryScreenState extends State<LibraryScreen>
                                       badgeUnread: _librarySettings.badgeUnread,
                                       badgeDownloaded:
                                           _librarySettings.badgeDownloaded,
+                                      badgeLanguage:
+                                          _librarySettings.badgeLanguage,
+                                      badgeLocal: _librarySettings.badgeLocal,
+                                      cardTitle: _librarySettings.cardTitle,
+                                      cardBadges: _librarySettings.cardBadges,
+                                      cardProgress:
+                                          _librarySettings.cardProgress,
                                       onTap: onTap,
                                       onLongPress: onLong,
                                     )
@@ -1560,45 +1567,15 @@ class _LibraryAppBar extends StatelessWidget implements PreferredSizeWidget {
             onTap: onSearchToggle,
             tooltip: t.librarySearchLibrary,
           ),
+          // Refresh is always the plain action — the drop-down "Updating…"
+          // banner is the sole progress indicator (no redundant header spinner).
+          // _refreshLibrary no-ops while a run is already in flight.
           if (!showStats && onRefresh != null)
-            isRefreshing
-                ? Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2)),
-                        // Live "checked / total" so the user can see it's
-                        // working and roughly how far along it is.
-                        if (updateProgress != null)
-                          ValueListenableBuilder<(int, int)?>(
-                            valueListenable: updateProgress!,
-                            builder: (_, p, __) {
-                              if (p == null || p.$2 <= 0) {
-                                return const SizedBox.shrink();
-                              }
-                              return Padding(
-                                padding: const EdgeInsets.only(left: 6),
-                                child: Text('${p.$1}/${p.$2}',
-                                    style: GoogleFonts.robotoMono(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                        color: cs.outline)),
-                              );
-                            },
-                          ),
-                      ],
-                    ),
-                  )
-                : _AppBarAction(
-                    icon: Icons.refresh_rounded,
-                    onTap: onRefresh!,
-                    tooltip: t.libraryCheckForUpdates,
-                  ),
+            _AppBarAction(
+              icon: Icons.refresh_rounded,
+              onTap: onRefresh!,
+              tooltip: t.libraryCheckForUpdates,
+            ),
           // Filter / Sort / Display. Dot marks that a filter is narrowing the
           // list, so a "missing" entry is never a mystery.
           if (!showStats)
@@ -2074,6 +2051,11 @@ class _LibraryGrid extends StatefulWidget {
   final Set<String>? selectedIds;
   final bool badgeUnread;
   final bool badgeDownloaded;
+  final bool badgeLanguage;
+  final bool badgeLocal;
+  final LibraryCardTitle cardTitle;
+  final LibraryCardBadges cardBadges;
+  final LibraryCardProgress cardProgress;
   final ValueChanged<LibraryManga> onTap;
   final ValueChanged<LibraryManga> onLongPress;
 
@@ -2082,6 +2064,11 @@ class _LibraryGrid extends StatefulWidget {
     this.selectedIds,
     this.badgeUnread = true,
     this.badgeDownloaded = true,
+    this.badgeLanguage = false,
+    this.badgeLocal = false,
+    this.cardTitle = LibraryCardTitle.onCover,
+    this.cardBadges = LibraryCardBadges.barUnder,
+    this.cardProgress = LibraryCardProgress.percent,
     required this.onTap, required this.onLongPress});
 
   @override
@@ -2125,6 +2112,11 @@ class _LibraryGridState extends State<_LibraryGrid>
 
   @override
   Widget build(BuildContext context) {
+    // A below-cover title or a badge bar adds a row under the cover, so the cell
+    // needs to be taller; an all-on-cover card is mostly just the cover.
+    final hasUnder = widget.cardTitle == LibraryCardTitle.below ||
+        widget.cardBadges == LibraryCardBadges.barUnder;
+    final aspect = hasUnder ? 0.52 : 0.64;
     return GridView.builder(
       // Always scrollable so pull-to-refresh triggers even when the grid
       // doesn't fill the screen.
@@ -2136,7 +2128,7 @@ class _LibraryGridState extends State<_LibraryGrid>
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: widget.columnCount,
-        childAspectRatio: 0.62, crossAxisSpacing: 10, mainAxisSpacing: 10),
+        childAspectRatio: aspect, crossAxisSpacing: 10, mainAxisSpacing: 10),
       itemCount: widget.mangaList.length,
       itemBuilder: (_, index) {
         final m = widget.mangaList[index];
@@ -2150,6 +2142,11 @@ class _LibraryGridState extends State<_LibraryGrid>
           isSelected: isSelected,
           badgeUnread: widget.badgeUnread,
           badgeDownloaded: widget.badgeDownloaded,
+          badgeLanguage: widget.badgeLanguage,
+          badgeLocal: widget.badgeLocal,
+          cardTitle: widget.cardTitle,
+          cardBadges: widget.cardBadges,
+          cardProgress: widget.cardProgress,
           onTap: () => widget.onTap(m),
           onLongPress: () => widget.onLongPress(m));
         if (index >= _itemAnimations.length) return card;
@@ -2170,6 +2167,11 @@ class _MangaGridCard extends StatefulWidget {
   final bool isSelected;
   final bool badgeUnread;
   final bool badgeDownloaded;
+  final bool badgeLanguage;
+  final bool badgeLocal;
+  final LibraryCardTitle cardTitle;
+  final LibraryCardBadges cardBadges;
+  final LibraryCardProgress cardProgress;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   const _MangaGridCard({
@@ -2178,6 +2180,11 @@ class _MangaGridCard extends StatefulWidget {
     this.isSelected = false,
     this.badgeUnread = true,
     this.badgeDownloaded = true,
+    this.badgeLanguage = false,
+    this.badgeLocal = false,
+    this.cardTitle = LibraryCardTitle.onCover,
+    this.cardBadges = LibraryCardBadges.barUnder,
+    this.cardProgress = LibraryCardProgress.percent,
     required this.onTap,
     required this.onLongPress});
 
@@ -2204,14 +2211,162 @@ class _MangaGridCardState extends State<_MangaGridCard>
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final unread = context.read<LibraryProvider>().unreadForManga(widget.manga);
-    final progress = widget.manga.totalChapters > 0
-        ? widget.manga.readChapters / widget.manga.totalChapters : 0.0;
+    final m = widget.manga;
+    final unread = context.read<LibraryProvider>().unreadForManga(m);
+    final progress = m.totalChapters > 0
+        ? (m.readChapters / m.totalChapters).clamp(0.0, 1.0) : 0.0;
     final showUnread = widget.badgeUnread && unread > 0;
     final showDownloaded = widget.badgeDownloaded &&
         context
             .read<DownloadProvider>()
-            .isMangaDownloaded('${widget.manga.sourceId}::${widget.manga.url}');
+            .isMangaDownloaded('${m.sourceId}::${m.url}');
+
+    // Language / local badges need the installed source. Both default OFF, so
+    // this lookup only runs when the user turns one of them on.
+    String? langCode;
+    var isLocal = false;
+    if (widget.badgeLanguage || widget.badgeLocal) {
+      final src =
+          context.read<SourceProvider>().getInstalledSource(m.sourceId)?.source;
+      if (src != null) {
+        if (widget.badgeLanguage && src.lang.isNotEmpty && src.lang != 'all') {
+          langCode = src.lang.split('-').first.toUpperCase();
+        }
+        if (widget.badgeLocal) {
+          isLocal = src.repoUrl.isNotEmpty && !src.repoUrl.startsWith('http');
+        }
+      }
+    }
+
+    final titleOver = widget.cardTitle == LibraryCardTitle.onCover;
+    final titleBelow = widget.cardTitle == LibraryCardTitle.below;
+    final badgesBar = widget.cardBadges == LibraryCardBadges.barUnder;
+    final badgesCorner = widget.cardBadges == LibraryCardBadges.cornerOnCover;
+    final badgesOnCover = widget.cardBadges == LibraryCardBadges.bottomOnCover;
+    final progLine = widget.cardProgress == LibraryCardProgress.line;
+    final progMini = widget.cardProgress == LibraryCardProgress.miniBar;
+    final progPct = widget.cardProgress == LibraryCardProgress.percent;
+
+    final anyBadgeEnabled = widget.badgeUnread ||
+        widget.badgeDownloaded ||
+        widget.badgeLanguage ||
+        widget.badgeLocal;
+
+    const green = Color(0xFF34D399);
+    const amber = Color(0xFFF0C850);
+    final pct = (progress * 100).round();
+    TextStyle pillText(Color c) => GoogleFonts.manrope(
+        fontSize: 9, fontWeight: FontWeight.w800, color: c, height: 1.1);
+    Widget pill(Color bg, Widget child, {Color? border}) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(5),
+            border:
+                border == null ? null : Border.all(color: border, width: 0.8),
+          ),
+          child: child,
+        );
+    // The badge pills — the same set wherever they're placed. Reading progress
+    // rides along as a %-pill or mini-bar when those styles are chosen.
+    final pills = <Widget>[
+      if (showUnread)
+        pill(cs.primary,
+            Text(unread > 99 ? '99+' : '$unread', style: pillText(cs.onPrimary))),
+      if (showDownloaded)
+        pill(green.withAlpha(38),
+            const Icon(Icons.download_done_rounded, size: 10, color: green),
+            border: green.withAlpha(90)),
+      if (langCode != null)
+        pill(cs.surfaceContainerHighest,
+            Text(langCode, style: pillText(cs.onSurfaceVariant))),
+      if (isLocal)
+        pill(amber.withAlpha(30),
+            const Icon(Icons.folder_rounded, size: 10, color: amber),
+            border: amber.withAlpha(80)),
+      if (progPct && progress > 0)
+        pill(cs.primary.withAlpha(40), Text('$pct%', style: pillText(cs.primary)),
+            border: cs.primary.withAlpha(120)),
+      if (progMini && progress > 0)
+        pill(
+            cs.surfaceContainerHighest,
+            SizedBox(
+              width: 26, height: 5,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: Stack(children: [
+                  Container(color: Colors.white.withAlpha(30)),
+                  FractionallySizedBox(
+                    alignment: AlignmentDirectional.centerStart,
+                    widthFactor: progress,
+                    child: Container(color: cs.primary)),
+                ]),
+              ),
+            )),
+    ];
+
+    // Thin full-width progress line — sits under the cover, above the badge
+    // bar, so it never crosses the artwork.
+    Widget progressLine() => Padding(
+          padding: const EdgeInsets.only(top: 6, left: 1, right: 1),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: SizedBox(
+              height: 4,
+              child: Stack(children: [
+                Container(color: Colors.white.withAlpha(30)),
+                FractionallySizedBox(
+                  alignment: AlignmentDirectional.centerStart,
+                  widthFactor: progress,
+                  child: Container(color: cs.primary)),
+              ]),
+            ),
+          ),
+        );
+
+    final coverChildren = <Widget>[
+      m.coverUrl.isNotEmpty
+          ? MangaImage(imageUrl: m.coverUrl, fit: BoxFit.cover,
+              referer: _originOf(m.url))
+          : Container(color: cs.surfaceContainerHighest,
+              child: Icon(Icons.image_rounded, color: cs.outline, size: 32)),
+      if (titleOver) ...[
+        Positioned(bottom: 0, left: 0, right: 0, child: Container(
+          height: 76, decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter, end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Color(0xDD000000)])))),
+        Positioned(bottom: 7, left: 8, right: 8,
+          child: Text(m.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.manrope(fontSize: 11.5, fontWeight: FontWeight.w700,
+                  color: Colors.white, height: 1.2,
+                  shadows: const [Shadow(color: Colors.black, blurRadius: 4)]))),
+      ],
+      // Corner badges (stacked top-right).
+      if (badgesCorner && pills.isNotEmpty)
+        PositionedDirectional(top: 6, end: 6,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              for (final p in pills)
+                Padding(padding: const EdgeInsets.only(bottom: 4), child: p),
+            ])),
+      // Bottom-left badges — wrap upward so extra badges stack into a row above
+      // the bottom one, raised clear of the on-cover title.
+      if (badgesOnCover && pills.isNotEmpty)
+        PositionedDirectional(
+          start: 6, end: 6, bottom: titleOver ? 32 : 6,
+          child: Wrap(
+            spacing: 4, runSpacing: 3,
+            verticalDirection: VerticalDirection.up,
+            children: pills)),
+      if (widget.isSelected) ...[
+        Container(color: cs.primary.withAlpha(60)),
+        PositionedDirectional(top: 6, start: 6,
+          child: Container(width: 24, height: 24,
+            decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
+            child: const Icon(Icons.check_rounded, size: 16, color: Colors.white))),
+      ],
+    ];
 
     return GestureDetector(
       onTapDown: (_) => _pressController.forward(),
@@ -2221,78 +2376,35 @@ class _MangaGridCardState extends State<_MangaGridCard>
       onLongPress: widget.onLongPress,
       child: ScaleTransition(
         scale: _scaleAnimation,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              widget.manga.coverUrl.isNotEmpty
-                  ? MangaImage(imageUrl: widget.manga.coverUrl, fit: BoxFit.cover,
-                      referer: _originOf(widget.manga.url))
-                  : Container(color: cs.surfaceContainerHighest,
-                      child: Icon(Icons.image_rounded, color: cs.outline, size: 32)),
-              // Gradient
-              Positioned(bottom: 0, left: 0, right: 0, child: Container(
-                height: 90, decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color(0xDD000000)])))),
-              // Progress bar
-              if (progress > 0)
-                Positioned(bottom: 0, left: 0, right: 0,
-                  child: Container(height: 3, color: Colors.white.withAlpha(40),
-                    child: FractionallySizedBox(
-                      alignment: AlignmentDirectional.centerStart, widthFactor: progress.clamp(0.0, 1.0),
-                      child: Container(decoration: BoxDecoration(
-                        color: cs.primary,
-                        borderRadius: const BorderRadiusDirectional.only(
-                          topEnd: Radius.circular(2), bottomEnd: Radius.circular(2))))))),
-              // Title
-              Positioned(bottom: progress > 0 ? 8 : 8, left: 8, right: 8,
-                child: Text(widget.manga.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700,
-                        color: Colors.white, height: 1.3,
-                        shadows: const [Shadow(color: Colors.black, blurRadius: 4)]))),
-              // Badge cluster (unread + downloaded), stacked so the two never
-              // overlap when both are shown.
-              if (showUnread || showDownloaded)
-                PositionedDirectional(top: 6, end: 6,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (showUnread)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: cs.primary,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
-                          child: Text(unread > 99 ? '99+' : '$unread',
-                              style: GoogleFonts.manrope(
-                                  fontSize: 10, fontWeight: FontWeight.w800, color: cs.onPrimary))),
-                      if (showDownloaded) ...[
-                        if (showUnread) const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            color: cs.tertiary,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
-                          child: Icon(Icons.download_done_rounded,
-                              size: 12, color: cs.onTertiary)),
-                      ],
-                    ],
-                  )),
-              // Selection overlay
-              if (widget.isSelected) ...[
-                Container(color: cs.primary.withAlpha(60)),
-                PositionedDirectional(top: 6, start: 6,
-                  child: Container(
-                    width: 24, height: 24,
-                    decoration: BoxDecoration(
-                      color: cs.primary, shape: BoxShape.circle),
-                    child: const Icon(Icons.check_rounded, size: 16, color: Colors.white))),
-              ],
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                child: Stack(fit: StackFit.expand, children: coverChildren),
+              ),
+            ),
+            if (progLine && progress > 0) progressLine(),
+            if (badgesBar && (anyBadgeEnabled || progPct || progMini))
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 1, right: 1),
+                child: pills.isEmpty
+                    ? const SizedBox(height: 10)
+                    : Wrap(spacing: 4, runSpacing: 3, children: pills),
+              ),
+            if (titleBelow)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 1, right: 1),
+                child: SizedBox(
+                  height: 30,
+                  child: Text(m.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(
+                          fontSize: 11.5, fontWeight: FontWeight.w600,
+                          color: cs.onSurface, height: 1.22)),
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -249,6 +249,18 @@ static NSString *runInvoke(NSString *reqJson) {
 static void *jvm_worker(void *arg) {
     void (^work)(void) = (__bridge_transfer void (^)(void))arg;
     @autoreleasepool { work(); }
+    // Pair the AttachCurrentThread that every JVM op does (ensureJvm) with a
+    // DetachCurrentThread before this throwaway worker pthread exits. Without it,
+    // HotSpot keeps a JavaThread bound to this thread's now-freed 16 MB stack; a
+    // later GC / safepoint / attach dereferences the stale struct and SIGSEGVs on
+    // a thread it no longer recognises as a JavaThread ("Current thread is native
+    // thread", si_addr near-null) — the crash seen when a background library-update
+    // check hits a Cloudflare-gated Kotlin source. The desktop/Android bridge
+    // already detaches (native/jvm_bridge.cpp); iOS was the only one leaking
+    // attached threads. Harmless (JNI_EDETACHED) if this thread never attached.
+    if (gJvm) {
+        (*gJvm)->DetachCurrentThread(gJvm);
+    }
     // Attaching this worker (and the JVM work it just ran) re-arms the VM's process-wide
     // crash-signal handlers; hand them back to the app so a background↔foreground signal on
     // the main thread doesn't reach the JVM's aborting handler. See the note by gCrashSigs.

@@ -164,6 +164,54 @@ class _CatalogBodyState extends State<_CatalogBody> {
     );
   }
 
+  /// Turn a raw source error into a user-facing reason + the right affordance.
+  /// The full error always goes to More → Debug logs; this is just the headline.
+  _Failure _classifyFailure(String error) {
+    final low = error.toLowerCase();
+    if (error.contains('403') ||
+        low.contains('cloudflare') ||
+        low.contains('captcha') ||
+        low.contains('open in webview')) {
+      return const _Failure(_FailKind.cloudflare, Icons.shield_outlined, '', '');
+    }
+    if (low.contains('(0)') ||
+        low.contains('reach site') ||
+        low.contains('connection') ||
+        low.contains('socket') ||
+        low.contains('host lookup') ||
+        low.contains('handshake') ||
+        low.contains('timeout') ||
+        low.contains('timed out') ||
+        low.contains('network')) {
+      return const _Failure(
+        _FailKind.unreachable,
+        Icons.cloud_off_rounded,
+        'Couldn’t reach the site',
+        'The site may be down, or blocked on your current network. Try again, '
+            'switch networks, or open it in your browser.',
+      );
+    }
+    if (low.contains('not a function') ||
+        low.contains('is not defined') ||
+        low.contains('referenceerror') ||
+        low.contains('cannot read') ||
+        low.contains('syntaxerror') ||
+        low.contains('unexpected') ||
+        low.contains('not json') ||
+        low.contains('rendered')) {
+      return const _Failure(
+        _FailKind.needsUpdate,
+        Icons.sync_problem_rounded,
+        'This source needs an update',
+        'The site appears to have changed, so the source can’t read it. The fix '
+            'has to come from the source/repository — check for a source update. '
+            '(Full error in More → Debug logs.)',
+      );
+    }
+    return _Failure(_FailKind.generic, Icons.error_outline, 'Failed to load',
+        error);
+  }
+
   Widget _buildContent(BuildContext context, CatalogProvider catalog) {
     final t = AppLocalizations.of(context);
     // Categories tab, not yet drilled into a category: show the category list.
@@ -172,34 +220,37 @@ class _CatalogBodyState extends State<_CatalogBody> {
       return _buildCategoryList(context, catalog);
     }
     if (catalog.error != null && catalog.currentManga.isEmpty) {
-      final is403 = catalog.error!.contains('403');
+      final reason = _classifyFailure(catalog.error!);
+      final cs = Theme.of(context).colorScheme;
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              is403 ? Icons.shield_outlined : Icons.error_outline,
-              size: 48,
-              color: Theme.of(context).colorScheme.error,
-            ),
+            Icon(reason.icon,
+                size: 48,
+                color: reason.kind == _FailKind.cloudflare
+                    ? cs.primary
+                    : cs.error),
             const SizedBox(height: 16),
             Text(
-              is403 ? t.browseCloudflareProtection : t.browseFailedToLoad,
+              reason.kind == _FailKind.cloudflare
+                  ? t.browseCloudflareProtection
+                  : reason.title,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Text(
-                is403
+                reason.kind == _FailKind.cloudflare
                     ? t.browseCloudflareChallengeDesc
-                    : catalog.error!,
+                    : reason.detail,
                 style: Theme.of(context).textTheme.bodySmall,
                 textAlign: TextAlign.center,
               ),
             ),
             const SizedBox(height: 16),
-            if (is403)
+            if (reason.kind == _FailKind.cloudflare)
               FilledButton.icon(
                 icon: const Icon(Icons.open_in_browser),
                 label: Text(t.browseOpenInWebView),
@@ -216,7 +267,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
                   if (result == true) catalog.refresh();
                 },
               ),
-            if (is403) const SizedBox(height: 8),
+            if (reason.kind == _FailKind.cloudflare) const SizedBox(height: 8),
             FilledButton(
               onPressed: () => catalog.refresh(),
               child: Text(t.browseRetry),
@@ -456,4 +507,15 @@ class _MangaCard extends StatelessWidget {
       ),
     );
   }
+}
+
+enum _FailKind { cloudflare, unreachable, needsUpdate, generic }
+
+/// A classified source failure for the catalog error state.
+class _Failure {
+  final _FailKind kind;
+  final IconData icon;
+  final String title;
+  final String detail;
+  const _Failure(this.kind, this.icon, this.title, this.detail);
 }

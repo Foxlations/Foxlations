@@ -253,7 +253,11 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
         ),
         SwitchListTile(
           value: o.pinned,
-          onChanged: (v) => _saveOptions(o.copyWith(pinned: v)),
+          onChanged: (v) async {
+            await _saveOptions(o.copyWith(pinned: v));
+            // Keep the centralised pin state (Sources tab + search) in sync.
+            if (mounted) context.read<SourceProvider>().reloadPinnedSources();
+          },
           activeThumbColor: cs.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           title: Text(t.browsePinToTop,

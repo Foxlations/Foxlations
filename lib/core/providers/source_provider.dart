@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/source_model.dart';
 import '../models/installed_source_model.dart';
 import '../models/source_settings.dart';
@@ -14,6 +15,10 @@ class SourceProvider extends ChangeNotifier {
   static const _pinnedOnlyBrowseKey = 'browse_pinned_only';
   static const _pinnedOnlyGlobalSearchKey = 'browse_global_search_pinned_only';
   static const _autoUpdateExtKey = 'browse_auto_update_extensions';
+  // The single pinned-source list — shared by the Sources tab, global search,
+  // and each source's settings. Centralised here so a pin made in one place is
+  // reflected everywhere immediately (the old per-widget cache went stale).
+  static const _pinnedSourceIdsKey = 'pinned_source_ids';
 
   final RepoService _repoService = RepoService();
   final SourceManager _sourceManager = SourceManager();
@@ -56,6 +61,7 @@ class SourceProvider extends ChangeNotifier {
   bool _pinnedOnlyBrowse = false;
   bool _pinnedOnlyGlobalSearch = false;
   bool _autoUpdateExtensions = false;
+  Set<String> _pinnedSourceIds = {};
 
   List<String> get repoUrls => _repoUrls;
   Map<String, RepoIndexResult> get repoIndexes => _repoIndexes;
@@ -67,6 +73,32 @@ class SourceProvider extends ChangeNotifier {
   bool get pinnedOnlyBrowse => _pinnedOnlyBrowse;
   bool get pinnedOnlyGlobalSearch => _pinnedOnlyGlobalSearch;
   bool get autoUpdateExtensions => _autoUpdateExtensions;
+
+  /// The set of pinned source ids (single source of truth for pinning).
+  Set<String> get pinnedSourceIds => _pinnedSourceIds;
+  bool isSourcePinned(String id) => _pinnedSourceIds.contains(id);
+
+  /// Pin/unpin a source — persists and notifies so every view updates at once.
+  Future<void> toggleSourcePin(String id) async {
+    if (!_pinnedSourceIds.remove(id)) _pinnedSourceIds.add(id);
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+          _pinnedSourceIdsKey, _pinnedSourceIds.toList());
+    } catch (_) {/* best effort */}
+  }
+
+  /// Re-read pins from disk (e.g. after a source-settings page changed them)
+  /// and notify, so the Sources tab reflects the change immediately.
+  Future<void> reloadPinnedSources() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _pinnedSourceIds =
+          (prefs.getStringList(_pinnedSourceIdsKey) ?? const []).toSet();
+      notifyListeners();
+    } catch (_) {/* best effort */}
+  }
 
   /// All available sources across all repos.
   List<MangaSource> get allSources =>
@@ -87,6 +119,11 @@ class SourceProvider extends ChangeNotifier {
           SettingsStore.instance.getBool(_pinnedOnlyGlobalSearchKey) ?? false;
       _autoUpdateExtensions =
           SettingsStore.instance.getBool(_autoUpdateExtKey) ?? false;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        _pinnedSourceIds =
+            (prefs.getStringList(_pinnedSourceIdsKey) ?? const []).toSet();
+      } catch (_) {}
 
       _repoUrls = await _repoService.getSavedRepos();
       _installedSources = await _sourceManager.getInstalledSources();

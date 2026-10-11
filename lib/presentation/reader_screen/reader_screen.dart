@@ -23,6 +23,7 @@ import '../../l10n/app_localizations.dart';
 import '../../eval/model/page_url.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/manga_image.dart';
+import '../widgets/type_toggle.dart';
 import 'widgets/reader_translation_provider_sheet.dart';
 import 'widgets/reader_translation_overlay.dart';
 import 'widgets/radial_reader_menu.dart';
@@ -707,20 +708,19 @@ class _ReaderBodyState extends State<_ReaderBody>
                     style:
                         GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
                 const SizedBox(height: 6),
-                Wrap(spacing: 8, children: [
-                  for (final m in const ['eyesOnly', 'headOnly', 'combined'])
-                    ChoiceChip(
-                      label: Text(m == 'eyesOnly'
-                          ? 'Eyes'
-                          : (m == 'headOnly' ? 'Head' : 'Both')),
-                      selected: mode == m,
-                      onSelected: (_) {
-                        setSheet(() => mode = m);
-                        prefs.setString('reader_gaze_mode', m);
-                        push();
-                      },
-                    ),
-                ]),
+                TypeToggle(
+                  items: const [
+                    TypeToggleItem('eyesOnly', 'Eyes'),
+                    TypeToggleItem('headOnly', 'Head'),
+                    TypeToggleItem('combined', 'Both'),
+                  ],
+                  selectedId: mode,
+                  onChanged: (id) {
+                    setSheet(() => mode = id);
+                    prefs.setString('reader_gaze_mode', id);
+                    push();
+                  },
+                ),
               ],
               const SizedBox(height: 14),
               SizedBox(

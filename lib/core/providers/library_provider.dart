@@ -3,6 +3,7 @@ import '../models/manga_model.dart';
 import '../models/chapter_model.dart';
 import '../models/category_model.dart';
 import '../services/library_service.dart';
+import '../services/settings_store.dart';
 import 'incognito_provider.dart';
 
 class LibraryProvider extends ChangeNotifier {
@@ -97,6 +98,18 @@ class LibraryProvider extends ChangeNotifier {
     await _libraryService.addManga(manga);
     _manga = _libraryService.getAllManga();
     notifyListeners();
+  }
+
+  /// Categories a brand-new library entry should be filed into, honouring the
+  /// "Default category" preference (Settings → Library). Returns the configured
+  /// category as a single-element list when it's set AND still exists among the
+  /// current [categories]; otherwise `const []`, meaning "always ask" — the
+  /// caller's existing add-flow behaviour. Synchronous: reads the already-loaded
+  /// [categories] list and the sync SettingsStore getter.
+  List<String> defaultCategoriesForNewEntry() {
+    final name = SettingsStore.instance.getString('lib_default_category') ?? '';
+    if (name.isEmpty) return const [];
+    return _categories.any((c) => c.name == name) ? [name] : const [];
   }
 
   /// Cache the source's browsable URL on this entry (for instant cold-start
@@ -262,6 +275,18 @@ class LibraryProvider extends ChangeNotifier {
   /// (see [LibraryService.unreadCount]) so it can't stick at "99+".
   int unreadForManga(LibraryManga m) =>
       _libraryService.unreadCount(m.sourceId, m.url);
+
+  /// Read-chapter count for [m] from ground-truth read state (see
+  /// [LibraryService.readCount]) — used by the update skip rules so manual or
+  /// imported read marks count even if the denormalized counter drifted.
+  int readCountForManga(LibraryManga m) =>
+      _libraryService.readCount(m.sourceId, m.url);
+
+  /// Notify listeners WITHOUT rebuilding the [_manga] list. Library cards read
+  /// their unread/read counts straight from the service (the chapter box), so a
+  /// bare notify is enough to refresh badges live mid-update — far cheaper than
+  /// a full reload per entry.
+  void pingListeners() => notifyListeners();
 
   Future<void> markChapterUnread(
       String sourceId, String mangaUrl, String chapterUrl) async {
