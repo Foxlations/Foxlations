@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 import '../../core/app_nav.dart';
 import '../../core/models/manga_model.dart';
 import '../../core/models/chapter_model.dart';
@@ -12,6 +12,7 @@ import '../widgets/manga_image.dart';
 import '../../core/providers/library_provider.dart';
 import '../../core/providers/vault_provider.dart';
 import '../../core/services/settings_store.dart';
+import '../../core/services/app_logger.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/library_type_provider.dart';
 import '../../core/providers/incognito_provider.dart';
@@ -21,6 +22,8 @@ import '../../core/models/library_settings.dart';
 import '../../core/utils/library_query.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/ds/ds.dart';
+import '../../theme/app_tokens.dart';
 import '../manga_detail_screen/migrate_screen.dart';
 import '../widgets/update_prompt.dart';
 import './widgets/library_options_sheet.dart';
@@ -72,7 +75,7 @@ class _LibraryScreenState extends State<LibraryScreen>
   bool _isSearchActive = false;
   String _searchQuery = '';
   /// Derived from the Display tab so the sheet and the toolbar toggle can't
-  /// disagree — previously this was independent state, which meant choosing a
+  /// disagree - previously this was independent state, which meant choosing a
   /// display mode in the sheet had no effect on what was actually rendered.
   bool get _isGridView =>
       _librarySettings.displayMode == LibraryDisplayMode.grid;
@@ -82,7 +85,7 @@ class _LibraryScreenState extends State<LibraryScreen>
   String? _selectedCategory; // null = "All"
   int _swipeDir = 1; // last category-swipe direction, for the slide animation
   bool _isRefreshing = false;
-  // Live "checked / total" during a library update — a ValueNotifier so only the
+  // Live "checked / total" during a library update - a ValueNotifier so only the
   // small header indicator rebuilds, not the whole screen, on every tick.
   final ValueNotifier<(int checked, int total)?> _updateProgress =
       ValueNotifier(null);
@@ -99,12 +102,24 @@ class _LibraryScreenState extends State<LibraryScreen>
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
 
+  // ── Filtered-list memoization ──────────────────────────────────────────────
+  // _activeManga (type filter) and _applyFilters (category/bookmark/search +
+  // applyLibraryQuery sort) are each called several times per build AND re-run on
+  // every rebuild - provider ping, search keystroke, options-sheet slider tick.
+  // Cache the last result keyed on its inputs; the providers' dataVersion bumps
+  // on any data change (over-bump = safe recompute), so the cache can't go stale.
+  List<LibraryManga>? _memoActive;
+  Object? _memoActiveKey;
+  List<LibraryManga>? _memoFiltered;
+  Object? _memoFilteredKey;
+
   bool get _isVaultMode => context.watch<VaultProvider>().vaultActive;
 
   // Helpers to get data from the active provider (vault or normal)
   List<LibraryManga> _activeManga(BuildContext context) {
     final vault = context.read<VaultProvider>();
-    final all = vault.vaultActive
+    final vaultActive = vault.vaultActive;
+    final all = vaultActive
         ? vault.manga
         : context.read<LibraryProvider>().manga;
     // Filter to the content type chosen from the Library tab's long-press menu.
@@ -113,13 +128,24 @@ class _LibraryScreenState extends State<LibraryScreen>
     // add-time) so a novel/anime whose source is gone still classifies correctly;
     // fall back to the source's itemType, then 'manga', so nothing silently vanishes.
     final type = context.read<LibraryTypeProvider>().type;
-    if (type == 'all') return all;
-    final sp = context.read<SourceProvider>();
-    return all.where((m) {
-      // O(1) itemType lookup (cached map) instead of a per-item source scan.
-      final t = m.contentTypeOr(sp.installedItemType(m.sourceId));
-      return t == type;
-    }).toList();
+    // The type filter depends only on the source list identity + the chosen type
+    // (chapter changes don't affect it), so no dataVersion in this key.
+    final key = Object.hash(identityHashCode(all), vaultActive, type);
+    if (key == _memoActiveKey && _memoActive != null) return _memoActive!;
+    final List<LibraryManga> result;
+    if (type == 'all') {
+      result = all;
+    } else {
+      final sp = context.read<SourceProvider>();
+      result = all.where((m) {
+        // O(1) itemType lookup (cached map) instead of a per-item source scan.
+        final t = m.contentTypeOr(sp.installedItemType(m.sourceId));
+        return t == type;
+      }).toList();
+    }
+    _memoActiveKey = key;
+    _memoActive = result;
+    return result;
   }
 
   List<String> _activeCategoryNames(BuildContext context) {
@@ -128,7 +154,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     return cats.map((c) => c.name).toList();
   }
 
-  /// The category tabs actually on screen, in tab order — mirrors what the
+  /// The category tabs actually on screen, in tab order - mirrors what the
   /// tab strip shows (vault vs normal, and the "Hide empty categories"
   /// setting). Used by both the tab strip and the swipe-between-categories
   /// gesture so they can't disagree about what "next"/"previous" means.
@@ -215,11 +241,12 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   /// Tapping the summary banner opens this menu: retry the failed titles, or
-  /// force-update the skipped ones (ongoing/hiatus only — completed won't gain
+  /// force-update the skipped ones (ongoing/hiatus only - completed won't gain
   /// chapters). No actions available → just the counts.
   void _openUpdateSummaryMenu(LibraryUpdateResult result) {
     _bannerHideTimer?.cancel(); // keep the banner while the menu is open
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final skippedUpdatable = result.skippedUpdatable;
 
     // New-chapter count per title, so the Completed category can show how many
@@ -232,6 +259,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     void openDetail(LibraryManga m) {
       Navigator.of(context).pop();
       Navigator.pushNamed(context, AppRoutes.mangaDetail, arguments: {
+        'isVault': context.read<VaultProvider>().vaultActive,
         'mangaUrl': m.url,
         'sourceId': m.sourceId,
         'title': m.title,
@@ -247,7 +275,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     }
 
     String cap(String s) =>
-        s.isEmpty ? 'Unknown' : s[0].toUpperCase() + s.substring(1);
+        s.isEmpty ? t.libraryStatusUnknown : s[0].toUpperCase() + s.substring(1);
 
     showModalBottomSheet(
       context: context,
@@ -274,9 +302,11 @@ class _LibraryScreenState extends State<LibraryScreen>
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 2),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Library update',
-                    style: GoogleFonts.manrope(
-                        fontWeight: FontWeight.w700, fontSize: 16)),
+                child: Text(t.libraryUpdateTitle,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)),
               ),
             ),
             Padding(
@@ -284,9 +314,12 @@ class _LibraryScreenState extends State<LibraryScreen>
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                    '${result.completed} completed · ${result.skipped} skipped · ${result.failed} failed',
-                    style:
-                        GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                    t.libraryUpdateCounts(
+                        result.completed, result.skipped, result.failed),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: cs.outline)),
               ),
             ),
             const Divider(height: 1),
@@ -300,13 +333,13 @@ class _LibraryScreenState extends State<LibraryScreen>
                       cs: cs,
                       icon: Icons.check_circle_rounded,
                       color: cs.primary,
-                      label: 'Completed',
+                      label: t.libraryCompleted,
                       titles: result.completedTitles,
                       subtitleFor: (m) {
                         final n = newChaptersByUrl[m.url] ?? 0;
                         return n > 0
-                            ? '$n new chapter${n == 1 ? '' : 's'}'
-                            : 'Up to date';
+                            ? t.libraryNewChaptersCount(n)
+                            : t.libraryUpToDate;
                       },
                       onTapItem: openDetail,
                     ),
@@ -315,22 +348,22 @@ class _LibraryScreenState extends State<LibraryScreen>
                       cs: cs,
                       icon: Icons.skip_next_rounded,
                       color: cs.tertiary,
-                      label: 'Skipped',
+                      label: t.librarySkipped,
                       titles: result.skippedTitles,
                       actionLabel: skippedUpdatable.isNotEmpty
-                          ? 'Update ${skippedUpdatable.length}'
+                          ? t.libraryUpdateCount(skippedUpdatable.length)
                           : null,
                       onAction: skippedUpdatable.isNotEmpty
                           ? () => retry(skippedUpdatable, ignoreSkipRules: true)
                           : null,
                       subtitleFor: (m) => skippedUpdatable.contains(m)
-                          ? '${cap(m.status)} · tap Update to force'
-                          : '${cap(m.status)} · no new chapters expected',
+                          ? t.libraryStatusTapUpdate(cap(m.status))
+                          : t.libraryStatusNoNewChapters(cap(m.status)),
                       trailingFor: (m) => skippedUpdatable.contains(m)
                           ? IconButton(
                               icon: Icon(Icons.download_rounded,
                                   size: 20, color: cs.primary),
-                              tooltip: 'Update this title',
+                              tooltip: t.libraryUpdateThisTitle,
                               onPressed: () =>
                                   retry([m], ignoreSkipRules: true))
                           : null,
@@ -341,15 +374,15 @@ class _LibraryScreenState extends State<LibraryScreen>
                       cs: cs,
                       icon: Icons.error_outline_rounded,
                       color: cs.error,
-                      label: 'Failed',
+                      label: t.libraryFailed,
                       titles: result.failedTitles,
-                      actionLabel: 'Retry all',
+                      actionLabel: t.libraryRetryAll,
                       onAction: () => retry(result.failedTitles),
-                      subtitleFor: (m) => 'Update failed · tap to open',
+                      subtitleFor: (m) => t.libraryUpdateFailedTapOpen,
                       trailingFor: (m) => IconButton(
                           icon: Icon(Icons.refresh_rounded,
                               size: 20, color: cs.primary),
-                          tooltip: 'Retry this title',
+                          tooltip: t.libraryRetryThisTitle,
                           onPressed: () => retry([m])),
                       onTapItem: openDetail,
                     ),
@@ -358,9 +391,11 @@ class _LibraryScreenState extends State<LibraryScreen>
                       result.failed == 0)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                      child: Text('No titles were checked.',
-                          style: GoogleFonts.manrope(
-                              fontSize: 13, color: cs.outline)),
+                      child: Text(t.libraryNoTitlesChecked,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: cs.outline)),
                     ),
                 ],
               ),
@@ -387,6 +422,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     VoidCallback? onAction,
     Widget? Function(LibraryManga)? trailingFor,
   }) {
+    final t = AppLocalizations.of(context);
     return ExpansionTile(
       initiallyExpanded: initiallyExpanded,
       tilePadding: const EdgeInsets.symmetric(horizontal: 20),
@@ -394,8 +430,8 @@ class _LibraryScreenState extends State<LibraryScreen>
       leading: Icon(icon, color: color),
       title: Row(children: [
         Expanded(
-          child: Text('$label (${titles.length})',
-              style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+          child: Text(t.libraryCategoryWithCount(label, titles.length),
+              style: const TextStyle(fontWeight: FontWeight.w600)),
         ),
         if (actionLabel != null && onAction != null)
           TextButton(
@@ -404,8 +440,8 @@ class _LibraryScreenState extends State<LibraryScreen>
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 8)),
             child: Text(actionLabel,
-                style: GoogleFonts.manrope(
-                    fontWeight: FontWeight.w700, fontSize: 12, color: color)),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700, color: color)),
           ),
       ]),
       children: titles.map((m) {
@@ -415,9 +451,12 @@ class _LibraryScreenState extends State<LibraryScreen>
           title: Text(m.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(fontSize: 13)),
+              style: Theme.of(context).textTheme.bodyMedium),
           subtitle: Text(subtitleFor(m),
-              style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: cs.outline)),
           trailing: trailingFor?.call(m),
           onTap: () => onTapItem(m),
         );
@@ -432,7 +471,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     _loadLibrarySettings();
 
     // Throttled to once every 12 hours inside the service, and it swallows its
-    // own failures — a missing network or an unreachable site must never block
+    // own failures - a missing network or an unreachable site must never block
     // the library from loading.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -455,7 +494,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     if (route is PageRoute) routeObserver.subscribe(this, route);
   }
 
-  // Returning from Settings > Library (a pushed route) — re-read the display
+  // Returning from Settings > Library (a pushed route) - re-read the display
   // preferences it may have changed, e.g. "Hide empty categories".
   @override
   void didPopNext() => _loadLibrarySettings();
@@ -517,15 +556,17 @@ class _LibraryScreenState extends State<LibraryScreen>
               ListTile(
                 leading: Icon(item.$2, color: cs.primary, size: 22),
                 title: Text(item.$3,
-                    style: GoogleFonts.manrope(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: cs.onSurface)),
                 subtitle: item.$4.isEmpty
                     ? null
                     : Text(item.$4,
-                        style: GoogleFonts.manrope(
-                            fontSize: 12, color: cs.outline)),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: cs.outline)),
                 onTap: () => Navigator.pop(ctx, item.$1),
               ),
             const SizedBox(height: 8),
@@ -557,7 +598,13 @@ class _LibraryScreenState extends State<LibraryScreen>
           break;
         }
         final pick = list[DateTime.now().microsecond % list.length];
-        Navigator.pushNamed(context, AppRoutes.mangaDetail, arguments: pick);
+        Navigator.pushNamed(context, AppRoutes.mangaDetail, arguments: {
+          'isVault': context.read<VaultProvider>().vaultActive,
+          'mangaUrl': pick.url,
+          'sourceId': pick.sourceId,
+          'title': pick.title,
+          'coverUrl': pick.coverUrl,
+        });
         break;
     }
   }
@@ -570,10 +617,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     final t = AppLocalizations.of(context);
     final when = last == null
         ? t.libraryNever
-        : '${last.year}-${last.month.toString().padLeft(2, '0')}-'
-            '${last.day.toString().padLeft(2, '0')} '
-            '${last.hour.toString().padLeft(2, '0')}:'
-            '${last.minute.toString().padLeft(2, '0')}';
+        : DateFormat('yyyy-MM-dd HH:mm').format(last);
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -581,22 +625,28 @@ class _LibraryScreenState extends State<LibraryScreen>
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
         title: Text(t.libraryUpdatesSummary,
-            style: GoogleFonts.manrope(
-                fontSize: 16, fontWeight: FontWeight.w700)),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(t.libraryLastChecked(when),
-                style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: cs.outline)),
             const SizedBox(height: 8),
             Text(
               updates.isEmpty
                   ? t.libraryNoNewChaptersLastCheck
-                  : '${updates.length} '
-                      'entr${updates.length == 1 ? 'y has' : 'ies have'} '
-                      'new chapters.',
-              style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
+                  : t.libraryEntriesWithNewChapters(updates.length),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyLarge
+                  ?.copyWith(color: cs.onSurface),
             ),
           ],
         ),
@@ -650,39 +700,59 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   List<LibraryManga> _applyFilters(List<LibraryManga> manga) {
-    var list = manga;
+    // The "Downloaded" filter needs the manga-level download index, which lives
+    // in DownloadProvider (download state is tracked outside the manga model).
+    final dl = context.read<DownloadProvider>();
+    final dlKeys = dl.downloadedMangaKeys;
+    final s = _librarySettings;
+    // Memo key = everything the result depends on. Both providers' dataVersion
+    // cover in-place data changes; downloadedCount tracks the download index
+    // (downloadedMangaKeys allocates a fresh wrapper each call, so it can't be
+    // keyed by identity). A pure display change (items-per-row, badge toggles)
+    // leaves every component unchanged → cache hit, no re-filter/re-sort.
+    final key = Object.hash(
+      identityHashCode(manga),
+      context.read<LibraryProvider>().dataVersion,
+      context.read<VaultProvider>().dataVersion,
+      _selectedCategory,
+      _showBookmarksOnly,
+      identityHashCode(_bookmarkedIds),
+      _searchQuery,
+      s.filterUnread,
+      s.filterCompleted,
+      s.filterDownloaded,
+      identityHashCode(s.filterSourceIds),
+      s.sort,
+      s.sortAscending,
+      dl.downloadedCount,
+    );
+    if (key == _memoFilteredKey && _memoFiltered != null) return _memoFiltered!;
 
-    // Category filter
+    var list = manga;
     if (_selectedCategory != null) {
       list = list.where((m) => m.categories.contains(_selectedCategory)).toList();
     }
-
-    // Bookmarks filter
     if (_showBookmarksOnly) {
-      String key(LibraryManga m) => '${m.sourceId}::${m.url}';
-      list = list.where((m) => _bookmarkedIds.contains(key(m))).toList();
+      String k(LibraryManga m) => '${m.sourceId}::${m.url}';
+      list = list.where((m) => _bookmarkedIds.contains(k(m))).toList();
     }
-
-    // Search
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       list = list.where((m) => m.title.toLowerCase().contains(q)).toList();
     }
-
-    // User-chosen filters + sort order (Filter/Sort sheet). The "Downloaded"
-    // filter needs the manga-level download index, which lives in
-    // DownloadProvider (download state is tracked outside the manga model).
-    final dlKeys = context.read<DownloadProvider>().downloadedMangaKeys;
-    return applyLibraryQuery(list, _librarySettings, downloadedKeys: dlKeys);
+    final result = applyLibraryQuery(list, s, downloadedKeys: dlKeys);
+    _memoFilteredKey = key;
+    _memoFiltered = result;
+    return result;
   }
 
   /// Rescan disk for which library entries have downloaded chapters so the
   /// "Downloaded" filter and the downloaded badge reflect reality. Kept off the
-  /// hot rebuild path — called from initState and library (re)loads, never from
+  /// hot rebuild path - called from initState and library (re)loads, never from
   /// build().
   void _refreshDownloadedIndex() {
     if (!mounted) return;
-    // Scan the WHOLE library — every content type, plus the vault — not just the
+    // Scan the WHOLE library - every content type, plus the vault - not just the
     // active tab. The index is clear()..addAll()'d on each rebuild, so feeding it
     // only the current tab's entries would drop downloaded titles of other types
     // and the "Downloaded" filter would wrongly hide them.
@@ -772,11 +842,21 @@ class _LibraryScreenState extends State<LibraryScreen>
   /// Move the selected titles into the vault (from the normal library) or out of
   /// it (while in vault mode), carrying their chapters/progress.
   Future<void> _batchVaultMove() async {
+    final t = AppLocalizations.of(context);
     final items = _getSelectedManga();
     if (items.isEmpty) return;
     final lib = context.read<LibraryProvider>();
     final vault = context.read<VaultProvider>();
     final toVault = !vault.vaultActive;
+    // Moving INTO the vault writes to its encrypted boxes, which are only open
+    // while unlocked. If they're closed the write silently no-ops - and we'd
+    // still delete the originals below, losing the titles. Refuse unless the
+    // vault is unlocked. (Moving OUT only happens from inside the vault, which
+    // already requires it to be open.)
+    if (toVault && !vault.isUnlocked) {
+      AppTheme.showSnackBar(context, t.libraryUnlockVaultFirst);
+      return;
+    }
     // Gather first, then move the whole batch in one provider call so the
     // library reloads/notifies once (not once per title).
     final toAdd = <(LibraryManga, List<LibraryChapter>)>[];
@@ -798,14 +878,21 @@ class _LibraryScreenState extends State<LibraryScreen>
         await vault.removeMangaBulk(keys);
       }
       ok = items.length;
-    } catch (_) {/* logged in the provider */}
+    } catch (e) {
+      logger.error('Vault move failed (toVault=$toVault)',
+          category: LogCategory.library, detail: '$e');
+    }
     if (!mounted) return;
     _exitSelectMode();
     AppTheme.showSnackBar(
         context,
-        toVault
-            ? 'Moved $ok to vault'
-            : 'Moved $ok out of vault');
+        ok == 0
+            ? (toVault
+                ? t.libraryCouldNotMoveToVault
+                : t.libraryCouldNotMoveOutOfVault)
+            : (toVault
+                ? t.libraryMovedToVault(ok)
+                : t.libraryMovedOutOfVault(ok)));
   }
 
   // Vault-aware provider helpers
@@ -854,7 +941,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                       decoration: BoxDecoration(color: cs.outline, borderRadius: BorderRadius.circular(2))),
                   const SizedBox(height: 16),
                   Text(t.libraryMoveToCategory,
-                      style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
                   const SizedBox(height: 12),
                   Flexible(
                     child: SingleChildScrollView(
@@ -873,8 +960,8 @@ class _LibraryScreenState extends State<LibraryScreen>
                                     size: 20, color: isIn ? cs.primary : cs.outline),
                                 const SizedBox(width: 14),
                                 Expanded(
-                                  child: Text(cat, style: GoogleFonts.manrope(
-                                      fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+                                  child: Text(cat, style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w600, color: cs.onSurface)),
                                 ),
                               ]),
                             ),
@@ -899,7 +986,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      child: Text(t.librarySave, style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14)),
+                      child: Text(t.librarySave, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: cs.onPrimary)),
                     ),
                   ),
                 ],
@@ -957,8 +1044,8 @@ class _LibraryScreenState extends State<LibraryScreen>
   /// in turn.
   ///
   /// Deliberately sequential rather than "pick one target source and move
-  /// everything". Titles differ between sources — punctuation, romanisation,
-  /// season suffixes — so an automatic match would silently attach the wrong
+  /// everything". Titles differ between sources - punctuation, romanisation,
+  /// season suffixes - so an automatic match would silently attach the wrong
   /// series. Stepping through lets each candidate be confirmed (and previewed
   /// with "Show entry") before anything is replaced.
   Future<void> _batchMigrate() async {
@@ -966,14 +1053,14 @@ class _LibraryScreenState extends State<LibraryScreen>
     if (selected.isEmpty) return;
     _exitSelectMode();
 
-    // Fresh queue — clear any prefetch cache left over from a previous batch.
+    // Fresh queue - clear any prefetch cache left over from a previous batch.
     MigrateScreen.resetSearchCache();
 
     for (var i = 0; i < selected.length; i++) {
       if (!mounted) return;
       final m = selected[i];
       // MigrateScreen returns `true` when it finished an entry (migrate/copy)
-      // and `null` when the user pressed Back — Back cancels the whole queue.
+      // and `null` when the user pressed Back - Back cancels the whole queue.
       final done = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -992,7 +1079,7 @@ class _LibraryScreenState extends State<LibraryScreen>
           ),
         ),
       );
-      if (done != true) break; // backed out — stop the batch
+      if (done != true) break; // backed out - stop the batch
 
       // A short loading buffer between entries so the hand-off from one migrate
       // screen to the next reads as a deliberate transition, not a flash.
@@ -1017,7 +1104,7 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   LibraryManga? get _lastReadManga {
     final manga = _activeManga(context);
-    // Single O(N) pass for the most-recently-read entry — no full sort just to
+    // Single O(N) pass for the most-recently-read entry - no full sort just to
     // pick one item (this runs on every library rebuild).
     LibraryManga? best;
     DateTime bestAt = DateTime(2000);
@@ -1033,13 +1120,13 @@ class _LibraryScreenState extends State<LibraryScreen>
     return best;
   }
 
-  /// Columns for the grid — whatever the user picked in "Items per row".
+  /// Columns for the grid - whatever the user picked in "Items per row".
   ///
   /// This used to cap the count by screen width (4 on a phone, 5 at 600dp, 6 at
   /// 840dp) while the picker still offered up to 6. On a phone that silently
   /// swallowed the choice: selecting 5 or 6 changed the number on screen but
   /// never the grid. The setting is already bounded to 2..6 when it's stored,
-  /// so honour it — a user asking for six small covers has asked for exactly
+  /// so honour it - a user asking for six small covers has asked for exactly
   /// that, and can step back down if they don't like it.
   int _getColumnCount(BuildContext context) {
     return _librarySettings.itemsPerRow.clamp(2, 6);
@@ -1055,7 +1142,7 @@ class _LibraryScreenState extends State<LibraryScreen>
         onPressed: _exitSelectMode,
       ),
       title: Text(t.librarySelectedCount(_selectedMangaIds.length),
-          style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: Colors.white)),
       actions: [
         IconButton(
           icon: const Icon(Icons.select_all_rounded, color: Colors.white),
@@ -1100,7 +1187,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                   icon: _isVaultMode
                       ? Icons.lock_open_rounded
                       : Icons.lock_outline_rounded,
-                  label: _isVaultMode ? 'Move out' : 'To vault',
+                  label: _isVaultMode ? t.libraryMoveOut : t.libraryToVault,
                   onTap: _batchVaultMove),
             _BatchButton(icon: Icons.delete_outline_rounded, label: t.libraryBatchRemove, onTap: _batchRemove),
           ],
@@ -1120,7 +1207,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     // every list below via _activeManga.
     final contentType = context.watch<LibraryTypeProvider>().type;
     // Rebuild when the downloaded-manga SET changes (a chapter finished), so the
-    // "Downloaded" filter/badges stay in sync — but NOT on every per-image
+    // "Downloaded" filter/badges stay in sync - but NOT on every per-image
     // progress tick (which a plain watch did, re-filtering the whole library
     // several times a second during downloads).
     context.select<DownloadProvider, int>((d) => d.downloadedCount);
@@ -1169,7 +1256,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                   children: [
                     // Category tabs with bookmark toggle
                     Consumer2<LibraryProvider, VaultProvider>(
-                      builder: (_, library, vault, __) {
+                      builder: (_, library, vault, _) {
                         // Type-filtered (via _visibleCategories) so a category
                         // counts as "empty" when it has no entries of the current
                         // library, and so the tabs match the swipe gesture's idea
@@ -1246,15 +1333,23 @@ class _LibraryScreenState extends State<LibraryScreen>
                     ),
                     // Continue reading banner
                     Consumer2<LibraryProvider, VaultProvider>(
-                      builder: (_, library, vault, __) {
+                      builder: (_, library, vault, _) {
                         final lastRead = _lastReadManga;
-                        if (lastRead == null) return const SizedBox.shrink();
+                        // Only the "Banner" mode shows the top banner; the
+                        // Resume-button and Off modes suppress it (the FAB
+                        // carries resume instead).
+                        if (lastRead == null ||
+                            _librarySettings.continueMode !=
+                                LibraryContinueMode.banner) {
+                          return const SizedBox.shrink();
+                        }
                         return _ContinueReadingBanner(
                           manga: lastRead,
                           onTap: () => Navigator.pushNamed(
                             context,
                             AppRoutes.mangaDetail,
                             arguments: {
+                              'isVault': context.read<VaultProvider>().vaultActive,
                               'mangaUrl': lastRead.url,
                               'sourceId': lastRead.sourceId,
                               'title': lastRead.title,
@@ -1268,7 +1363,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                     // Main content
                     Expanded(
                       child: Consumer2<LibraryProvider, VaultProvider>(
-                        builder: (_, library, vault, __) {
+                        builder: (_, library, vault, _) {
                           // Route through _activeManga so the grid honours the
                           // current library type (All / Manga / Anime / LN).
                           final activeManga = _activeManga(context);
@@ -1288,6 +1383,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                             } else {
                               Navigator.pushNamed(context, AppRoutes.mangaDetail,
                                 arguments: {
+                                  'isVault': context.read<VaultProvider>().vaultActive,
                                   'mangaUrl': m.url,
                                   'sourceId': m.sourceId,
                                   'title': m.title,
@@ -1311,8 +1407,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                                       const AlwaysScrollableScrollPhysics(),
                                   children: [
                                     SizedBox(
-                                      height: MediaQuery.of(context)
-                                              .size
+                                      height: MediaQuery.sizeOf(context)
                                               .height *
                                           0.6,
                                       child: _EmptyState(
@@ -1392,7 +1487,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                                       // Entering rides in on the +dir face of the
                                       // cube; leaving turns away on the -dir face.
                                       final sign = leaving ? -dir : dir;
-                                      // No perspective here — it's on the shared
+                                      // No perspective here - it's on the shared
                                       // parent so both faces project from one
                                       // vanishing point and turn as one cube. Each
                                       // face slides to the side and turns; the
@@ -1445,25 +1540,66 @@ class _LibraryScreenState extends State<LibraryScreen>
         ),
         bottomNavigationBar: _isSelectMode ? _buildBatchBar(cs) : null,
         floatingActionButton: !_showStats && !_isSelectMode
-            ? FloatingActionButton.extended(
-                heroTag: 'library_fab',
-                // Switch to the Browse TAB (keeps the bottom nav bar) rather
-                // than pushing Browse as a full-screen route over the shell,
-                // which hid the nav bar and left the user stuck.
-                onPressed: () => navTabRequest.value = 'browse',
-                icon: const Icon(Icons.add_rounded, size: 20),
-                label: Text(addLabel,
-                    style: GoogleFonts.manrope(
-                        fontWeight: FontWeight.w700, fontSize: 13)),
-                backgroundColor: cs.primary,
-                foregroundColor: cs.onPrimary,
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(AppTheme.radiusFull)),
+            // Wrapped so the Resume-mode FAB re-targets when the most-recently
+            // read entry changes (build() itself only reads the library).
+            ? Consumer2<LibraryProvider, VaultProvider>(
+                builder: (_, _, _, _) =>
+                    _buildLibraryFab(context, cs, addLabel),
               )
             : null,
       ),
+    );
+  }
+
+  /// The library home FAB. Normally the "+ Add" button (jumps to Browse). In
+  /// Resume-button mode, when there's a most-recently-read entry, it becomes a
+  /// Resume FAB that reopens that entry at its saved spot; with nothing read
+  /// yet it falls back to the + Add button so the corner is never dead.
+  Widget _buildLibraryFab(BuildContext context, ColorScheme cs, String addLabel) {
+    final t = AppLocalizations.of(context);
+    final resumeMode =
+        _librarySettings.continueMode == LibraryContinueMode.resumeButton;
+    final lastRead = resumeMode ? _lastReadManga : null;
+
+    final IconData icon;
+    final String label;
+    final VoidCallback onPressed;
+    if (lastRead != null) {
+      icon = Icons.play_arrow_rounded;
+      label = t.detailResume;
+      onPressed = () => Navigator.pushNamed(
+            context,
+            AppRoutes.mangaDetail,
+            arguments: {
+              'isVault': context.read<VaultProvider>().vaultActive,
+              'mangaUrl': lastRead.url,
+              'sourceId': lastRead.sourceId,
+              'title': lastRead.title,
+              'coverUrl': lastRead.coverUrl,
+              'resume': true,
+            },
+          );
+    } else {
+      icon = Icons.add_rounded;
+      label = addLabel;
+      // Switch to the Browse TAB (keeps the bottom nav bar) rather than pushing
+      // Browse as a full-screen route over the shell, which hid the nav bar and
+      // left the user stuck.
+      onPressed = () => navTabRequest.value = 'browse';
+    }
+
+    return FloatingActionButton.extended(
+      heroTag: 'library_fab',
+      onPressed: onPressed,
+      icon: Icon(icon, size: 20),
+      label: Text(label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700, color: cs.onPrimary)),
+      backgroundColor: cs.primary,
+      foregroundColor: cs.onPrimary,
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
     );
   }
 }
@@ -1515,6 +1651,10 @@ class _LibraryAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final t = AppLocalizations.of(context);
+    // The stats view ignores the search query (it reads the providers directly
+    // and has its own content-type toggle), so never show the search field while
+    // stats are up - the header then carries just the title + the back toggle.
+    final effectiveSearch = isSearchActive && !showStats;
     return AppBar(
       backgroundColor: cs.surface,
       elevation: 0,
@@ -1533,7 +1673,7 @@ class _LibraryAppBar extends StatelessWidget implements PreferredSizeWidget {
             child: child,
           ),
         ),
-        child: isSearchActive
+        child: effectiveSearch
             ? _SearchField(
                 key: const ValueKey('search'),
                 controller: searchController,
@@ -1552,22 +1692,23 @@ class _LibraryAppBar extends StatelessWidget implements PreferredSizeWidget {
               message: t.libraryIncognitoActive,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: AppTheme.warning.withAlpha(30),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusFull),
-                ),
+                decoration: oledIconChip(context,
+                    color: AppTheme.warning,
+                    fill: AppTheme.warning.withAlpha(30),
+                    radius: AppTheme.radiusFull),
                 child: const Icon(Icons.visibility_off_outlined,
                     size: 16, color: AppTheme.warning),
               ),
             ),
           ),
-        if (!isSearchActive) ...[
-          _AppBarAction(
-            icon: Icons.search_rounded,
-            onTap: onSearchToggle,
-            tooltip: t.librarySearchLibrary,
-          ),
-          // Refresh is always the plain action — the drop-down "Updating…"
+        if (!effectiveSearch) ...[
+          if (!showStats)
+            _AppBarAction(
+              icon: Icons.search_rounded,
+              onTap: onSearchToggle,
+              tooltip: t.librarySearchLibrary,
+            ),
+          // Refresh is always the plain action - the drop-down "Updating…"
           // banner is the sole progress indicator (no redundant header spinner).
           // _refreshLibrary no-ops while a run is already in flight.
           if (!showStats && onRefresh != null)
@@ -1647,8 +1788,8 @@ class _TitleRow extends StatelessWidget {
           child: Text(isVaultMode ? t.libraryVault : t.libraryLibrary,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(
-                  fontSize: 20, fontWeight: FontWeight.w800, color: cs.onSurface)),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800, color: cs.onSurface)),
         ),
         if (totalUnread > 0) ...[
           const SizedBox(width: 8),
@@ -1658,8 +1799,8 @@ class _TitleRow extends StatelessWidget {
               color: cs.primary,
               borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
             child: Text(totalUnread > 99 ? '99+' : '$totalUnread',
-                style: GoogleFonts.manrope(
-                    fontSize: 11, fontWeight: FontWeight.w800, color: cs.onPrimary)),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w800, color: cs.onPrimary)),
           ),
         ],
       ],
@@ -1687,10 +1828,16 @@ class _SearchField extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
       child: TextField(
         controller: controller, focusNode: focusNode, onChanged: onChanged,
-        style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
+        style: Theme.of(context)
+            .textTheme
+            .bodyLarge
+            ?.copyWith(color: cs.onSurface),
         decoration: InputDecoration(
           hintText: t.librarySearchHint,
-          hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
+          hintStyle: Theme.of(context)
+              .textTheme
+              .bodyLarge
+              ?.copyWith(color: cs.outline),
           prefixIcon: Icon(Icons.search_rounded, size: 18, color: cs.outline),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -1786,8 +1933,8 @@ class _CategoryTabs extends StatelessWidget {
                   if (bookmarkCount > 0) ...[
                     const SizedBox(width: 4),
                     Text('$bookmarkCount',
-                        style: GoogleFonts.manrope(
-                            fontSize: 11, fontWeight: FontWeight.w700,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
                             color: showBookmarksOnly ? cs.primary : cs.outline)),
                   ],
                 ],
@@ -1798,16 +1945,14 @@ class _CategoryTabs extends StatelessWidget {
           // Category chips
           Expanded(
             child: Builder(builder: (context) {
-              // Resolve the two label styles ONCE. GoogleFonts.manrope() does a
-              // registry lookup on every call, and calling it inside
-              // itemBuilder meant every chip re-resolved its font on every
-              // frame of a drag — which is what made this strip stutter.
-              final selectedStyle = GoogleFonts.manrope(
-                  fontSize: 12,
+              // Resolve the two label styles ONCE. Building the style inside
+              // itemBuilder meant every chip re-resolved it on every frame of a
+              // drag - which is what made this strip stutter.
+              final baseStyle = Theme.of(context).textTheme.bodySmall;
+              final selectedStyle = baseStyle?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: cs.primary);
-              final unselectedStyle = GoogleFonts.manrope(
-                  fontSize: 12,
+              final unselectedStyle = baseStyle?.copyWith(
                   fontWeight: FontWeight.w500,
                   color: cs.outline);
               return ListView.separated(
@@ -1880,17 +2025,19 @@ class _UpdateProgressBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final done = banner.done;
     final r = banner.result;
     final hasActions =
         done && r != null && (r.failed > 0 || r.skippedUpdatable.isNotEmpty);
     final text = done
         ? (r == null
-            ? 'Update complete'
-            : '${r.completed} completed · ${r.skipped} skipped · ${r.failed} failed')
+            ? t.libraryUpdateComplete
+            : t.libraryUpdateCounts(r.completed, r.skipped, r.failed))
         : (banner.total > 0
-            ? 'Updating ${banner.title ?? ''}  ${banner.checked}/${banner.total}'
-            : 'Updating…');
+            ? t.libraryUpdatingProgress(
+                banner.title ?? '', banner.checked, banner.total)
+            : t.libraryUpdating);
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
       decoration: BoxDecoration(
@@ -1915,8 +2062,7 @@ class _UpdateProgressBanner extends StatelessWidget {
                     Text(text,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.manrope(
-                            fontSize: 13,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: cs.onSurface)),
                     if (!done) ...[
@@ -1934,9 +2080,11 @@ class _UpdateProgressBanner extends StatelessWidget {
                       ),
                     ] else if (hasActions) ...[
                       const SizedBox(height: 2),
-                      Text('Tap to retry / update skipped',
-                          style: GoogleFonts.manrope(
-                              fontSize: 11, color: cs.outline)),
+                      Text(t.libraryTapRetryUpdateSkipped,
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(color: cs.outline)),
                     ],
                   ]),
             ),
@@ -1997,13 +2145,13 @@ class _ContinueReadingBanner extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(isAnime ? t.libraryContinueWatching : t.libraryContinueReading,
-                      style: GoogleFonts.manrope(
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           fontSize: 10, fontWeight: FontWeight.w600,
                           color: cs.primary, letterSpacing: 0.5)),
                   const SizedBox(height: 2),
                   Text(manga.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700, color: cs.onSurface)),
                   const SizedBox(height: 4),
                   Row(
                     children: [
@@ -2023,7 +2171,10 @@ class _ContinueReadingBanner extends StatelessWidget {
                                   manga.readChapters, manga.totalChapters)
                               : t.libraryChapterProgress(
                                   manga.readChapters, manga.totalChapters),
-                          style: GoogleFonts.manrope(fontSize: 10, color: cs.outline)),
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
+                              ?.copyWith(fontSize: 10, color: cs.outline)),
                     ],
                   ),
                 ],
@@ -2116,7 +2267,9 @@ class _LibraryGridState extends State<_LibraryGrid>
     // needs to be taller; an all-on-cover card is mostly just the cover.
     final hasUnder = widget.cardTitle == LibraryCardTitle.below ||
         widget.cardBadges == LibraryCardBadges.barUnder;
-    final aspect = hasUnder ? 0.52 : 0.64;
+    // Carded cells: a touch taller to absorb the card padding; every cell at a
+    // given column count is identical, so all cards match in height.
+    final aspect = hasUnder ? 0.50 : 0.60;
     return GridView.builder(
       // Always scrollable so pull-to-refresh triggers even when the grid
       // doesn't fill the screen.
@@ -2135,7 +2288,7 @@ class _LibraryGridState extends State<_LibraryGrid>
         final isSelected = widget.selectedIds?.contains('${m.sourceId}::${m.url}') ?? false;
         final card = _MangaGridCard(
           // Key by manga identity so Flutter never recycles one card's state
-          // (and its kept-alive cover image) onto a different title — that
+          // (and its kept-alive cover image) onto a different title - that
           // recycling is what made covers "dupe" onto neighbours during updates.
           key: ValueKey('${m.sourceId}::${m.url}'),
           manga: m,
@@ -2255,47 +2408,47 @@ class _MangaGridCardState extends State<_MangaGridCard>
     const green = Color(0xFF34D399);
     const amber = Color(0xFFF0C850);
     final pct = (progress * 100).round();
-    TextStyle pillText(Color c) => GoogleFonts.manrope(
-        fontSize: 9, fontWeight: FontWeight.w800, color: c, height: 1.1);
-    Widget pill(Color bg, Widget child, {Color? border}) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+    TextStyle badgeText(Color c) => Theme.of(context).textTheme.labelSmall!
+        .copyWith(fontSize: 10, fontWeight: FontWeight.w700, color: c, height: 1.0);
+    // One badge shape everywhere: a fixed 18px-tall pill with the same padding /
+    // radius, so a row of mixed text + icon badges always lines up.
+    Widget badge(Color bg, Widget child) => Container(
+          height: 18,
+          padding: const EdgeInsets.symmetric(horizontal: 7),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: bg,
-            borderRadius: BorderRadius.circular(5),
-            border:
-                border == null ? null : Border.all(color: border, width: 0.8),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: child,
         );
-    // The badge pills — the same set wherever they're placed. Reading progress
-    // rides along as a %-pill or mini-bar when those styles are chosen.
+    // The badge set - the same wherever it's placed. Reading progress rides
+    // along as a %-pill or a mini-bar when those styles are chosen.
     final pills = <Widget>[
       if (showUnread)
-        pill(cs.primary,
-            Text(unread > 99 ? '99+' : '$unread', style: pillText(cs.onPrimary))),
+        badge(cs.primary,
+            Text(unread > 99 ? '99+' : '$unread', style: badgeText(cs.onPrimary))),
       if (showDownloaded)
-        pill(green.withAlpha(38),
-            const Icon(Icons.download_done_rounded, size: 10, color: green),
-            border: green.withAlpha(90)),
+        badge(cs.surfaceContainerHighest,
+            const Icon(Icons.download_done_rounded, size: 12, color: green)),
       if (langCode != null)
-        pill(cs.surfaceContainerHighest,
-            Text(langCode, style: pillText(cs.onSurfaceVariant))),
+        badge(cs.surfaceContainerHighest,
+            Text(langCode, style: badgeText(cs.onSurfaceVariant))),
       if (isLocal)
-        pill(amber.withAlpha(30),
-            const Icon(Icons.folder_rounded, size: 10, color: amber),
-            border: amber.withAlpha(80)),
+        badge(cs.surfaceContainerHighest,
+            const Icon(Icons.folder_rounded, size: 12, color: amber)),
       if (progPct && progress > 0)
-        pill(cs.primary.withAlpha(40), Text('$pct%', style: pillText(cs.primary)),
-            border: cs.primary.withAlpha(120)),
+        badge(cs.primary.withValues(alpha: 0.16),
+            Text('$pct%', style: badgeText(cs.primary))),
       if (progMini && progress > 0)
-        pill(
+        badge(
             cs.surfaceContainerHighest,
             SizedBox(
-              width: 26, height: 5,
+              width: 28, height: 5,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(999),
                 child: Stack(children: [
-                  Container(color: Colors.white.withAlpha(30)),
+                  Container(color: cs.onSurface.withValues(alpha: 0.15)),
                   FractionallySizedBox(
                     alignment: AlignmentDirectional.centerStart,
                     widthFactor: progress,
@@ -2305,7 +2458,7 @@ class _MangaGridCardState extends State<_MangaGridCard>
             )),
     ];
 
-    // Thin full-width progress line — sits under the cover, above the badge
+    // Thin full-width progress line - sits under the cover, above the badge
     // bar, so it never crosses the artwork.
     Widget progressLine() => Padding(
           padding: const EdgeInsets.only(top: 6, left: 1, right: 1),
@@ -2314,7 +2467,7 @@ class _MangaGridCardState extends State<_MangaGridCard>
             child: SizedBox(
               height: 4,
               child: Stack(children: [
-                Container(color: Colors.white.withAlpha(30)),
+                Container(color: cs.onSurface.withValues(alpha: 0.15)),
                 FractionallySizedBox(
                   alignment: AlignmentDirectional.centerStart,
                   widthFactor: progress,
@@ -2338,7 +2491,8 @@ class _MangaGridCardState extends State<_MangaGridCard>
               colors: [Colors.transparent, Color(0xDD000000)])))),
         Positioned(bottom: 7, left: 8, right: 8,
           child: Text(m.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(fontSize: 11.5, fontWeight: FontWeight.w700,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontSize: 11.5, fontWeight: FontWeight.w700,
                   color: Colors.white, height: 1.2,
                   shadows: const [Shadow(color: Colors.black, blurRadius: 4)]))),
       ],
@@ -2350,7 +2504,7 @@ class _MangaGridCardState extends State<_MangaGridCard>
               for (final p in pills)
                 Padding(padding: const EdgeInsets.only(bottom: 4), child: p),
             ])),
-      // Bottom-left badges — wrap upward so extra badges stack into a row above
+      // Bottom-left badges - wrap upward so extra badges stack into a row above
       // the bottom one, raised clear of the on-cover title.
       if (badgesOnCover && pills.isNotEmpty)
         PositionedDirectional(
@@ -2376,22 +2530,49 @@ class _MangaGridCardState extends State<_MangaGridCard>
       onLongPress: widget.onLongPress,
       child: ScaleTransition(
         scale: _scaleAnimation,
-        child: Column(
+        // Carded: every entry is a raised surface with a hairline border + radius
+        // so it reads as one contained object and is defined on any background
+        // (incl. OLED). Follows the theme via AppSurfaces.
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppSurfaces.of(context).raised,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: cs.outlineVariant),
+          ),
+          padding: const EdgeInsets.all(6),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                borderRadius: BorderRadius.circular(9),
                 child: Stack(fit: StackFit.expand, children: coverChildren),
               ),
             ),
-            if (progLine && progress > 0) progressLine(),
+            if (progLine) progressLine(),
+            // Fixed-height single row so every card's badge strip is identical
+            // (extra badges clip at the edge rather than wrapping to a 2nd row,
+            // which would make cards different heights).
             if (badgesBar && (anyBadgeEnabled || progPct || progMini))
               Padding(
                 padding: const EdgeInsets.only(top: 6, left: 1, right: 1),
-                child: pills.isEmpty
-                    ? const SizedBox(height: 10)
-                    : Wrap(spacing: 4, runSpacing: 3, children: pills),
+                child: SizedBox(
+                  height: 18,
+                  child: pills.isEmpty
+                      ? null
+                      : ClipRect(
+                          child: OverflowBox(
+                            maxWidth: double.infinity,
+                            alignment: Alignment.centerLeft,
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              for (var i = 0; i < pills.length; i++) ...[
+                                if (i > 0) const SizedBox(width: 5),
+                                pills[i],
+                              ],
+                            ]),
+                          ),
+                        ),
+                ),
               ),
             if (titleBelow)
               Padding(
@@ -2399,12 +2580,13 @@ class _MangaGridCardState extends State<_MangaGridCard>
                 child: SizedBox(
                   height: 30,
                   child: Text(m.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           fontSize: 11.5, fontWeight: FontWeight.w600,
                           color: cs.onSurface, height: 1.22)),
                 ),
               ),
           ],
+        ),
         ),
       ),
     );
@@ -2485,13 +2667,13 @@ class _LibraryList extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(manga.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
                       const SizedBox(height: 4),
                       Row(children: [
                         Icon(Icons.library_books_rounded, size: 11, color: cs.outline),
                         const SizedBox(width: 3),
                         Text(t.libraryListChapters(manga.readChapters, manga.totalChapters),
-                            style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.outline)),
                       ]),
                       const SizedBox(height: 6),
                       Row(children: [
@@ -2501,7 +2683,7 @@ class _LibraryList extends StatelessWidget {
                             color: _statusColor(manga.status).withAlpha(38),
                             borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
                           child: Text(manga.status.isEmpty ? t.libraryStatusUnknown : manga.status,
-                              style: GoogleFonts.manrope(
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                   fontSize: 10, fontWeight: FontWeight.w600, color: _statusColor(manga.status)))),
                         const Spacer(),
                         if (showDownloaded)
@@ -2521,7 +2703,7 @@ class _LibraryList extends StatelessWidget {
                               color: cs.primary,
                               borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
                             child: Text(unread > 99 ? '99+' : '$unread',
-                                style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w800, color: cs.onPrimary))),
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10, fontWeight: FontWeight.w800, color: cs.onPrimary))),
                       ]),
                     ],
                   )),
@@ -2559,7 +2741,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               isBookmarkFilter ? t.libraryNoBookmarks
                   : isSearching ? t.libraryNoResults : t.libraryEmpty,
-              style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
             const SizedBox(height: 8),
             Text(
               isBookmarkFilter
@@ -2568,7 +2750,10 @@ class _EmptyState extends StatelessWidget {
                       ? t.libraryNoResultsDesc(searchQuery)
                       : t.libraryEmptyDesc,
               textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: cs.outline)),
           ],
         ),
       ),
@@ -2595,7 +2780,7 @@ class _BatchButton extends StatelessWidget {
           children: [
             Icon(icon, size: 22, color: cs.onSurface),
             const SizedBox(height: 4),
-            Text(label, style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.w600, color: cs.onSurface)),
+            Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10, fontWeight: FontWeight.w600, color: cs.onSurface)),
           ],
         ),
       ),

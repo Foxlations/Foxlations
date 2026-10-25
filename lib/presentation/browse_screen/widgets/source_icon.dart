@@ -1,12 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/models/source_model.dart';
 
 /// A source's icon, degrading to its first letter.
 ///
-/// Every browse list previously drew the letter tile unconditionally — the icon
+/// Every browse list previously drew the letter tile unconditionally - the icon
 /// was never rendered anywhere, even when the repo published one. The network
 /// image still has to fail softly: repos move, hosts 403, and icons go missing,
 /// and a broken-image box reads worse than the letter tile it replaced. So both
@@ -33,7 +32,7 @@ class SourceIcon extends StatelessWidget {
     final letter = Center(
       child: Text(
         source.name.isNotEmpty ? source.name[0].toUpperCase() : '?',
-        style: GoogleFonts.manrope(
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
           fontSize: fontSize,
           fontWeight: FontWeight.w700,
           color: cs.primary,
@@ -56,8 +55,8 @@ class SourceIcon extends StatelessWidget {
               fit: BoxFit.cover,
               width: size,
               height: size,
-              placeholder: (_, __) => letter,
-              errorWidget: (_, __, ___) => letter,
+              placeholder: (_, _) => letter,
+              errorWidget: (_, _, _) => letter,
             ),
     );
   }

@@ -51,7 +51,7 @@ class DohProviders {
   static const google = DohProvider(
     id: 'Google',
     label: 'Google',
-    // Google serves the JSON (dns-json) API at /resolve — /dns-query is
+    // Google serves the JSON (dns-json) API at /resolve - /dns-query is
     // wireformat only, which returned no records for us.
     queryUrl: 'https://dns.google/resolve',
     bootstrap: ['8.8.8.8', '8.8.4.4', '2001:4860:4860::8888', '2001:4860:4860::8844'],

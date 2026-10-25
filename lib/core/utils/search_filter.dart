@@ -27,7 +27,7 @@ List<MManga> filterSearchResults(List<MManga> list, String query) {
 /// relevance (best first).
 ///
 /// A title matches if it contains the whole query, OR at least ~60% of the
-/// query's (2+ char) words appear — each either as a substring or within edit
+/// query's (2+ char) words appear - each either as a substring or within edit
 /// distance 1 of a title word. Punctuation is ignored.
 List<MManga> approxFilterSearchResults(List<MManga> list, String query) {
   final q = _normalizeSearch(query);

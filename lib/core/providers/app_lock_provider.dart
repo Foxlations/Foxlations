@@ -6,7 +6,7 @@ import '../services/app_logger.dart';
 /// App lock (Settings > Security). When enabled, the app is covered by a lock
 /// screen on cold start and whenever it returns from the background, requiring
 /// device authentication (biometric or device passcode via [local_auth]) to
-/// enter. No custom PIN — it reuses the device's own credential, so there's
+/// enter. No custom PIN - it reuses the device's own credential, so there's
 /// nothing to store or reset.
 class AppLockProvider extends ChangeNotifier {
   static const enabledKey = 'sec_app_lock';
@@ -52,7 +52,7 @@ class AppLockProvider extends ChangeNotifier {
     await SettingsStore.instance.setInt(lockDelayKey, v);
   }
 
-  /// Relock — call when the app goes to the background.
+  /// Relock - call when the app goes to the background.
   void lock() {
     if (_enabled && !_locked) {
       _locked = true;

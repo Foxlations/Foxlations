@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../services/settings_store.dart';
 
 /// Global "incognito" (private) mode. While ON, the app records NO reading /
-/// watching / listening progress and does NOT auto-update trackers — manga,
+/// watching / listening progress and does NOT auto-update trackers - manga,
 /// anime and novels alike. Everything else (browsing, downloading, manual
 /// "mark as read", manual tracker edits) works normally. Off by default.
 ///

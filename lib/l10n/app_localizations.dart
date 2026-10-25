@@ -292,18 +292,6 @@ abstract class AppLocalizations {
   /// **'Sources, extensions, global search'**
   String get settingsBrowseSubtitle;
 
-  /// Settings entry title for RepoForge; keep the product name as-is.
-  ///
-  /// In en, this message translates to:
-  /// **'RepoForge'**
-  String get settingsRepoForgeTitle;
-
-  /// Subtitle describing RepoForge (building/managing sources from a URL).
-  ///
-  /// In en, this message translates to:
-  /// **'Build & manage sources from any URL'**
-  String get settingsRepoForgeSubtitle;
-
   /// Settings entry title for backup and restore options.
   ///
   /// In en, this message translates to:
@@ -376,18 +364,6 @@ abstract class AppLocalizations {
   /// **'Add Manga'**
   String get libraryAddManga;
 
-  /// Button confirming the chosen filter/sort/display options.
-  ///
-  /// In en, this message translates to:
-  /// **'Apply'**
-  String get libraryApply;
-
-  /// Sort-direction option: order results from low to high (A-Z, oldest first).
-  ///
-  /// In en, this message translates to:
-  /// **'Ascending'**
-  String get libraryAscending;
-
   /// Section heading for toggles controlling cover overlay badges (unread/downloaded counts).
   ///
   /// In en, this message translates to:
@@ -453,12 +429,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{n} ch'**
   String libraryChaptersAbbrev(Object n);
-
-  /// Stats label for the total number of chapters the user has read.
-  ///
-  /// In en, this message translates to:
-  /// **'Chapters Read'**
-  String get libraryChaptersRead;
 
   /// Menu/button label to check library entries for new chapters.
   ///
@@ -532,23 +502,11 @@ abstract class AppLocalizations {
   /// **'System default'**
   String get readerTtsSystemVoice;
 
-  /// Setting label controlling the size of cover thumbnails in the grid.
-  ///
-  /// In en, this message translates to:
-  /// **'Cover Size'**
-  String get libraryCoverSize;
-
   /// Duration text; {days} is a number of days.
   ///
   /// In en, this message translates to:
   /// **'{days} days'**
   String libraryDaysCount(Object days);
-
-  /// Sort-direction option: order results from high to low (Z-A, newest first).
-  ///
-  /// In en, this message translates to:
-  /// **'Descending'**
-  String get libraryDescending;
 
   /// Action to clear the current multi-select selection.
   ///
@@ -646,23 +604,11 @@ abstract class AppLocalizations {
   /// **'{read}/{total} chapters'**
   String libraryListChapters(Object read, Object total);
 
-  /// Stats section heading for the monthly reading-activity chart.
-  ///
-  /// In en, this message translates to:
-  /// **'Monthly Activity'**
-  String get libraryMonthlyActivity;
-
   /// Label for a More menu or overflow button.
   ///
   /// In en, this message translates to:
   /// **'More'**
   String get libraryMore;
-
-  /// Stats section heading listing the user's most-read series.
-  ///
-  /// In en, this message translates to:
-  /// **'Most-Read Series'**
-  String get libraryMostReadSeries;
 
   /// Dialog title/action for moving a title into a category.
   ///
@@ -687,12 +633,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Long-press a manga and bookmark it to see it here.'**
   String get libraryNoBookmarksDesc;
-
-  /// Short status message: the update check found no new chapters.
-  ///
-  /// In en, this message translates to:
-  /// **'No new chapters'**
-  String get libraryNoNewChapters;
 
   /// Longer message stating the last update check found no new chapters.
   ///
@@ -723,12 +663,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open random entry'**
   String get libraryOpenRandomEntry;
-
-  /// Stats section heading for the consecutive-days reading streak.
-  ///
-  /// In en, this message translates to:
-  /// **'Reading Streak'**
-  String get libraryReadingStreak;
 
   /// Button restoring filter/sort/display settings to defaults.
   ///
@@ -772,59 +706,17 @@ abstract class AppLocalizations {
   /// **'{n} selected'**
   String librarySelectedCount(Object n);
 
-  /// Stats/label word for a count of series (titles).
-  ///
-  /// In en, this message translates to:
-  /// **'Series'**
-  String get librarySeries;
-
   /// Toggle label to show the item count on category tabs.
   ///
   /// In en, this message translates to:
   /// **'Show number of items'**
   String get libraryShowNumberOfItems;
 
-  /// Cover-size option: large.
-  ///
-  /// In en, this message translates to:
-  /// **'Large'**
-  String get librarySizeLarge;
-
   /// Cover-size option: medium.
   ///
   /// In en, this message translates to:
   /// **'Medium'**
   String get librarySizeMedium;
-
-  /// Cover-size option: small.
-  ///
-  /// In en, this message translates to:
-  /// **'Small'**
-  String get librarySizeSmall;
-
-  /// Sort option: order by when the title was last updated.
-  ///
-  /// In en, this message translates to:
-  /// **'Last Updated'**
-  String get librarySortLastUpdated;
-
-  /// Sort option: order by rating.
-  ///
-  /// In en, this message translates to:
-  /// **'Rating'**
-  String get librarySortRating;
-
-  /// Sort option: order alphabetically by title.
-  ///
-  /// In en, this message translates to:
-  /// **'Title'**
-  String get librarySortTitle;
-
-  /// Sort option: order by number of unread chapters.
-  ///
-  /// In en, this message translates to:
-  /// **'Unread Count'**
-  String get librarySortUnreadCount;
 
   /// Stats/label word for a count of distinct sources.
   ///
@@ -880,35 +772,11 @@ abstract class AppLocalizations {
   /// **'Unknown'**
   String get libraryStatusUnknown;
 
-  /// Label for the user's best (longest) reading streak value.
-  ///
-  /// In en, this message translates to:
-  /// **'Best'**
-  String get libraryStreakBest;
-
-  /// Label for the user's current reading streak value.
-  ///
-  /// In en, this message translates to:
-  /// **'Current'**
-  String get libraryStreakCurrent;
-
   /// Encouragement under the streak; {days} is the current streak length in days.
   ///
   /// In en, this message translates to:
   /// **'{days} days strong — keep it up!'**
   String libraryStreakDaysStrong(Object days);
-
-  /// Encouragement prompting the user to read tomorrow to keep the streak.
-  ///
-  /// In en, this message translates to:
-  /// **'Read tomorrow to keep the streak going!'**
-  String get libraryStreakKeepGoing;
-
-  /// Prompt shown at zero streak, inviting the user to read today.
-  ///
-  /// In en, this message translates to:
-  /// **'Start a streak by reading today!'**
-  String get libraryStreakStart;
 
   /// Tab label for the Display options page in the filter/sort/display sheet.
   ///
@@ -939,12 +807,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{n} total'**
   String libraryTotalAbbrev(Object n);
-
-  /// Stats label for the total number of chapters across the library.
-  ///
-  /// In en, this message translates to:
-  /// **'Total Chapters'**
-  String get libraryTotalChapters;
 
   /// Accessibility label for the library-type (manga/anime/novel) picker's dismiss barrier
   ///
@@ -981,12 +843,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Vault'**
   String get libraryVault;
-
-  /// Stats section heading breaking down vault contents.
-  ///
-  /// In en, this message translates to:
-  /// **'Vault Breakdown'**
-  String get libraryVaultBreakdown;
 
   /// Heading for the statistics view of the vault.
   ///
@@ -1732,6 +1588,2118 @@ abstract class AppLocalizations {
   /// **'Unlock'**
   String get appUnlock;
 
+  /// Button in the Vault unlock dialog that triggers fingerprint/face unlock
+  ///
+  /// In en, this message translates to:
+  /// **'Biometrics'**
+  String get appBiometrics;
+
+  /// Brief hint while tapping the Library tab the secret number of times to enter the Vault
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more tap to enter vault} other{{count} more taps to enter vault}}'**
+  String appVaultTapsToEnter(int count);
+
+  /// Brief hint while tapping the Library tab the secret number of times to exit the Vault
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more tap to exit vault} other{{count} more taps to exit vault}}'**
+  String appVaultTapsToExit(int count);
+
+  /// Body of the confirm dialog shown before removing a title from the library
+  ///
+  /// In en, this message translates to:
+  /// **'Remove \"{title}\" from your library?'**
+  String detailRemoveFromLibraryBody(String title);
+
+  /// Generic fallback used in place of a missing title name in the remove-confirmation dialog
+  ///
+  /// In en, this message translates to:
+  /// **'this title'**
+  String get detailThisTitle;
+
+  /// Snackbar shown after tapping the manga title to copy it to the clipboard
+  ///
+  /// In en, this message translates to:
+  /// **'Title copied'**
+  String get detailTitleCopied;
+
+  /// Tooltip for the chapter-list sort menu button
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by'**
+  String get detailSortBy;
+
+  /// Chapter sort option: keep the source's own ordering
+  ///
+  /// In en, this message translates to:
+  /// **'Source order'**
+  String get detailSortSourceOrder;
+
+  /// Chapter sort option: order by chapter number
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter number'**
+  String get detailSortChapterNumber;
+
+  /// Chapter sort option: order by upload date
+  ///
+  /// In en, this message translates to:
+  /// **'Upload date'**
+  String get detailSortUploadDate;
+
+  /// App-bar title of the in-app WebView opened to log in to a source
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get detailLoginPageTitle;
+
+  /// Snackbar confirming a title was removed from the library
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from library'**
+  String get detailRemovedFromLibrary;
+
+  /// Snackbar action to undo removing a title from the library
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get detailUndo;
+
+  /// Bulk-migrate queue position shown in the migrate app bar (current of total)
+  ///
+  /// In en, this message translates to:
+  /// **'{position} of {total}'**
+  String detailQueuePosition(int position, int total);
+
+  /// App-bar title of the Reading Insights (Podium) screen
+  ///
+  /// In en, this message translates to:
+  /// **'Reading Insights'**
+  String get insightsTitle;
+
+  /// Empty-state title on the Reading Insights screen
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to rank yet'**
+  String get insightsEmptyTitle;
+
+  /// Empty-state body on the Reading Insights screen
+  ///
+  /// In en, this message translates to:
+  /// **'Read a little and your most-read titles show up here.'**
+  String get insightsEmptyBody;
+
+  /// Subtitle under total time when no tracking start date is known
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated from your history'**
+  String get insightsEstimatedFromHistory;
+
+  /// Subtitle showing the month/year when time tracking began
+  ///
+  /// In en, this message translates to:
+  /// **'Tracked since {month} {year}'**
+  String insightsTrackedSince(String month, String year);
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'January'**
+  String get insightsMonthJanuary;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'February'**
+  String get insightsMonthFebruary;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'March'**
+  String get insightsMonthMarch;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'April'**
+  String get insightsMonthApril;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'May'**
+  String get insightsMonthMay;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'June'**
+  String get insightsMonthJune;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'July'**
+  String get insightsMonthJuly;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'August'**
+  String get insightsMonthAugust;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'September'**
+  String get insightsMonthSeptember;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'October'**
+  String get insightsMonthOctober;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'November'**
+  String get insightsMonthNovember;
+
+  /// Month name used in the 'Tracked since' label
+  ///
+  /// In en, this message translates to:
+  /// **'December'**
+  String get insightsMonthDecember;
+
+  /// Hint shown when the bulk source-migrate FROM list is empty
+  ///
+  /// In en, this message translates to:
+  /// **'No titles in this library to migrate.'**
+  String get repoNoTitlesToMigrate;
+
+  /// Hint under the bulk source-migrate TO picker before a FROM source is chosen
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a source to migrate from first.'**
+  String get repoChooseSourceFirst;
+
+  /// AI translation provider blurb for Claude (Anthropic)
+  ///
+  /// In en, this message translates to:
+  /// **'Best for nuanced translation'**
+  String get trackProviderClaudeDesc;
+
+  /// AI translation provider blurb for OpenAI GPT-4o
+  ///
+  /// In en, this message translates to:
+  /// **'Fast & accurate'**
+  String get trackProviderOpenaiDesc;
+
+  /// AI translation provider blurb for Google Gemini
+  ///
+  /// In en, this message translates to:
+  /// **'Multilingual specialist'**
+  String get trackProviderGeminiDesc;
+
+  /// AI translation provider blurb for DeepL
+  ///
+  /// In en, this message translates to:
+  /// **'High-quality European languages'**
+  String get trackProviderDeeplDesc;
+
+  /// AI translation provider blurb for Hugging Face
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source - Offline capable'**
+  String get trackProviderHuggingfaceDesc;
+
+  /// AI translation provider blurb for OpenRouter
+  ///
+  /// In en, this message translates to:
+  /// **'One key, many models - free tier available'**
+  String get trackProviderOpenrouterDesc;
+
+  /// Badge shown on the recommended AI translation provider
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get trackBadgeRecommended;
+
+  /// Badge marking an AI provider that works offline
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get trackBadgeOffline;
+
+  /// Badge marking an AI provider that offers free models
+  ///
+  /// In en, this message translates to:
+  /// **'Free models'**
+  String get trackBadgeFree;
+
+  /// Appearance settings section header for theme-color palette controls
+  ///
+  /// In en, this message translates to:
+  /// **'Palette'**
+  String get setdAppearanceSectionPalette;
+
+  /// Slider title controlling how strongly the theme color tints the app
+  ///
+  /// In en, this message translates to:
+  /// **'Theme color strength'**
+  String get setdAppearanceThemeStrength;
+
+  /// Explanation under the Theme color strength slider
+  ///
+  /// In en, this message translates to:
+  /// **'How much the theme color takes over the app. 0 keeps the usual dark or light background; higher tints the whole app with the theme color.'**
+  String get setdAppearanceThemeStrengthDesc;
+
+  /// Snackbar shown after a backup is created successfully
+  ///
+  /// In en, this message translates to:
+  /// **'Backup complete'**
+  String get setxBackupCreateComplete;
+
+  /// Snackbar shown when creating a backup fails
+  ///
+  /// In en, this message translates to:
+  /// **'Backup failed: {error}'**
+  String setxBackupCreateFailed(String error);
+
+  /// Snackbar shown after a compatible-backup export succeeds
+  ///
+  /// In en, this message translates to:
+  /// **'Export complete'**
+  String get setxBackupExportComplete;
+
+  /// Snackbar shown when a compatible-backup export fails
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed: {error}'**
+  String setxBackupExportFailed(String error);
+
+  /// Dropdown label: which app the compatible backup is made for
+  ///
+  /// In en, this message translates to:
+  /// **'Target app'**
+  String get setxBackupTargetApp;
+
+  /// Label above the content-type checkboxes in the export dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Include'**
+  String get setxBackupIncludeLabel;
+
+  /// Content-type checkbox label for light novels in the export dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Light novels'**
+  String get setxBackupTypeNovels;
+
+  /// Short tag in a backup row marking an automatically-created backup
+  ///
+  /// In en, this message translates to:
+  /// **'auto'**
+  String get setxBackupAutoTag;
+
+  /// Setting title: how many chapters to pre-download while reading
+  ///
+  /// In en, this message translates to:
+  /// **'Chapters ahead'**
+  String get setdDownloadsChaptersAhead;
+
+  /// Snackbar when cover refresh is tapped with an empty library
+  ///
+  /// In en, this message translates to:
+  /// **'No library items to refresh'**
+  String get setdLibraryNoItemsToRefresh;
+
+  /// Progress dialog title while re-fetching library covers
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing covers'**
+  String get setdLibraryRefreshingCovers;
+
+  /// Snackbar when the user cancels the cover refresh
+  ///
+  /// In en, this message translates to:
+  /// **'Cover refresh stopped'**
+  String get setdLibraryCoverRefreshStopped;
+
+  /// Snackbar reporting how many covers were refreshed
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Refreshed 1 cover} other{Refreshed {count} covers}}'**
+  String setdLibraryCoversRefreshed(int count);
+
+  /// Library settings section header for the continue-reading control
+  ///
+  /// In en, this message translates to:
+  /// **'Continue reading'**
+  String get setdLibrarySectionContinueReading;
+
+  /// Choice tile title for how the continue-reading entry is displayed
+  ///
+  /// In en, this message translates to:
+  /// **'Show as'**
+  String get setdLibraryContinueShowAs;
+
+  /// Choice tile title for the default category new titles go into
+  ///
+  /// In en, this message translates to:
+  /// **'Default category'**
+  String get setdLibraryDefaultCategory;
+
+  /// Default-category option meaning the app asks each time (maps to no fixed category)
+  ///
+  /// In en, this message translates to:
+  /// **'Always ask'**
+  String get setdLibraryAlwaysAsk;
+
+  /// Library-update restriction switch title
+  ///
+  /// In en, this message translates to:
+  /// **'Skip titles with unread chapters'**
+  String get setdLibrarySkipHasUnread;
+
+  /// Subtitle for the skip-unread restriction switch
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t check titles you haven\'t caught up on yet'**
+  String get setdLibrarySkipHasUnreadDesc;
+
+  /// Library-update restriction switch title
+  ///
+  /// In en, this message translates to:
+  /// **'Skip completed series'**
+  String get setdLibrarySkipCompleted;
+
+  /// Subtitle for the skip-completed restriction switch
+  ///
+  /// In en, this message translates to:
+  /// **'Finished series won\'t get new chapters'**
+  String get setdLibrarySkipCompletedDesc;
+
+  /// Nav tile title to re-fetch all library covers
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh library covers'**
+  String get setdLibraryRefreshCovers;
+
+  /// Subtitle for the refresh-library-covers nav tile
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch covers again from source'**
+  String get setdLibraryRefreshCoversDesc;
+
+  /// Generic Move button in dialogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Move'**
+  String get setdActionMove;
+
+  /// Generic Confirm button in dialogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get setdActionConfirm;
+
+  /// Generic Remove button in dialogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get setdActionRemove;
+
+  /// Generic Undo action on a snackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get setdActionUndo;
+
+  /// Title of the idle-timeout selector controlling how long before the app re-locks.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock after'**
+  String get setxSecurityLockAfterTitle;
+
+  /// Subtitle explaining the lock-after delay.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait this long before re-locking on reopen'**
+  String get setxSecurityLockAfterSubtitle;
+
+  /// Lock-after option: re-lock with no delay.
+  ///
+  /// In en, this message translates to:
+  /// **'Immediately'**
+  String get setxSecurityLockAfterImmediately;
+
+  /// Lock-after delay option in minutes; {count} is the number of minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute} other{{count} minutes}}'**
+  String setxSecurityLockAfterMinutes(int count);
+
+  /// Nav tile title to change the existing decoy password.
+  ///
+  /// In en, this message translates to:
+  /// **'Change decoy password'**
+  String get setdVaultChangeDecoyPassword;
+
+  /// Nav tile / dialog title to set a decoy password (used when none exists).
+  ///
+  /// In en, this message translates to:
+  /// **'Set decoy password'**
+  String get setdVaultSetDecoyPassword;
+
+  /// Subtitle under the decoy-password tile.
+  ///
+  /// In en, this message translates to:
+  /// **'A second password that opens a separate, empty-looking vault'**
+  String get setdVaultDecoyPasswordDesc;
+
+  /// Toggle title for biometric vault unlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock with biometrics'**
+  String get setdVaultBiometricUnlock;
+
+  /// Subtitle under the biometric-unlock toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Face ID / fingerprint to open the vault'**
+  String get setdVaultBiometricDesc;
+
+  /// Dialog title prompting the user to re-enter the vault password.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm vault password'**
+  String get setdVaultConfirmPasswordTitle;
+
+  /// Snackbar after enabling biometric unlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometric unlock enabled'**
+  String get setdVaultBiometricEnabled;
+
+  /// Toggle title for shake-to-exit-the-vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Shake to exit'**
+  String get setdVaultShakeToExit;
+
+  /// Subtitle under the shake-to-exit toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'While in the vault, shake the phone to instantly leave it'**
+  String get setdVaultShakeToExitDesc;
+
+  /// Toggle title to add a move-to-vault action in the library.
+  ///
+  /// In en, this message translates to:
+  /// **'Move-to-vault in library'**
+  String get setdVaultLibraryMoveAction;
+
+  /// Subtitle under the library move-to-vault toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a \"Move to vault\" action when selecting titles in your library'**
+  String get setdVaultLibraryMoveActionDesc;
+
+  /// Hint text in the vault password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get setdVaultPasswordHint;
+
+  /// Title of the decoy-password dialog when a decoy already exists.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy password'**
+  String get setdVaultDecoyPasswordDialogTitle;
+
+  /// Explanatory body text in the decoy-password dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Entering this instead of your real password opens a separate, isolated vault - so you can hand over the phone without revealing your real content.'**
+  String get setdVaultDecoyPasswordExplain;
+
+  /// Hint text in the decoy-password field.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy password'**
+  String get setdVaultDecoyPasswordHint;
+
+  /// Validation error when the decoy password field is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a password'**
+  String get setdVaultEnterPassword;
+
+  /// Snackbar after saving the decoy password.
+  ///
+  /// In en, this message translates to:
+  /// **'Decoy password set'**
+  String get setdVaultDecoyPasswordSet;
+
+  /// Validation error when the decoy password equals the real password.
+  ///
+  /// In en, this message translates to:
+  /// **'Must differ from your real password'**
+  String get setdVaultDecoyMustDiffer;
+
+  /// Snackbar after moving items into the vault; {count} is how many moved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Moved 1 to vault} other{Moved {count} to vault}}'**
+  String setdVaultContentsMovedInCount(int count);
+
+  /// Snackbar after moving items out of the vault; {count} is how many moved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Moved 1 out of vault} other{Moved {count} out of vault}}'**
+  String setdVaultContentsMovedOutCount(int count);
+
+  /// Move-confirmation dialog title; {what} describes the selection being moved (e.g. 'all 5 shown').
+  ///
+  /// In en, this message translates to:
+  /// **'Move {what}?'**
+  String setdVaultContentsMoveConfirmTitle(String what);
+
+  /// Move-confirmation dialog body; {count} titles, {dest} destination phrase (the vault / your library), {into} optional category suffix.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Move 1 title to {dest}{into}?} other{Move {count} titles to {dest}{into}?}}'**
+  String setdVaultContentsMoveConfirmBody(int count, String dest, String into);
+
+  /// Destination phrase (into the vault) used in the move-confirmation body.
+  ///
+  /// In en, this message translates to:
+  /// **'the vault'**
+  String get setdVaultContentsDestVault;
+
+  /// Destination phrase (into the library) used in the move-confirmation body.
+  ///
+  /// In en, this message translates to:
+  /// **'your library'**
+  String get setdVaultContentsDestLibrary;
+
+  /// Optional category suffix appended to the move destination; {name} is the destination category. Leading space + arrow are UI punctuation.
+  ///
+  /// In en, this message translates to:
+  /// **' → \"{name}\"'**
+  String setdVaultContentsIntoCategory(String name);
+
+  /// Describes moving every shown title; used as the {what} in the confirm title. {count} is how many are shown.
+  ///
+  /// In en, this message translates to:
+  /// **'all {count} shown'**
+  String setdVaultContentsMoveAllShown(int count);
+
+  /// Describes moving every title in a category; used as the {what} in the confirm title. {name} is the category.
+  ///
+  /// In en, this message translates to:
+  /// **'everything in \"{name}\"'**
+  String setdVaultContentsMoveEverythingIn(String name);
+
+  /// Empty-state shown when a title search yields nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get setdVaultContentsNoMatches;
+
+  /// App-bar tooltip to leave selection mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get setdVaultContentsDone;
+
+  /// App-bar tooltip to enter selection mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get setdVaultContentsSelect;
+
+  /// Direction toggle: move titles into the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'To Vault'**
+  String get setdVaultContentsDirToVault;
+
+  /// Direction toggle: move titles out of the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'From Vault'**
+  String get setdVaultContentsDirFromVault;
+
+  /// Hint text in the title search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search titles'**
+  String get setdVaultContentsSearchHint;
+
+  /// Tooltip for the move-a-whole-category button.
+  ///
+  /// In en, this message translates to:
+  /// **'Move a category'**
+  String get setdVaultContentsMoveCategoryTooltip;
+
+  /// Tooltip for the move-all button when moving into the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Move all to vault'**
+  String get setdVaultContentsMoveAllToVault;
+
+  /// Tooltip for the move-all button when moving out of the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Move all out'**
+  String get setdVaultContentsMoveAllOut;
+
+  /// Selection-bar button to deselect all.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get setdVaultContentsSelectNone;
+
+  /// Selection-bar button to select all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get setdVaultContentsSelectAll;
+
+  /// Count of selected items in the selection bar.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 selected} other{{count} selected}}'**
+  String setdVaultContentsSelectedCount(int count);
+
+  /// Button/tooltip to move the selection or an item into the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to vault'**
+  String get setdVaultContentsMoveToVault;
+
+  /// Button/tooltip to move the selection or an item out of the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Move out'**
+  String get setdVaultContentsMoveOut;
+
+  /// Category-picker title when choosing which library category to move.
+  ///
+  /// In en, this message translates to:
+  /// **'Move which library category?'**
+  String get setdVaultContentsPickSourceLibrary;
+
+  /// Category-picker title when choosing which vault category to move.
+  ///
+  /// In en, this message translates to:
+  /// **'Move which vault category?'**
+  String get setdVaultContentsPickSourceVault;
+
+  /// Category-picker title when choosing the destination vault category.
+  ///
+  /// In en, this message translates to:
+  /// **'Into which vault category?'**
+  String get setdVaultContentsPickDestVault;
+
+  /// Category-picker title when choosing the destination library category.
+  ///
+  /// In en, this message translates to:
+  /// **'Into which library category?'**
+  String get setdVaultContentsPickDestLibrary;
+
+  /// Empty state in the category picker.
+  ///
+  /// In en, this message translates to:
+  /// **'No categories to pick from.'**
+  String get setdVaultContentsNoCategoriesToPick;
+
+  /// Category-picker option to pick no category.
+  ///
+  /// In en, this message translates to:
+  /// **'No category'**
+  String get setdVaultContentsNoCategory;
+
+  /// Snackbar when a chosen category has no titles; {name} is the category.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in \"{name}\"'**
+  String setdVaultContentsNothingIn(String name);
+
+  /// Subtitle for the Help & Tips entry on the main settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutorial, Discord & quick tips'**
+  String get settingsHelpSubtitle;
+
+  /// Shown in the dictionary sheet when no lookup source could be reached.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the dictionary. Check your connection and try again.'**
+  String get dictNetworkError;
+
+  /// Dictionary sheet message when the word has no entry.
+  ///
+  /// In en, this message translates to:
+  /// **'No definition found for \"{word}\".'**
+  String dictNoDefinition(String word);
+
+  /// Novel reader text alignment setting title.
+  ///
+  /// In en, this message translates to:
+  /// **'Alignment'**
+  String get readerAlignment;
+
+  /// Reader eye-comfort brightness slider title.
+  ///
+  /// In en, this message translates to:
+  /// **'Brightness'**
+  String get readerBrightness;
+
+  /// Filler line shown in the gaze-calibration scroll test.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample line {n}'**
+  String readerCalibrateSampleLine(int n);
+
+  /// Subtitle for the radial-menu chapter-arrows toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prev / next chapter beside the page slider'**
+  String get readerChapterArrowsSubtitle;
+
+  /// Title for the radial-menu chapter-arrows toggle (manga).
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter arrows on the slider'**
+  String get readerChapterArrowsTitle;
+
+  /// Nav tile title opening the radial-menu action editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize menu'**
+  String get readerCustomizeMenu;
+
+  /// Subtitle for the manga radial-menu customize tile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose and reorder the manga actions'**
+  String get readerCustomizeMenuMangaSubtitle;
+
+  /// Subtitle for the light-novel radial-menu customize tile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose and reorder the light novel actions'**
+  String get readerCustomizeMenuNovelSubtitle;
+
+  /// Reader display toggle: show two pages side by side in landscape.
+  ///
+  /// In en, this message translates to:
+  /// **'Double pages'**
+  String get readerDoublePages;
+
+  /// Subtitle for the double-pages toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show two pages side-by-side when the phone is in landscape (page-by-page modes only)'**
+  String get readerDoublePagesSubtitle;
+
+  /// Intro paragraph on the Hands-free & motion settings page.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll or turn pages without touching the screen. These share one scroll input, so turning one on turns the others off.'**
+  String get readerHandsFreeIntro;
+
+  /// Title of the Hands-free & motion settings page / nav tile.
+  ///
+  /// In en, this message translates to:
+  /// **'Hands-free & motion'**
+  String get readerHandsFreeMotion;
+
+  /// Subtitle for the Hands-free & motion nav tile.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume buttons, tilt and gaze scrolling'**
+  String get readerHandsFreeMotionSubtitle;
+
+  /// Novel reader hyphenation toggle title.
+  ///
+  /// In en, this message translates to:
+  /// **'Hyphenation'**
+  String get readerHyphenation;
+
+  /// Subtitle for the hyphenation toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Break long words to even out justified lines'**
+  String get readerHyphenationSubtitle;
+
+  /// Label for the light-novel reader (segmented control / tab).
+  ///
+  /// In en, this message translates to:
+  /// **'Light novel'**
+  String get readerLightNovel;
+
+  /// App bar title of the light-novel radial-menu editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Light novel menu'**
+  String get readerLightNovelMenu;
+
+  /// Novel reader line-spacing slider title.
+  ///
+  /// In en, this message translates to:
+  /// **'Line spacing'**
+  String get readerLineSpacing;
+
+  /// Label for the manga reader (segmented control / tab).
+  ///
+  /// In en, this message translates to:
+  /// **'Manga'**
+  String get readerManga;
+
+  /// App bar title of the manga radial-menu editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Manga menu'**
+  String get readerMangaMenu;
+
+  /// Novel reader margins slider title.
+  ///
+  /// In en, this message translates to:
+  /// **'Margins'**
+  String get readerMargins;
+
+  /// Radial-menu style choice title (wheel vs tail).
+  ///
+  /// In en, this message translates to:
+  /// **'Menu style'**
+  String get readerMenuStyle;
+
+  /// Radial-menu style option: tail.
+  ///
+  /// In en, this message translates to:
+  /// **'Tail'**
+  String get readerMenuStyleTail;
+
+  /// Radial-menu style option: wheel.
+  ///
+  /// In en, this message translates to:
+  /// **'Wheel'**
+  String get readerMenuStyleWheel;
+
+  /// Compact reading-mode label: left-to-right.
+  ///
+  /// In en, this message translates to:
+  /// **'LTR'**
+  String get readerModeLtrShort;
+
+  /// Compact reading-mode label: right-to-left.
+  ///
+  /// In en, this message translates to:
+  /// **'RTL'**
+  String get readerModeRtlShort;
+
+  /// Compact reading-mode label: vertical/continuous.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical'**
+  String get readerModeVerticalShort;
+
+  /// Novel reading-mode option: paged.
+  ///
+  /// In en, this message translates to:
+  /// **'Paged'**
+  String get readerNovelLayoutPaged;
+
+  /// Novel reading-mode option: scroll.
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll'**
+  String get readerNovelLayoutScroll;
+
+  /// Subtitle for the novel radial-menu toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the wheel in the novel reader (off = classic bars)'**
+  String get readerNovelRadialMenuSubtitle;
+
+  /// Novel reader TTS pitch slider title.
+  ///
+  /// In en, this message translates to:
+  /// **'Pitch'**
+  String get readerPitch;
+
+  /// Hint above the radial-menu action reorder list.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to reorder the wheel; toggle to show or hide. {count} shown.'**
+  String readerRadialReorderHint(int count);
+
+  /// Novel reader theme choice title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reader theme'**
+  String get readerReaderTheme;
+
+  /// Reset button in the radial-menu editor.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get readerReset;
+
+  /// Reader settings section header.
+  ///
+  /// In en, this message translates to:
+  /// **'Eye comfort'**
+  String get readerSectionEyeComfort;
+
+  /// Reader settings section header.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get readerSectionImage;
+
+  /// Novel reader settings section header.
+  ///
+  /// In en, this message translates to:
+  /// **'Layout'**
+  String get readerSectionLayout;
+
+  /// Novel reader settings section header for TTS.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen (text to speech)'**
+  String get readerSectionListen;
+
+  /// Novel reader settings section header.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get readerSectionText;
+
+  /// TTS sentence highlight colour picker title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sentence highlight'**
+  String get readerSentenceHighlight;
+
+  /// Segmented control title choosing which reader's settings to show.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings for'**
+  String get readerSettingsFor;
+
+  /// Radial-menu wheel corner option: left.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get readerSideLeft;
+
+  /// Radial-menu wheel corner option: right.
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get readerSideRight;
+
+  /// Reader toggle to give wide spreads their own screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Split wide pages'**
+  String get readerSplitWidePages;
+
+  /// Subtitle for the split-wide-pages toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Give a wide double-page spread its own screen instead of pairing it with another page'**
+  String get readerSplitWidePagesSubtitle;
+
+  /// Novel reader text-size slider title.
+  ///
+  /// In en, this message translates to:
+  /// **'Text size'**
+  String get readerTextSize;
+
+  /// iOS-only volume-buttons toggle title on Hands-free page.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume sets auto-scroll speed'**
+  String get readerVolumeAutoScroll;
+
+  /// Subtitle for the iOS volume auto-scroll toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'While the manga reader auto-scrolls, the volume buttons speed it up or slow it down. They do not turn pages.'**
+  String get readerVolumeAutoScrollSubtitle;
+
+  /// Hands-free page section header for volume-button controls.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume buttons'**
+  String get readerVolumeButtons;
+
+  /// Reader eye-comfort warm-tint slider title.
+  ///
+  /// In en, this message translates to:
+  /// **'Warm filter'**
+  String get readerWarmFilter;
+
+  /// TTS word highlight colour picker title.
+  ///
+  /// In en, this message translates to:
+  /// **'Word highlight'**
+  String get readerWordHighlight;
+
+  /// Title of the library-update summary bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Library update'**
+  String get libraryUpdateTitle;
+
+  /// Summary line of a library update run (also used in the drop-down banner).
+  ///
+  /// In en, this message translates to:
+  /// **'{completed} completed · {skipped} skipped · {failed} failed'**
+  String libraryUpdateCounts(int completed, int skipped, int failed);
+
+  /// How many new chapters a title gained in an update.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 new chapter} other{{count} new chapters}}'**
+  String libraryNewChaptersCount(int count);
+
+  /// Subtitle for an updated title that gained no new chapters.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to date'**
+  String get libraryUpToDate;
+
+  /// Header for titles skipped during a library update.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get librarySkipped;
+
+  /// Button to force-update the N skipped titles.
+  ///
+  /// In en, this message translates to:
+  /// **'Update {count}'**
+  String libraryUpdateCount(int count);
+
+  /// Subtitle for a skipped title that can still be force-updated; status is the publication status.
+  ///
+  /// In en, this message translates to:
+  /// **'{status} · tap Update to force'**
+  String libraryStatusTapUpdate(String status);
+
+  /// Subtitle for a skipped title not expected to gain chapters; status is the publication status.
+  ///
+  /// In en, this message translates to:
+  /// **'{status} · no new chapters expected'**
+  String libraryStatusNoNewChapters(String status);
+
+  /// Tooltip on the per-title force-update icon button.
+  ///
+  /// In en, this message translates to:
+  /// **'Update this title'**
+  String get libraryUpdateThisTitle;
+
+  /// Header for titles that failed to update.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get libraryFailed;
+
+  /// Action to retry every failed title.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry all'**
+  String get libraryRetryAll;
+
+  /// Subtitle for a title whose update failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Update failed · tap to open'**
+  String get libraryUpdateFailedTapOpen;
+
+  /// Tooltip on the per-title retry icon button.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry this title'**
+  String get libraryRetryThisTitle;
+
+  /// Shown when an update run checked nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No titles were checked.'**
+  String get libraryNoTitlesChecked;
+
+  /// A section header followed by its item count, e.g. 'Completed (3)'.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} ({count})'**
+  String libraryCategoryWithCount(String label, int count);
+
+  /// Updates-summary dialog line counting entries with new chapters.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 entry has new chapters.} other{{count} entries have new chapters.}}'**
+  String libraryEntriesWithNewChapters(int count);
+
+  /// Snackbar shown when trying to move titles into a locked vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock the vault first to move titles into it'**
+  String get libraryUnlockVaultFirst;
+
+  /// Snackbar on a failed move into the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not move to vault'**
+  String get libraryCouldNotMoveToVault;
+
+  /// Snackbar on a failed move out of the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not move out of vault'**
+  String get libraryCouldNotMoveOutOfVault;
+
+  /// Snackbar confirming N titles moved into the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved {count} to vault'**
+  String libraryMovedToVault(int count);
+
+  /// Snackbar confirming N titles moved out of the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved {count} out of vault'**
+  String libraryMovedOutOfVault(int count);
+
+  /// Batch-action label: move selected titles out of the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'Move out'**
+  String get libraryMoveOut;
+
+  /// Batch-action label: move selected titles into the vault.
+  ///
+  /// In en, this message translates to:
+  /// **'To vault'**
+  String get libraryToVault;
+
+  /// Banner text when a library update finishes with no detail.
+  ///
+  /// In en, this message translates to:
+  /// **'Update complete'**
+  String get libraryUpdateComplete;
+
+  /// Live progress banner during a library update (title may be empty).
+  ///
+  /// In en, this message translates to:
+  /// **'Updating {title}  {checked}/{total}'**
+  String libraryUpdatingProgress(String title, int checked, int total);
+
+  /// Banner text while a library update is starting.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating…'**
+  String get libraryUpdating;
+
+  /// Hint under the update banner when retry/force actions are available.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to retry / update skipped'**
+  String get libraryTapRetryUpdateSkipped;
+
+  /// Section header for the library sort options (shown uppercased).
+  ///
+  /// In en, this message translates to:
+  /// **'Sort by'**
+  String get librarySortBy;
+
+  /// Section header for how a title is shown on a library card (shown uppercased).
+  ///
+  /// In en, this message translates to:
+  /// **'Cover title'**
+  String get libraryCoverTitle;
+
+  /// Section header for where badges sit on a library card (shown uppercased).
+  ///
+  /// In en, this message translates to:
+  /// **'Badge placement'**
+  String get libraryBadgePlacement;
+
+  /// Section header for the reading-progress display style on cards (shown uppercased).
+  ///
+  /// In en, this message translates to:
+  /// **'Reading progress'**
+  String get libraryReadingProgress;
+
+  /// Label for the source-language card badge (toggle and legend).
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get libraryLanguage;
+
+  /// Label for the local-source card badge (toggle and legend).
+  ///
+  /// In en, this message translates to:
+  /// **'Local'**
+  String get libraryLocal;
+
+  /// Filter legend: a check mark means show only matching entries.
+  ///
+  /// In en, this message translates to:
+  /// **'show only'**
+  String get libraryFilterShowOnly;
+
+  /// Filter legend: a cross mark means hide matching entries.
+  ///
+  /// In en, this message translates to:
+  /// **'hide'**
+  String get libraryFilterHide;
+
+  /// Reading-personality archetype name for a user who hasn't started reading.
+  ///
+  /// In en, this message translates to:
+  /// **'The Newcomer'**
+  String get libraryArchetypeNewcomer;
+
+  /// Description of The Newcomer archetype.
+  ///
+  /// In en, this message translates to:
+  /// **'Just getting started - your type sharpens as you read.'**
+  String get libraryArchetypeNewcomerDesc;
+
+  /// Reading-personality archetype name for someone reading all formats.
+  ///
+  /// In en, this message translates to:
+  /// **'The Omnivore'**
+  String get libraryArchetypeOmnivore;
+
+  /// Description of The Omnivore archetype.
+  ///
+  /// In en, this message translates to:
+  /// **'A bit of everything - manga, anime and novels all in rotation.'**
+  String get libraryArchetypeOmnivoreDesc;
+
+  /// Reading-personality archetype name for high-volume reading.
+  ///
+  /// In en, this message translates to:
+  /// **'The Binger'**
+  String get libraryArchetypeBinger;
+
+  /// Description of The Binger archetype.
+  ///
+  /// In en, this message translates to:
+  /// **'You tear through chapters in long sittings.'**
+  String get libraryArchetypeBingerDesc;
+
+  /// Reading-personality archetype name for deep reading of few series.
+  ///
+  /// In en, this message translates to:
+  /// **'The Completionist'**
+  String get libraryArchetypeCompletionist;
+
+  /// Description of The Completionist archetype.
+  ///
+  /// In en, this message translates to:
+  /// **'You go deep - few series at a time, read to the end.'**
+  String get libraryArchetypeCompletionistDesc;
+
+  /// Reading-personality archetype name for a consistent daily habit.
+  ///
+  /// In en, this message translates to:
+  /// **'The Devoted'**
+  String get libraryArchetypeDevoted;
+
+  /// Description of The Devoted archetype.
+  ///
+  /// In en, this message translates to:
+  /// **'Day after day - you keep a steady habit.'**
+  String get libraryArchetypeDevotedDesc;
+
+  /// Reading-personality archetype name for spreading across many series.
+  ///
+  /// In en, this message translates to:
+  /// **'The Explorer'**
+  String get libraryArchetypeExplorer;
+
+  /// Description of The Explorer archetype.
+  ///
+  /// In en, this message translates to:
+  /// **'Always something new - you spread across many series.'**
+  String get libraryArchetypeExplorerDesc;
+
+  /// Chapters-read chip on the reading-personality card.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 chapter} other{{count} chapters}}'**
+  String libraryChaptersCount(int count);
+
+  /// Best reading-streak chip on the personality card.
+  ///
+  /// In en, this message translates to:
+  /// **'{days}-day best streak'**
+  String libraryBestStreakDays(int days);
+
+  /// Series-started chip on the personality card (shown when there is no streak).
+  ///
+  /// In en, this message translates to:
+  /// **'{count} series'**
+  String librarySeriesCount(int count);
+
+  /// Stats section header for the activity heatmap.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading activity'**
+  String get libraryReadingActivity;
+
+  /// Caption under the activity heatmap explaining cell brightness.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapters read each day - brighter = more.'**
+  String get libraryChaptersPerDayHint;
+
+  /// Stats section header for the manga/anime/novels breakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Library by type'**
+  String get libraryByType;
+
+  /// Stats section header for the reading-status breakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Library by status'**
+  String get libraryByStatus;
+
+  /// Stats section header for titles added but never started.
+  ///
+  /// In en, this message translates to:
+  /// **'Backlog'**
+  String get libraryBacklog;
+
+  /// Pill badge: number of titles in the backlog.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} waiting'**
+  String libraryWaitingCount(int count);
+
+  /// Caption under the Backlog section header.
+  ///
+  /// In en, this message translates to:
+  /// **'Added but never started'**
+  String get libraryAddedNeverStarted;
+
+  /// Shown when the backlog is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing waiting - you\'ve started everything.'**
+  String get libraryNothingWaiting;
+
+  /// Stats section header for the achievement badges.
+  ///
+  /// In en, this message translates to:
+  /// **'Milestones'**
+  String get libraryMilestones;
+
+  /// Stats section header for the archetype/radar card.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading personality'**
+  String get libraryReadingPersonality;
+
+  /// Caption under the total-time hero tile; tapping opens the podium.
+  ///
+  /// In en, this message translates to:
+  /// **'Total time read · tap for breakdown'**
+  String get libraryTotalTimeRead;
+
+  /// Stat tile label: number of titles in the library.
+  ///
+  /// In en, this message translates to:
+  /// **'Titles'**
+  String get libraryStatTitles;
+
+  /// Stat tile label: total chapters actively read.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapters read'**
+  String get libraryStatChaptersRead;
+
+  /// Stat tile label: current consecutive-day reading streak.
+  ///
+  /// In en, this message translates to:
+  /// **'Day streak'**
+  String get libraryStatDayStreak;
+
+  /// Summary sentence under the activity heatmap.
+  ///
+  /// In en, this message translates to:
+  /// **'You read on {activeDays} of the last 35 days · {chapters} chapters this week.'**
+  String libraryActivitySummary(int activeDays, int chapters);
+
+  /// This week's reading change versus last week (magnitude only; an arrow shows direction).
+  ///
+  /// In en, this message translates to:
+  /// **'{pct}% vs last week'**
+  String libraryTrendVsLastWeek(int pct);
+
+  /// Status-breakdown bucket for titles not Reading/Completed/On Hold.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get libraryStatusOther;
+
+  /// Chip naming the user's most-read genre.
+  ///
+  /// In en, this message translates to:
+  /// **'Most-read genre · {genre}'**
+  String libraryMostReadGenre(String genre);
+
+  /// Lowercase content noun inserted mid-sentence in the empty-stats message.
+  ///
+  /// In en, this message translates to:
+  /// **'manga'**
+  String get libraryContentWordManga;
+
+  /// Lowercase content noun inserted mid-sentence in the empty-stats message.
+  ///
+  /// In en, this message translates to:
+  /// **'anime'**
+  String get libraryContentWordAnime;
+
+  /// Lowercase content noun inserted mid-sentence in the empty-stats message.
+  ///
+  /// In en, this message translates to:
+  /// **'light novels'**
+  String get libraryContentWordLightNovels;
+
+  /// Backlog row subtitle: relative time since the title was added, plus its content type.
+  ///
+  /// In en, this message translates to:
+  /// **'Added {age} · {type}'**
+  String libraryBacklogAddedAge(String age, String type);
+
+  /// Pill button to start reading a backlog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get libraryStart;
+
+  /// Shown on the milestones card when every badge is earned.
+  ///
+  /// In en, this message translates to:
+  /// **'All milestones unlocked 🎉'**
+  String get libraryAllMilestonesUnlocked;
+
+  /// Label above the next milestone to earn (shown uppercased).
+  ///
+  /// In en, this message translates to:
+  /// **'NEXT UP'**
+  String get libraryNextUp;
+
+  /// Label above the reading-personality archetype (shown uppercased).
+  ///
+  /// In en, this message translates to:
+  /// **'YOUR READING TYPE'**
+  String get libraryYourReadingType;
+
+  /// Reading-personality radar axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Volume'**
+  String get libraryAxisVolume;
+
+  /// Reading-personality radar axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Depth'**
+  String get libraryAxisDepth;
+
+  /// Reading-personality radar axis label, abbreviation of 'Consistency' (keep short to fit).
+  ///
+  /// In en, this message translates to:
+  /// **'Consist.'**
+  String get libraryAxisConsistency;
+
+  /// Reading-personality radar axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Breadth'**
+  String get libraryAxisBreadth;
+
+  /// Reading-personality radar axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Variety'**
+  String get libraryAxisVariety;
+
+  /// Short unit for chapters in milestone captions, e.g. '500 ch'.
+  ///
+  /// In en, this message translates to:
+  /// **'ch'**
+  String get libraryUnitChapters;
+
+  /// Short unit for hours in milestone captions, e.g. '100 h'.
+  ///
+  /// In en, this message translates to:
+  /// **'h'**
+  String get libraryUnitHours;
+
+  /// Unit for day-streak milestone captions, e.g. '30 days'.
+  ///
+  /// In en, this message translates to:
+  /// **'days'**
+  String get libraryUnitDays;
+
+  /// Unit for collection milestone captions, e.g. '100 titles'.
+  ///
+  /// In en, this message translates to:
+  /// **'titles'**
+  String get libraryUnitTitles;
+
+  /// Unit for source-breadth milestone captions, e.g. '15 sources'.
+  ///
+  /// In en, this message translates to:
+  /// **'sources'**
+  String get libraryUnitSources;
+
+  /// Unit for format-variety milestone captions, e.g. '3 formats'.
+  ///
+  /// In en, this message translates to:
+  /// **'formats'**
+  String get libraryUnitFormats;
+
+  /// Short unit for anime episodes in milestone captions, e.g. '250 ep'.
+  ///
+  /// In en, this message translates to:
+  /// **'ep'**
+  String get libraryUnitEpisodes;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'First Steps'**
+  String get libraryBadgeFirstSteps;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read your first chapter.'**
+  String get libraryBadgeFirstStepsDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting Started'**
+  String get libraryBadgeGettingStarted;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 10 chapters.'**
+  String get libraryBadgeGettingStartedDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookworm'**
+  String get libraryBadgeBookworm;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 50 chapters.'**
+  String get libraryBadgeBookwormDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Centurion'**
+  String get libraryBadgeCenturion;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 100 chapters.'**
+  String get libraryBadgeCenturionDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Devourer'**
+  String get libraryBadgeDevourer;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 250 chapters.'**
+  String get libraryBadgeDevourerDesc;
+
+  /// Milestone badge name (500).
+  ///
+  /// In en, this message translates to:
+  /// **'Quincentenary'**
+  String get libraryBadgeQuincentenary;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 500 chapters.'**
+  String get libraryBadgeQuincentenaryDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Marathoner'**
+  String get libraryBadgeMarathoner;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 1,000 chapters.'**
+  String get libraryBadgeMarathonerDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter Fiend'**
+  String get libraryBadgeChapterFiend;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 2,500 chapters.'**
+  String get libraryBadgeChapterFiendDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Loremaster'**
+  String get libraryBadgeLoremaster;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 5,000 chapters.'**
+  String get libraryBadgeLoremasterDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Ten-Thousand Club'**
+  String get libraryBadgeTenThousandClub;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 10,000 chapters.'**
+  String get libraryBadgeTenThousandClubDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'First Hour'**
+  String get libraryBadgeFirstHour;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend 1 hour reading.'**
+  String get libraryBadgeFirstHourDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting Comfortable'**
+  String get libraryBadgeGettingComfortable;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend 10 hours reading.'**
+  String get libraryBadgeGettingComfortableDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekend Lost'**
+  String get libraryBadgeWeekendLost;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend 50 hours reading.'**
+  String get libraryBadgeWeekendLostDesc;
+
+  /// Milestone badge name (hours).
+  ///
+  /// In en, this message translates to:
+  /// **'Dedicated'**
+  String get libraryBadgeDedicated;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend 100 hours reading.'**
+  String get libraryBadgeDedicatedDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Time Sink'**
+  String get libraryBadgeTimeSink;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend 250 hours reading.'**
+  String get libraryBadgeTimeSinkDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Immersed'**
+  String get libraryBadgeImmersed;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend 500 hours reading.'**
+  String get libraryBadgeImmersedDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Eternal'**
+  String get libraryBadgeEternal;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Spend 1,000 hours reading.'**
+  String get libraryBadgeEternalDesc;
+
+  /// Milestone badge name (streak).
+  ///
+  /// In en, this message translates to:
+  /// **'Warming Up'**
+  String get libraryBadgeWarmingUp;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 3 days in a row.'**
+  String get libraryBadgeWarmingUpDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Hot Streak'**
+  String get libraryBadgeHotStreak;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 7 days in a row.'**
+  String get libraryBadgeHotStreakDesc;
+
+  /// Milestone badge name (14-day streak).
+  ///
+  /// In en, this message translates to:
+  /// **'Fortnight'**
+  String get libraryBadgeFortnight;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 14 days in a row.'**
+  String get libraryBadgeFortnightDesc;
+
+  /// Milestone badge name (30-day streak). Distinct from the 'The Devoted' personality archetype.
+  ///
+  /// In en, this message translates to:
+  /// **'Devoted'**
+  String get libraryBadgeDevoted;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 30 days in a row.'**
+  String get libraryBadgeDevotedDesc;
+
+  /// Milestone badge name (collection).
+  ///
+  /// In en, this message translates to:
+  /// **'Starter Shelf'**
+  String get libraryBadgeStarterShelf;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Collect 10 titles.'**
+  String get libraryBadgeStarterShelfDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Bibliophile'**
+  String get libraryBadgeBibliophile;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Collect 50 titles.'**
+  String get libraryBadgeBibliophileDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Curator'**
+  String get libraryBadgeCurator;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Collect 100 titles.'**
+  String get libraryBadgeCuratorDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Archivist'**
+  String get libraryBadgeArchivist;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Collect 250 titles.'**
+  String get libraryBadgeArchivistDesc;
+
+  /// Milestone badge name (sources). Distinct from the 'The Explorer' personality archetype.
+  ///
+  /// In en, this message translates to:
+  /// **'Explorer'**
+  String get libraryBadgeExplorer;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read from 5 sources.'**
+  String get libraryBadgeExplorerDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Globetrotter'**
+  String get libraryBadgeGlobetrotter;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read from 15 sources.'**
+  String get libraryBadgeGlobetrotterDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Boundless'**
+  String get libraryBadgeBoundless;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read from 30 sources.'**
+  String get libraryBadgeBoundlessDesc;
+
+  /// Milestone badge name (formats).
+  ///
+  /// In en, this message translates to:
+  /// **'Dabbler'**
+  String get libraryBadgeDabbler;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 2 different formats.'**
+  String get libraryBadgeDabblerDesc;
+
+  /// Milestone badge name. Distinct from the 'The Omnivore' personality archetype.
+  ///
+  /// In en, this message translates to:
+  /// **'Omnivore'**
+  String get libraryBadgeOmnivore;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read all 3 formats.'**
+  String get libraryBadgeOmnivoreDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Manga Devotee'**
+  String get libraryBadgeMangaDevotee;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 500 manga chapters.'**
+  String get libraryBadgeMangaDevoteeDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Binge Watcher'**
+  String get libraryBadgeBingeWatcher;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch 250 anime episodes.'**
+  String get libraryBadgeBingeWatcherDesc;
+
+  /// Milestone badge name.
+  ///
+  /// In en, this message translates to:
+  /// **'Novel Nerd'**
+  String get libraryBadgeNovelNerd;
+
+  /// Milestone badge tooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Read 250 novel chapters.'**
+  String get libraryBadgeNovelNerdDesc;
+
+  /// Collapsed label of the Discover genre-filter pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Genres'**
+  String get discoverGenres;
+
+  /// Snackbar after removing a saved item from the wishlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from wishlist'**
+  String get discoverRemovedFromWishlist;
+
+  /// Tooltip on the remove-from-wishlist icon button.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get discoverRemove;
+
+  /// Novel reader text-selection action: look up the word in the dictionary.
+  ///
+  /// In en, this message translates to:
+  /// **'Define'**
+  String get novelDefine;
+
+  /// Title of the novel reader's Listen (TTS) tuning sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Text-to-speech'**
+  String get novelTts;
+
+  /// Row title that opens the TTS voice picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get novelVoice;
+
+  /// Shown as the voice name when no specific TTS voice is chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get novelVoiceSystemDefault;
+
+  /// Header for the experimental device-vs-neural TTS engine picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice engine (experimental)'**
+  String get novelVoiceEngine;
+
+  /// TTS engine option: the device's built-in voices.
+  ///
+  /// In en, this message translates to:
+  /// **'Device'**
+  String get novelVoiceDevice;
+
+  /// Hint text in the TTS voice-picker search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search voices'**
+  String get novelSearchVoices;
+
+  /// Button that moves the floating Listen pill back to its default spot.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset pill position'**
+  String get novelResetPill;
+
+  /// Link opening the full TTS tuning sheet from the Listen panel.
+  ///
+  /// In en, this message translates to:
+  /// **'More voices & tuning →'**
+  String get novelMoreVoices;
+
+  /// Novel reader wheel action: text size panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Size'**
+  String get novelActionSize;
+
+  /// Novel reader wheel action: reader theme panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get novelActionTheme;
+
+  /// Novel reader wheel action: text alignment panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Align'**
+  String get novelActionAlign;
+
+  /// Novel reader wheel action: line/paragraph spacing panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Spacing'**
+  String get novelActionSpacing;
+
+  /// Novel reader wheel action: text-to-speech (Listen) panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Listen'**
+  String get novelActionListen;
+
+  /// Title of the TTS highlight-colour picker sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight colours'**
+  String get novelHighlightColours;
+
+  /// Label for the current-sentence TTS highlight colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Sentence'**
+  String get novelHighlightSentence;
+
+  /// Label for the current-word TTS highlight colour.
+  ///
+  /// In en, this message translates to:
+  /// **'Word'**
+  String get novelHighlightWord;
+
   /// Small badge/label marking the volume-key feature as experimental on iOS, in reader settings
   ///
   /// In en, this message translates to:
@@ -1780,12 +3748,6 @@ abstract class AppLocalizations {
   /// **'Font Size'**
   String get readerFontSize;
 
-  /// Setting label controlling how much pages are zoomed
-  ///
-  /// In en, this message translates to:
-  /// **'Image Zoom'**
-  String get readerImageZoom;
-
   /// Toggle label for preloading the next chapter automatically
   ///
   /// In en, this message translates to:
@@ -1797,18 +3759,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Load next chapter in background'**
   String get readerAutoPreloadNextChapterSubtitle;
-
-  /// Toggle label for cropping page borders
-  ///
-  /// In en, this message translates to:
-  /// **'Crop Borders'**
-  String get readerCropBorders;
-
-  /// Subtitle explaining crop-borders removes white margins from pages
-  ///
-  /// In en, this message translates to:
-  /// **'Remove white borders from pages'**
-  String get readerCropBordersSubtitle;
 
   /// Toggle label for showing pages in grayscale
   ///
@@ -1827,6 +3777,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Auto-crop borders'**
   String get readerAutoCrop;
+
+  /// Label/toggle for the reader's automatic scrolling
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-scroll'**
+  String get readerAutoScroll;
+
+  /// Label for the auto-scroll speed stepper in the reader controls
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-scroll speed'**
+  String get readerAutoScrollSpeed;
+
+  /// Chip that resets the reader's colour filter to default
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get readerFilterReset;
+
+  /// Colour-filter preset name: a warm, paper-like tone
+  ///
+  /// In en, this message translates to:
+  /// **'Paper'**
+  String get readerFilterPaper;
+
+  /// Colour-filter preset name: a warm, dim night tone
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get readerFilterNight;
+
+  /// Colour-filter preset name: boosted contrast and saturation
+  ///
+  /// In en, this message translates to:
+  /// **'Vivid'**
+  String get readerFilterVivid;
+
+  /// Colour-filter slider label: sepia amount
+  ///
+  /// In en, this message translates to:
+  /// **'Sepia'**
+  String get readerFilterSepia;
+
+  /// Colour-filter slider label: contrast amount
+  ///
+  /// In en, this message translates to:
+  /// **'Contrast'**
+  String get readerFilterContrast;
+
+  /// Colour-filter slider label: saturation amount
+  ///
+  /// In en, this message translates to:
+  /// **'Saturation'**
+  String get readerFilterSaturation;
+
+  /// Section header for the reader's warm-tint and brightness controls
+  ///
+  /// In en, this message translates to:
+  /// **'Eye comfort'**
+  String get readerEyeComfort;
+
+  /// Slider label for the reader's warm-tint (blue-light reduction) amount
+  ///
+  /// In en, this message translates to:
+  /// **'Warm'**
+  String get readerEyeComfortWarm;
+
+  /// Slider label for the reader's in-app brightness dimming
+  ///
+  /// In en, this message translates to:
+  /// **'Brightness'**
+  String get readerEyeComfortBrightness;
+
+  /// Hands-free gaze mode option: track the eyes only
+  ///
+  /// In en, this message translates to:
+  /// **'Eyes'**
+  String get readerGazeModeEyes;
+
+  /// Hands-free gaze mode option: track head tilt only
+  ///
+  /// In en, this message translates to:
+  /// **'Head'**
+  String get readerGazeModeHead;
+
+  /// Hands-free gaze mode option: track both eyes and head
+  ///
+  /// In en, this message translates to:
+  /// **'Both'**
+  String get readerGazeModeBoth;
 
   /// Subtitle explaining the auto-crop toggle
   ///
@@ -1857,12 +3897,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Scale Type'**
   String get readerScaleType;
-
-  /// Setting label for where a zoomed page is anchored when it first appears
-  ///
-  /// In en, this message translates to:
-  /// **'Zoom Start Position'**
-  String get readerZoomStartPosition;
 
   /// Setting label for the reader page background color
   ///
@@ -1947,18 +3981,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hold-scroll Speed'**
   String get readerHoldScrollSpeed;
-
-  /// Section header grouping page transition options
-  ///
-  /// In en, this message translates to:
-  /// **'Transitions'**
-  String get readerTransitions;
-
-  /// Setting label for the page-turn transition/animation style
-  ///
-  /// In en, this message translates to:
-  /// **'Page Transition'**
-  String get readerPageTransition;
 
   /// Error/snackbar shown when the content source extension is missing
   ///
@@ -2061,12 +4083,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading next chapter...'**
   String get readerLoadingNextChapter;
-
-  /// Snackbar confirming a chapter was finished; {name} is the chapter title
-  ///
-  /// In en, this message translates to:
-  /// **'Finished: {name}'**
-  String readerFinishedChapter(Object name);
 
   /// End-of-chapter message when no newer chapter exists
   ///
@@ -2313,12 +4329,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search'**
   String get browseSearch;
-
-  /// Tooltip for the source-builder tool button; RepoForge is a feature name, keep it
-  ///
-  /// In en, this message translates to:
-  /// **'RepoForge — build & manage sources'**
-  String get browseRepoForgeTooltip;
 
   /// Button/menu action to add a new extension repository
   ///
@@ -2824,6 +4834,24 @@ abstract class AppLocalizations {
   /// **'Failed: {error}'**
   String browseFailed(Object error);
 
+  /// Empty state in the Browse language-filter search when the query matches no language
+  ///
+  /// In en, this message translates to:
+  /// **'No languages match'**
+  String get browseNoLanguagesMatch;
+
+  /// Section header in the Browse language filter for the user's pinned and device languages (shown uppercased in the UI)
+  ///
+  /// In en, this message translates to:
+  /// **'Your languages'**
+  String get browseYourLanguages;
+
+  /// Hint text in the Browse language-filter search field
+  ///
+  /// In en, this message translates to:
+  /// **'Search languages'**
+  String get browseSearchLanguages;
+
   /// Transient status shown while an extension is updating
   ///
   /// In en, this message translates to:
@@ -3016,12 +5044,6 @@ abstract class AppLocalizations {
   /// **'See all'**
   String get browseSeeAll;
 
-  /// Empty-state when a search returns nothing
-  ///
-  /// In en, this message translates to:
-  /// **'No results found'**
-  String get browseNoResultsFound;
-
   /// Shown under a source in global search when it returned no matches
   ///
   /// In en, this message translates to:
@@ -3172,6 +5194,60 @@ abstract class AppLocalizations {
   /// **'DNS Provider'**
   String get setxAdvancedDnsProviderTitle;
 
+  /// Button and dialog title to add a user-defined DNS-over-HTTPS provider
+  ///
+  /// In en, this message translates to:
+  /// **'Add custom DNS'**
+  String get setxAdvancedDnsAddCustom;
+
+  /// Text-field label for a custom DNS provider's display name
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get setxAdvancedDnsName;
+
+  /// Placeholder example shown in the custom DNS name field
+  ///
+  /// In en, this message translates to:
+  /// **'My DNS'**
+  String get setxAdvancedDnsNameHint;
+
+  /// Text-field label for a custom DNS-over-HTTPS endpoint URL
+  ///
+  /// In en, this message translates to:
+  /// **'DoH URL'**
+  String get setxAdvancedDnsUrlLabel;
+
+  /// Validation error shown when the entered custom DNS URL is not a valid https URL
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid https:// URL'**
+  String get setxAdvancedDnsInvalidUrl;
+
+  /// Button to confirm adding a custom DNS provider
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get setxAdvancedDnsAdd;
+
+  /// Delete action for a custom DNS provider, used as both the tooltip and the confirm button
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get setxAdvancedDnsDelete;
+
+  /// Title of the confirmation dialog for removing a custom DNS provider
+  ///
+  /// In en, this message translates to:
+  /// **'Delete custom DNS?'**
+  String get setxAdvancedDnsDeleteTitle;
+
+  /// Confirmation-dialog body for removing a custom DNS provider; {name} is the provider's name
+  ///
+  /// In en, this message translates to:
+  /// **'Remove \"{name}\" from your DNS providers?'**
+  String setxAdvancedDnsDeleteBody(String name);
+
   /// Small badge label marking an experimental/beta feature.
   ///
   /// In en, this message translates to:
@@ -3193,7 +5269,7 @@ abstract class AppLocalizations {
   /// Subtitle under the Beta features toggle.
   ///
   /// In en, this message translates to:
-  /// **'Show experimental features — hands-free & volume-key scrolling, RepoForge, AI translation and auto-crop. They may be unstable or change.'**
+  /// **'Show experimental features: hands-free and volume-key scrolling, AI translation and auto-crop. They may be unstable or change.'**
   String get setxAdvancedBetaDesc;
 
   /// Section header for extension settings on the Advanced page
@@ -3333,6 +5409,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Level'**
   String get setxAdvancedFilterLevel;
+
+  /// Log filter option meaning no category/level filter (show everything)
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get setxAdvancedLogAll;
+
+  /// Debug-log category filter: repository/source-repo events
+  ///
+  /// In en, this message translates to:
+  /// **'Repo'**
+  String get setxAdvancedLogCatRepo;
+
+  /// Debug-log category filter: extension events
+  ///
+  /// In en, this message translates to:
+  /// **'Extension'**
+  String get setxAdvancedLogCatExtension;
+
+  /// Debug-log category filter: network events
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get setxAdvancedLogCatNetwork;
+
+  /// Debug-log category filter: install events
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get setxAdvancedLogCatInstall;
+
+  /// Debug-log category filter: library events
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get setxAdvancedLogCatLibrary;
+
+  /// Debug-log category filter: general/uncategorised events
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get setxAdvancedLogCatGeneral;
+
+  /// Debug-log severity level: debug
+  ///
+  /// In en, this message translates to:
+  /// **'Debug'**
+  String get setxAdvancedLogLvlDebug;
+
+  /// Debug-log severity level: info
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get setxAdvancedLogLvlInfo;
+
+  /// Debug-log severity level: warning
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get setxAdvancedLogLvlWarning;
+
+  /// Debug-log severity level: error
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get setxAdvancedLogLvlError;
 
   /// Empty-state message shown when no logs exist yet
   ///
@@ -4006,6 +6148,198 @@ abstract class AppLocalizations {
   /// **'Close'**
   String get setxAboutClose;
 
+  /// Version line under the app name on the About page; {version} is like 1.2.99 and {build} is like 285
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} (Build {build})'**
+  String setxAboutVersionBuild(String version, String build);
+
+  /// Subtitle under the Discord row on the About page
+  ///
+  /// In en, this message translates to:
+  /// **'Join the community'**
+  String get setxAboutDiscordSubtitle;
+
+  /// Title of the Settings > Help & Tips page
+  ///
+  /// In en, this message translates to:
+  /// **'Help & Tips'**
+  String get helpTipsTitle;
+
+  /// Row that replays the first-launch tutorial
+  ///
+  /// In en, this message translates to:
+  /// **'View tutorial'**
+  String get helpTipsViewTutorial;
+
+  /// Subtitle under the View tutorial row
+  ///
+  /// In en, this message translates to:
+  /// **'A quick tour of the app'**
+  String get helpTipsViewTutorialSub;
+
+  /// Row that opens the community Discord invite
+  ///
+  /// In en, this message translates to:
+  /// **'Join our Discord'**
+  String get helpTipsDiscord;
+
+  /// Subtitle under the Join our Discord row
+  ///
+  /// In en, this message translates to:
+  /// **'Help, requests & community'**
+  String get helpTipsDiscordSub;
+
+  /// Section header above the list of quick tips
+  ///
+  /// In en, this message translates to:
+  /// **'Tips'**
+  String get helpTipsSectionTips;
+
+  /// Tip title: what to do when the app shows no manga/sources
+  ///
+  /// In en, this message translates to:
+  /// **'No content showing?'**
+  String get helpTipsNoContentTitle;
+
+  /// Tip body telling the user to add a source repository from the Browse overflow menu
+  ///
+  /// In en, this message translates to:
+  /// **'Add an extension repository in Browse → ⋯ to install sources first.'**
+  String get helpTipsNoContentBody;
+
+  /// Tip title about reader touch gestures
+  ///
+  /// In en, this message translates to:
+  /// **'Reader gestures'**
+  String get helpTipsGesturesTitle;
+
+  /// Tip body explaining reader tap zones and long-press
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the edges to turn pages, the center to show controls; long-press a page for more.'**
+  String get helpTipsGesturesBody;
+
+  /// Tip title about the private Vault feature
+  ///
+  /// In en, this message translates to:
+  /// **'The Vault'**
+  String get helpTipsVaultTitle;
+
+  /// Tip body explaining the Vault keeps titles behind a lock
+  ///
+  /// In en, this message translates to:
+  /// **'Move private titles into the Vault to keep them behind a lock.'**
+  String get helpTipsVaultBody;
+
+  /// Tip title about keeping the library updated
+  ///
+  /// In en, this message translates to:
+  /// **'Keep up to date'**
+  String get helpTipsUpdateTitle;
+
+  /// Tip body explaining pull-to-refresh and the update schedule setting
+  ///
+  /// In en, this message translates to:
+  /// **'Pull down on the Library to check for new chapters; set a schedule in Library settings.'**
+  String get helpTipsUpdateBody;
+
+  /// Button that skips the first-launch tutorial
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get tutorialSkip;
+
+  /// Button to advance to the next tutorial slide
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get tutorialNext;
+
+  /// Button on the last tutorial slide that finishes the tour
+  ///
+  /// In en, this message translates to:
+  /// **'Get started'**
+  String get tutorialGetStarted;
+
+  /// Button on the tutorial community slide that opens the Discord invite
+  ///
+  /// In en, this message translates to:
+  /// **'Join Discord'**
+  String get tutorialJoinDiscord;
+
+  /// Tutorial slide 1 title (Foxlations is the app's brand name, keep it)
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Foxlations'**
+  String get tutorialSlide1Title;
+
+  /// Tutorial slide 1 body: what the app is
+  ///
+  /// In en, this message translates to:
+  /// **'One app for manga and manhwa, anime, and light novels - read, watch and listen, all from sources you add yourself. No account, no ads, nothing phoning home.'**
+  String get tutorialSlide1Body;
+
+  /// Tutorial slide 2 title
+  ///
+  /// In en, this message translates to:
+  /// **'Get your content'**
+  String get tutorialSlide2Title;
+
+  /// Tutorial slide 2 body: how to add source repositories
+  ///
+  /// In en, this message translates to:
+  /// **'Foxlations ships empty - you choose the sources. In the Browse tab, open the ⋯ menu to add an extension repository (a link your community shares). Installed sources show up ready to search.'**
+  String get tutorialSlide2Body;
+
+  /// Tutorial slide 3 title
+  ///
+  /// In en, this message translates to:
+  /// **'Build your library'**
+  String get tutorialSlide3Title;
+
+  /// Tutorial slide 3 body: searching and adding titles to the library
+  ///
+  /// In en, this message translates to:
+  /// **'Search a source or use global search across all of them, open a title, and tap the heart to add it. Your library is organized with categories (Reading, On-hold, your own…) and a “Continue reading” shortcut right up top.'**
+  String get tutorialSlide3Body;
+
+  /// Tutorial slide 4 title
+  ///
+  /// In en, this message translates to:
+  /// **'Read your way'**
+  String get tutorialSlide4Title;
+
+  /// Tutorial slide 4 body: reader modes and options
+  ///
+  /// In en, this message translates to:
+  /// **'Paged, webtoon or double-page; tap the edges to turn pages and the centre for controls. Dial in eye-comfort (warm filter + dim), customise the novel reader, let it read novels aloud, and skip anime intros automatically.'**
+  String get tutorialSlide4Body;
+
+  /// Tutorial slide 5 title
+  ///
+  /// In en, this message translates to:
+  /// **'Private & offline'**
+  String get tutorialSlide5Title;
+
+  /// Tutorial slide 5 body: downloads, backup, Vault, privacy
+  ///
+  /// In en, this message translates to:
+  /// **'Download chapters and episodes to read with no connection, back up your whole library, and keep private titles locked away in the Vault. There’s incognito mode and an app lock too.'**
+  String get tutorialSlide5Body;
+
+  /// Tutorial slide 6 title
+  ///
+  /// In en, this message translates to:
+  /// **'Join the community'**
+  String get tutorialSlide6Title;
+
+  /// Tutorial slide 6 body: inviting the user to the community Discord
+  ///
+  /// In en, this message translates to:
+  /// **'Questions, source help, feature requests, or just want to chat? Come say hi on our Discord - and you can reopen this tour any time from Settings → Help & Tips.'**
+  String get tutorialSlide6Body;
+
   /// Changelog dialog title; {version} is the app version number
   ///
   /// In en, this message translates to:
@@ -4149,6 +6483,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add'**
   String get miscAdd;
+
+  /// Title of the confirmation dialog shown when a foxlations:// link asks to add a source repository
+  ///
+  /// In en, this message translates to:
+  /// **'Add source repo?'**
+  String get deeplinkAddRepoTitle;
+
+  /// Shows which site a deep-linked repo comes from; {host} is the domain
+  ///
+  /// In en, this message translates to:
+  /// **'From {host}'**
+  String deeplinkFromHost(String host);
+
+  /// Snackbar after adding a named repo via deep link; {name} is the repo name
+  ///
+  /// In en, this message translates to:
+  /// **'Added \"{name}\" - see Browse > Extensions'**
+  String deeplinkAddedNamed(String name);
+
+  /// Snackbar after adding an unnamed repo via deep link
+  ///
+  /// In en, this message translates to:
+  /// **'Repo added - see Browse > Extensions'**
+  String get deeplinkAdded;
+
+  /// Snackbar when adding a deep-linked repo fails; {error} is the error detail
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t add repo: {error}'**
+  String deeplinkAddFailed(String error);
 
   /// Section header above the list of added repositories; often shown uppercase.
   ///
@@ -4618,17 +6982,95 @@ abstract class AppLocalizations {
   /// **'Delete failed: {error}'**
   String trackDeleteFailed(Object error);
 
-  /// Title of the confirmation dialog shown before removing a source from My Sources.
+  /// Menu item in the repository options sheet that re-downloads a repo's sources
   ///
   /// In en, this message translates to:
-  /// **'Delete source?'**
-  String get repoDeleteSourceTitle;
+  /// **'Reinstall sources'**
+  String get repoReinstallSources;
 
-  /// Body of the delete-source confirmation dialog; {name} is the source's display name.
+  /// Menu item in the repository options sheet that copies the repo URL to the clipboard
   ///
   /// In en, this message translates to:
-  /// **'\"{name}\" will be removed from My Sources.'**
-  String repoDeleteSourceBody(Object name);
+  /// **'Copy repo URL'**
+  String get repoCopyUrl;
+
+  /// Menu item that opens the repo's GitHub page in a browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open GitHub page'**
+  String get repoOpenGithubPage;
+
+  /// Menu item that opens the repo's website in a browser
+  ///
+  /// In en, this message translates to:
+  /// **'Open website'**
+  String get repoOpenWebsite;
+
+  /// Menu item that opens the repo's Discord invite
+  ///
+  /// In en, this message translates to:
+  /// **'Open Discord'**
+  String get repoOpenDiscord;
+
+  /// Destructive menu item in the repository options sheet that removes the repository
+  ///
+  /// In en, this message translates to:
+  /// **'Delete repo'**
+  String get repoDeleteRepo;
+
+  /// Snackbar shown when a link fails to open; {url} is the URL that could not be opened
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open {url}'**
+  String repoCouldNotOpen(String url);
+
+  /// Snackbar shown while a repository's sources are being reinstalled (value ends with an ellipsis)
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstalling sources…'**
+  String get repoReinstalling;
+
+  /// Snackbar shown when a reinstall found nothing new to install but refreshed the repo
+  ///
+  /// In en, this message translates to:
+  /// **'Repo refreshed'**
+  String get repoRefreshed;
+
+  /// Snackbar reporting how many sources were reinstalled from a repo
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Reinstalled 1 source} other{Reinstalled {count} sources}}'**
+  String repoReinstalledCount(int count);
+
+  /// Snackbar shown when reinstalling a repo's sources fails; {error} is the error message
+  ///
+  /// In en, this message translates to:
+  /// **'Reinstall failed: {error}'**
+  String repoReinstallFailed(String error);
+
+  /// Title of the confirmation dialog before deleting a repository
+  ///
+  /// In en, this message translates to:
+  /// **'Delete repo?'**
+  String get repoDeleteTitle;
+
+  /// Body of the delete-repo confirmation dialog; {name} is the repository name
+  ///
+  /// In en, this message translates to:
+  /// **'Remove \"{name}\" and uninstall its sources?'**
+  String repoDeleteBody(String name);
+
+  /// Confirm button in the delete-repo confirmation dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get repoDeleteConfirm;
+
+  /// Subtitle under a repository row showing how many sources it provides
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 source} other{{count} sources}}'**
+  String repoSourceCount(int count);
 
   /// Button that dismisses a dialog without acting; generic Cancel.
   ///
@@ -4636,545 +7078,11 @@ abstract class AppLocalizations {
   /// **'Cancel'**
   String get repoCancel;
 
-  /// Confirm button in the delete-source dialog; performs the removal.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete'**
-  String get repoDelete;
-
-  /// Snackbar confirming a source was removed; {name} is the deleted source's name.
-  ///
-  /// In en, this message translates to:
-  /// **'Deleted \"{name}\"'**
-  String repoDeletedSource(Object name);
-
-  /// Snackbar shown when tapping Export All while My Sources is empty.
-  ///
-  /// In en, this message translates to:
-  /// **'No sources to export'**
-  String get repoNoSourcesToExport;
-
-  /// Title of the file-save dialog for exporting RepoForge sources to a file.
-  ///
-  /// In en, this message translates to:
-  /// **'Export RepoForge sources'**
-  String get repoExportDialogTitle;
-
-  /// Snackbar after a successful export; {count} is the number of sources written.
-  ///
-  /// In en, this message translates to:
-  /// **'Exported {count} sources'**
-  String repoExportedSources(Object count);
-
-  /// Snackbar when exporting sources fails; {error} is the error message.
-  ///
-  /// In en, this message translates to:
-  /// **'Export failed: {error}'**
-  String repoExportFailed(Object error);
-
-  /// Snackbar after importing sources from a file; {count} is how many were imported.
-  ///
-  /// In en, this message translates to:
-  /// **'Imported {count} source(s)'**
-  String repoImportedSources(Object count);
-
-  /// Snackbar when importing sources fails; {error} is the error message.
-  ///
-  /// In en, this message translates to:
-  /// **'Import failed: {error}'**
-  String repoImportFailed(Object error);
-
-  /// Tagline/subtitle for the RepoForge feature: build sources from any URL.
-  ///
-  /// In en, this message translates to:
-  /// **'Build sources from any URL'**
-  String get repoBuildFromUrl;
-
-  /// Small BETA badge label next to the RepoForge title.
-  ///
-  /// In en, this message translates to:
-  /// **'BETA'**
-  String get repoBeta;
-
-  /// Intro paragraph on the RepoForge home screen explaining what it does and its beta caveats.
-  ///
-  /// In en, this message translates to:
-  /// **'Detect a site\'s framework, tune selectors, and install a working manga / anime / novel source — no server, all on-device. RepoForge is in beta, so it won\'t always get a source right — check the result and tweak the selectors if a site doesn\'t come out correct.'**
-  String get repoHeroDescription;
-
-  /// Coverage stat line; {frameworks}, {manga}, {novel} are counts of known frameworks and sites.
-  ///
-  /// In en, this message translates to:
-  /// **'{frameworks} frameworks · {manga} manga + {novel} novel sites known'**
-  String repoCoverageSummary(Object frameworks, Object manga, Object novel);
-
-  /// Primary button that opens the wizard to generate a new source from a URL.
-  ///
-  /// In en, this message translates to:
-  /// **'New Source'**
-  String get repoNewSource;
-
-  /// Button to import previously exported sources from a file.
-  ///
-  /// In en, this message translates to:
-  /// **'Import'**
-  String get repoImport;
-
-  /// Section header (all-caps) listing the user's generated/installed sources.
-  ///
-  /// In en, this message translates to:
-  /// **'MY SOURCES'**
-  String get repoMySources;
-
-  /// Button that exports all sources in My Sources to a file.
-  ///
-  /// In en, this message translates to:
-  /// **'Export all'**
-  String get repoExportAll;
-
-  /// Empty-state heading shown when the user has no sources.
-  ///
-  /// In en, this message translates to:
-  /// **'No sources yet'**
-  String get repoNoSourcesYet;
-
-  /// Empty-state hint prompting the user to tap New Source.
-  ///
-  /// In en, this message translates to:
-  /// **'Tap \"New Source\" to generate one from a site URL.'**
-  String get repoEmptyStateHint;
-
-  /// Small status label on a source card meaning it is generated but not installed.
-  ///
-  /// In en, this message translates to:
-  /// **'not installed'**
-  String get repoNotInstalled;
-
-  /// Menu action to open the source in the app's Browse tab.
-  ///
-  /// In en, this message translates to:
-  /// **'Open in browse'**
-  String get repoOpenInBrowse;
-
-  /// Menu action to reopen a source in the wizard to edit or re-run detection.
-  ///
-  /// In en, this message translates to:
-  /// **'Edit / re-detect'**
-  String get repoEditRedetect;
-
-  /// Badge/heading: the checked site is a recognized light-novel site.
-  ///
-  /// In en, this message translates to:
-  /// **'Known light-novel site'**
-  String get repoKnownNovelSite;
-
-  /// Detail line explaining a novel site was built with the generic novel template.
-  ///
-  /// In en, this message translates to:
-  /// **'Recognized as a novel site — generated with the generic novel body (browse may need selector tuning).'**
-  String get repoNovelGenericDetail;
-
-  /// Detail line: novel source built from a known framework; {framework} is its name.
-  ///
-  /// In en, this message translates to:
-  /// **'Generated as a Novel source using the {framework} body — browsing + reader work out of the box.'**
-  String repoNovelFrameworkDetail(Object framework);
-
-  /// Badge/heading: the checked site is a recognized manga site.
-  ///
-  /// In en, this message translates to:
-  /// **'Known manga site'**
-  String get repoKnownMangaSite;
-
-  /// Detail line explaining the source is built from the site's community-verified API.
-  ///
-  /// In en, this message translates to:
-  /// **'Community-verified API source — RepoForge builds it from the site\'s API.'**
-  String get repoMangaApiDetail;
-
-  /// Detail line: source uses a known theme's selectors; {theme} is the theme name.
-  ///
-  /// In en, this message translates to:
-  /// **'Community-verified theme: {theme} — selectors are known.'**
-  String repoMangaThemeDetail(Object theme);
-
-  /// Detail line: community-verified custom selectors exist for this site.
-  ///
-  /// In en, this message translates to:
-  /// **'Community-verified custom selectors are on file for this site.'**
-  String get repoMangaCustomDetail;
-
-  /// Badge/heading: the checked site is not in RepoForge's knowledge base.
-  ///
-  /// In en, this message translates to:
-  /// **'Not in the knowledge base'**
-  String get repoNotInKb;
-
-  /// Detail line explaining RepoForge will detect the framework live and fall back to heuristics.
-  ///
-  /// In en, this message translates to:
-  /// **'RepoForge will detect its framework live when you add it, then fall back to heuristic \"what-is-what\" scraping if it\'s bespoke.'**
-  String get repoNotInKbDetail;
-
-  /// Tab/section title for the Coverage view of supported sites and frameworks.
-  ///
-  /// In en, this message translates to:
-  /// **'Coverage'**
-  String get repoCoverage;
-
-  /// Heading for the tool to check whether a given site URL is supported.
-  ///
-  /// In en, this message translates to:
-  /// **'Check a site'**
-  String get repoCheckASite;
-
-  /// Placeholder text in the URL field of the Check-a-site tool.
-  ///
-  /// In en, this message translates to:
-  /// **'paste a site URL'**
-  String get repoPasteSiteUrlHint;
-
-  /// Button that runs the coverage check on the entered site URL.
-  ///
-  /// In en, this message translates to:
-  /// **'Check'**
-  String get repoCheck;
-
-  /// Section header listing frameworks RepoForge can generate sources for.
-  ///
-  /// In en, this message translates to:
-  /// **'Supported frameworks'**
-  String get repoSupportedFrameworks;
-
-  /// Label for the count/list of supported manga sites.
-  ///
-  /// In en, this message translates to:
-  /// **'manga sites'**
-  String get repoMangaSites;
-
-  /// Label for the count/list of supported novel sites.
-  ///
-  /// In en, this message translates to:
-  /// **'novel sites'**
-  String get repoNovelSites;
-
-  /// Label for the count/list of supported frameworks.
-  ///
-  /// In en, this message translates to:
-  /// **'frameworks'**
-  String get repoFrameworks;
-
-  /// Selector-role label: the repeating list item / card in browse results.
-  ///
-  /// In en, this message translates to:
-  /// **'List item (each card)'**
-  String get repoRoleItem;
-
-  /// Selector-role label: the title of each browse list item.
-  ///
-  /// In en, this message translates to:
-  /// **'Title'**
-  String get repoRoleTitle;
-
-  /// Selector-role label: the cover/thumbnail image of each item.
-  ///
-  /// In en, this message translates to:
-  /// **'Cover image'**
-  String get repoRoleCover;
-
-  /// Selector-role label: the link to the next page of results.
-  ///
-  /// In en, this message translates to:
-  /// **'Next-page link'**
-  String get repoRoleNextPage;
-
-  /// Selector-role label: the title on a series/detail page.
-  ///
-  /// In en, this message translates to:
-  /// **'Detail — title'**
-  String get repoRoleDetailTitle;
-
-  /// Selector-role label: each chapter entry in the chapter list.
-  ///
-  /// In en, this message translates to:
-  /// **'Chapter list item'**
-  String get repoRoleChapters;
-
-  /// Selector-role label: the page images shown in the reader.
-  ///
-  /// In en, this message translates to:
-  /// **'Reader page images'**
-  String get repoRolePageImages;
-
-  /// Selector-role label: each episode in an anime episode list.
-  ///
-  /// In en, this message translates to:
-  /// **'Episode list (anime)'**
-  String get repoRoleEpisodes;
-
-  /// Progress status shown while the detector downloads the page.
-  ///
-  /// In en, this message translates to:
-  /// **'Fetching page…'**
-  String get repoStepFetching;
-
-  /// Progress status while comparing the page against known framework signatures.
-  ///
-  /// In en, this message translates to:
-  /// **'Matching framework signatures…'**
-  String get repoStepMatching;
-
-  /// Progress status while deriving CSS selectors from the page.
-  ///
-  /// In en, this message translates to:
-  /// **'Extracting selectors…'**
-  String get repoStepExtracting;
-
-  /// Progress status shown at the end of detection before results appear.
-  ///
-  /// In en, this message translates to:
-  /// **'Finalizing…'**
-  String get repoStepFinalizing;
-
-  /// Validation snackbar shown when Detect is tapped with no URL entered.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a site URL first.'**
-  String get repoEnterUrlFirst;
-
-  /// Snackbar when site detection fails; {error} is the error message.
-  ///
-  /// In en, this message translates to:
-  /// **'Detection failed: {error}'**
-  String repoDetectionFailed(Object error);
-
-  /// Short error label/snackbar when a page fetch fails.
-  ///
-  /// In en, this message translates to:
-  /// **'Fetch failed'**
-  String get repoFetchFailed;
-
-  /// Snackbar after fetching a page; {count} is the number of characters loaded.
-  ///
-  /// In en, this message translates to:
-  /// **'Fetched {count} chars — now test selectors'**
-  String repoFetchedChars(Object count);
-
-  /// Snackbar prompting the user to fetch a page before testing selectors.
-  ///
-  /// In en, this message translates to:
-  /// **'Fetch a page first'**
-  String get repoFetchPageFirst;
-
-  /// Snackbar when source code generation fails; {error} is the error message.
-  ///
-  /// In en, this message translates to:
-  /// **'Generation failed: {error}'**
-  String repoGenerationFailed(Object error);
-
-  /// Snackbar prompting the user to run detection before this step.
-  ///
-  /// In en, this message translates to:
-  /// **'Detect a site first'**
-  String get repoDetectSiteFirst;
-
-  /// Snackbar confirming a new source was created and installed; {name} is its name.
-  ///
-  /// In en, this message translates to:
-  /// **'Created & installed \"{name}\"'**
-  String repoCreatedInstalled(Object name);
-
-  /// Snackbar when saving the source fails; {error} is the error message.
-  ///
-  /// In en, this message translates to:
-  /// **'Save failed: {error}'**
-  String repoSaveFailed(Object error);
-
-  /// Wizard step title / button for creating the source.
-  ///
-  /// In en, this message translates to:
-  /// **'Create Source'**
-  String get repoCreateSource;
-
-  /// Field label for the website URL to generate a source from.
-  ///
-  /// In en, this message translates to:
-  /// **'Site URL'**
-  String get repoSiteUrl;
-
-  /// Button that runs framework detection on the entered Site URL.
-  ///
-  /// In en, this message translates to:
-  /// **'Detect'**
-  String get repoDetect;
-
-  /// Small label showing detection confidence; {pct} is the percentage.
-  ///
-  /// In en, this message translates to:
-  /// **'confidence {pct}%'**
-  String repoConfidence(Object pct);
-
-  /// Badge indicating the detected source uses the site's API rather than scraping.
-  ///
-  /// In en, this message translates to:
-  /// **'API source'**
-  String get repoApiSource;
-
-  /// Section header for the source's details/metadata fields.
-  ///
-  /// In en, this message translates to:
-  /// **'Details'**
-  String get repoDetails;
-
-  /// Placeholder text in the source name input field.
-  ///
-  /// In en, this message translates to:
-  /// **'Source name'**
-  String get repoSourceNameHint;
-
   /// Field label for the source's display name.
   ///
   /// In en, this message translates to:
   /// **'Name'**
   String get repoName;
-
-  /// Field label for the source's language code (abbreviated Language).
-  ///
-  /// In en, this message translates to:
-  /// **'Lang'**
-  String get repoLang;
-
-  /// Content-type toggle/label: Manga.
-  ///
-  /// In en, this message translates to:
-  /// **'Manga'**
-  String get repoManga;
-
-  /// Content-type toggle/label: Anime.
-  ///
-  /// In en, this message translates to:
-  /// **'Anime'**
-  String get repoAnime;
-
-  /// Content-type toggle/label: Novel.
-  ///
-  /// In en, this message translates to:
-  /// **'Novel'**
-  String get repoNovel;
-
-  /// Toggle/label marking the source as NSFW (adult content).
-  ///
-  /// In en, this message translates to:
-  /// **'NSFW'**
-  String get repoNsfw;
-
-  /// Title of the panel for testing and tuning CSS selectors.
-  ///
-  /// In en, this message translates to:
-  /// **'Scraping Studio'**
-  String get repoScrapingStudio;
-
-  /// Hint under the Scraping Studio title explaining the fetch-then-test flow.
-  ///
-  /// In en, this message translates to:
-  /// **'Fetch a page, then test each selector to see how many elements it matches.'**
-  String get repoScrapingStudioHint;
-
-  /// Placeholder in the field for the URL to fetch and test selectors against.
-  ///
-  /// In en, this message translates to:
-  /// **'URL to test against'**
-  String get repoUrlToTestHint;
-
-  /// Button that downloads the test URL's page in Scraping Studio.
-  ///
-  /// In en, this message translates to:
-  /// **'Fetch'**
-  String get repoFetch;
-
-  /// Snackbar when a fetch fails, hinting the site may block automated access.
-  ///
-  /// In en, this message translates to:
-  /// **'Fetch failed — the site may block automated access.'**
-  String get repoFetchFailedBlocked;
-
-  /// Status after fetching a test page; {count} is the number of characters loaded.
-  ///
-  /// In en, this message translates to:
-  /// **'Loaded {count} chars.'**
-  String repoLoadedChars(Object count);
-
-  /// Button to preview the generated source's JavaScript/Dart code.
-  ///
-  /// In en, this message translates to:
-  /// **'Preview JS'**
-  String get repoPreviewJs;
-
-  /// Primary button that creates the source and installs it into the app.
-  ///
-  /// In en, this message translates to:
-  /// **'Create & Install'**
-  String get repoCreateInstall;
-
-  /// Button/label to choose from a catalog of known selectors for a role.
-  ///
-  /// In en, this message translates to:
-  /// **'Pick a known selector'**
-  String get repoPickKnownSelector;
-
-  /// Button that runs a selector against the fetched page to count matches.
-  ///
-  /// In en, this message translates to:
-  /// **'Test'**
-  String get repoTest;
-
-  /// Message when no known selectors exist for a role; {label} is the role name.
-  ///
-  /// In en, this message translates to:
-  /// **'No cataloged selectors for \"{label}\"'**
-  String repoNoCatalogedSelectors(Object label);
-
-  /// Inline result label when a tested selector is syntactically invalid.
-  ///
-  /// In en, this message translates to:
-  /// **'invalid'**
-  String get repoInvalid;
-
-  /// Inline result label when a tested selector matches no elements.
-  ///
-  /// In en, this message translates to:
-  /// **'no match'**
-  String get repoNoMatch;
-
-  /// Heading of the panel showing the generated source code.
-  ///
-  /// In en, this message translates to:
-  /// **'Generated source'**
-  String get repoGeneratedSource;
-
-  /// Button to copy the generated source code to the clipboard.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy'**
-  String get repoCopy;
-
-  /// Snackbar confirming the source code was copied to the clipboard.
-  ///
-  /// In en, this message translates to:
-  /// **'Copied source to clipboard'**
-  String get repoCopiedToClipboard;
-
-  /// Label/heading for a selector input; {field} is the role it targets.
-  ///
-  /// In en, this message translates to:
-  /// **'Selector for {field}'**
-  String repoSelectorFor(Object field);
-
-  /// Placeholder in the search box for filtering the selector catalog.
-  ///
-  /// In en, this message translates to:
-  /// **'Search selectors…'**
-  String get repoSearchSelectors;
 
   /// Snackbar confirming one source was imported; {id} is its identifier.
   ///
@@ -5914,30 +7822,6 @@ abstract class AppLocalizations {
   /// **'Novels'**
   String get setdVaultContentsTabNovels;
 
-  /// List header for items currently in the main library.
-  ///
-  /// In en, this message translates to:
-  /// **'In your library'**
-  String get setdVaultContentsInLibrary;
-
-  /// Hint next to a library item; tapping moves it into the vault (arrow points right).
-  ///
-  /// In en, this message translates to:
-  /// **'→ move into vault'**
-  String get setdVaultContentsMoveIntoHint;
-
-  /// List header for items currently in the vault.
-  ///
-  /// In en, this message translates to:
-  /// **'In the vault'**
-  String get setdVaultContentsInVault;
-
-  /// Hint next to a vault item; tapping moves it back to library (arrow points left).
-  ///
-  /// In en, this message translates to:
-  /// **'← move back out'**
-  String get setdVaultContentsMoveOutHint;
-
   /// Empty-state for the library list; {type} is the content type (manga/anime/novels).
   ///
   /// In en, this message translates to:
@@ -6291,6 +8175,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset'**
   String get setdAppearanceNavOrderReset;
+
+  /// Title for the setting that picks which tab the app opens on at launch.
+  ///
+  /// In en, this message translates to:
+  /// **'Open to'**
+  String get setdAppearanceStartTab;
+
+  /// Subtitle under the 'Open to' setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Which screen the app opens on at launch'**
+  String get setdAppearanceStartTabDesc;
 
   /// Option label selecting the dark theme.
   ///
@@ -6693,6 +8589,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Replace the reader bars with a back button and a corner wheel. Hold the wheel for quick actions and the page slider.'**
   String get readerRadialMenuSubtitle;
+
+  /// In-reader toggle (dual-page landscape) that offsets which pages pair into a two-page spread.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift double pages'**
+  String get readerShiftPages;
+
+  /// Explanation of the shift-double-pages reader toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nudge the pairing by one if two-page spreads land split across the middle.'**
+  String get readerShiftPagesDesc;
+
+  /// Small caps label above the just-finished chapter's name at a continuous-reader chapter break.
+  ///
+  /// In en, this message translates to:
+  /// **'Finished'**
+  String get readerFinishedLabel;
+
+  /// Small caps label above the next chapter's name at a continuous-reader chapter break.
+  ///
+  /// In en, this message translates to:
+  /// **'Up next'**
+  String get readerUpNextLabel;
 
   /// Setting to choose which bottom corner the radial wheel sits in (Left or Right).
   ///

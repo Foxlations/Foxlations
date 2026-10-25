@@ -102,12 +102,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsBrowseSubtitle => 'Sources, extensions, global search';
 
   @override
-  String get settingsRepoForgeTitle => 'RepoForge';
-
-  @override
-  String get settingsRepoForgeSubtitle => 'Build & manage sources from any URL';
-
-  @override
   String get settingsBackupTitle => 'Backup & Restore';
 
   @override
@@ -144,12 +138,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryAddManga => 'Add Manga';
-
-  @override
-  String get libraryApply => 'Apply';
-
-  @override
-  String get libraryAscending => 'Ascending';
 
   @override
   String get libraryBadges => 'Badges';
@@ -193,9 +181,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get libraryChaptersRead => 'Chapters Read';
-
-  @override
   String get libraryCheckForUpdates => 'Check for updates';
 
   @override
@@ -232,15 +217,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readerTtsSystemVoice => 'System default';
 
   @override
-  String get libraryCoverSize => 'Cover Size';
-
-  @override
   String libraryDaysCount(Object days) {
     return '$days days';
   }
-
-  @override
-  String get libraryDescending => 'Descending';
 
   @override
   String get libraryDeselectAll => 'Deselect all';
@@ -300,13 +279,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get libraryMonthlyActivity => 'Monthly Activity';
-
-  @override
   String get libraryMore => 'More';
-
-  @override
-  String get libraryMostReadSeries => 'Most-Read Series';
 
   @override
   String get libraryMoveToCategory => 'Move to Category';
@@ -320,9 +293,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get libraryNoBookmarksDesc =>
       'Long-press a manga and bookmark it to see it here.';
-
-  @override
-  String get libraryNoNewChapters => 'No new chapters';
 
   @override
   String get libraryNoNewChaptersLastCheck =>
@@ -341,9 +311,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryOpenRandomEntry => 'Open random entry';
-
-  @override
-  String get libraryReadingStreak => 'Reading Streak';
 
   @override
   String get libraryResetToDefault => 'Reset to default';
@@ -369,31 +336,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get librarySeries => 'Series';
-
-  @override
   String get libraryShowNumberOfItems => 'Show number of items';
 
   @override
-  String get librarySizeLarge => 'Large';
-
-  @override
   String get librarySizeMedium => 'Medium';
-
-  @override
-  String get librarySizeSmall => 'Small';
-
-  @override
-  String get librarySortLastUpdated => 'Last Updated';
-
-  @override
-  String get librarySortRating => 'Rating';
-
-  @override
-  String get librarySortTitle => 'Title';
-
-  @override
-  String get librarySortUnreadCount => 'Unread Count';
 
   @override
   String get librarySources => 'Sources';
@@ -423,22 +369,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryStatusUnknown => 'Unknown';
 
   @override
-  String get libraryStreakBest => 'Best';
-
-  @override
-  String get libraryStreakCurrent => 'Current';
-
-  @override
   String libraryStreakDaysStrong(Object days) {
     return '$days days strong — keep it up!';
   }
-
-  @override
-  String get libraryStreakKeepGoing =>
-      'Read tomorrow to keep the streak going!';
-
-  @override
-  String get libraryStreakStart => 'Start a streak by reading today!';
 
   @override
   String get libraryTabDisplay => 'Display';
@@ -456,9 +389,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String libraryTotalAbbrev(Object n) {
     return '$n total';
   }
-
-  @override
-  String get libraryTotalChapters => 'Total Chapters';
 
   @override
   String get libraryTypeMenuBarrier => 'Library type';
@@ -479,9 +409,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryVault => 'Vault';
-
-  @override
-  String get libraryVaultBreakdown => 'Vault Breakdown';
 
   @override
   String get libraryVaultStats => 'Vault Stats';
@@ -889,6 +816,1239 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appUnlock => 'Unlock';
 
   @override
+  String get appBiometrics => 'Biometrics';
+
+  @override
+  String appVaultTapsToEnter(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more taps to enter vault',
+      one: '1 more tap to enter vault',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appVaultTapsToExit(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more taps to exit vault',
+      one: '1 more tap to exit vault',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String detailRemoveFromLibraryBody(String title) {
+    return 'Remove \"$title\" from your library?';
+  }
+
+  @override
+  String get detailThisTitle => 'this title';
+
+  @override
+  String get detailTitleCopied => 'Title copied';
+
+  @override
+  String get detailSortBy => 'Sort by';
+
+  @override
+  String get detailSortSourceOrder => 'Source order';
+
+  @override
+  String get detailSortChapterNumber => 'Chapter number';
+
+  @override
+  String get detailSortUploadDate => 'Upload date';
+
+  @override
+  String get detailLoginPageTitle => 'Login';
+
+  @override
+  String get detailRemovedFromLibrary => 'Removed from library';
+
+  @override
+  String get detailUndo => 'Undo';
+
+  @override
+  String detailQueuePosition(int position, int total) {
+    return '$position of $total';
+  }
+
+  @override
+  String get insightsTitle => 'Reading Insights';
+
+  @override
+  String get insightsEmptyTitle => 'Nothing to rank yet';
+
+  @override
+  String get insightsEmptyBody =>
+      'Read a little and your most-read titles show up here.';
+
+  @override
+  String get insightsEstimatedFromHistory => 'Estimated from your history';
+
+  @override
+  String insightsTrackedSince(String month, String year) {
+    return 'Tracked since $month $year';
+  }
+
+  @override
+  String get insightsMonthJanuary => 'January';
+
+  @override
+  String get insightsMonthFebruary => 'February';
+
+  @override
+  String get insightsMonthMarch => 'March';
+
+  @override
+  String get insightsMonthApril => 'April';
+
+  @override
+  String get insightsMonthMay => 'May';
+
+  @override
+  String get insightsMonthJune => 'June';
+
+  @override
+  String get insightsMonthJuly => 'July';
+
+  @override
+  String get insightsMonthAugust => 'August';
+
+  @override
+  String get insightsMonthSeptember => 'September';
+
+  @override
+  String get insightsMonthOctober => 'October';
+
+  @override
+  String get insightsMonthNovember => 'November';
+
+  @override
+  String get insightsMonthDecember => 'December';
+
+  @override
+  String get repoNoTitlesToMigrate => 'No titles in this library to migrate.';
+
+  @override
+  String get repoChooseSourceFirst => 'Choose a source to migrate from first.';
+
+  @override
+  String get trackProviderClaudeDesc => 'Best for nuanced translation';
+
+  @override
+  String get trackProviderOpenaiDesc => 'Fast & accurate';
+
+  @override
+  String get trackProviderGeminiDesc => 'Multilingual specialist';
+
+  @override
+  String get trackProviderDeeplDesc => 'High-quality European languages';
+
+  @override
+  String get trackProviderHuggingfaceDesc => 'Open-source - Offline capable';
+
+  @override
+  String get trackProviderOpenrouterDesc =>
+      'One key, many models - free tier available';
+
+  @override
+  String get trackBadgeRecommended => 'Recommended';
+
+  @override
+  String get trackBadgeOffline => 'Offline';
+
+  @override
+  String get trackBadgeFree => 'Free models';
+
+  @override
+  String get setdAppearanceSectionPalette => 'Palette';
+
+  @override
+  String get setdAppearanceThemeStrength => 'Theme color strength';
+
+  @override
+  String get setdAppearanceThemeStrengthDesc =>
+      'How much the theme color takes over the app. 0 keeps the usual dark or light background; higher tints the whole app with the theme color.';
+
+  @override
+  String get setxBackupCreateComplete => 'Backup complete';
+
+  @override
+  String setxBackupCreateFailed(String error) {
+    return 'Backup failed: $error';
+  }
+
+  @override
+  String get setxBackupExportComplete => 'Export complete';
+
+  @override
+  String setxBackupExportFailed(String error) {
+    return 'Export failed: $error';
+  }
+
+  @override
+  String get setxBackupTargetApp => 'Target app';
+
+  @override
+  String get setxBackupIncludeLabel => 'Include';
+
+  @override
+  String get setxBackupTypeNovels => 'Light novels';
+
+  @override
+  String get setxBackupAutoTag => 'auto';
+
+  @override
+  String get setdDownloadsChaptersAhead => 'Chapters ahead';
+
+  @override
+  String get setdLibraryNoItemsToRefresh => 'No library items to refresh';
+
+  @override
+  String get setdLibraryRefreshingCovers => 'Refreshing covers';
+
+  @override
+  String get setdLibraryCoverRefreshStopped => 'Cover refresh stopped';
+
+  @override
+  String setdLibraryCoversRefreshed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Refreshed $count covers',
+      one: 'Refreshed 1 cover',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get setdLibrarySectionContinueReading => 'Continue reading';
+
+  @override
+  String get setdLibraryContinueShowAs => 'Show as';
+
+  @override
+  String get setdLibraryDefaultCategory => 'Default category';
+
+  @override
+  String get setdLibraryAlwaysAsk => 'Always ask';
+
+  @override
+  String get setdLibrarySkipHasUnread => 'Skip titles with unread chapters';
+
+  @override
+  String get setdLibrarySkipHasUnreadDesc =>
+      'Don\'t check titles you haven\'t caught up on yet';
+
+  @override
+  String get setdLibrarySkipCompleted => 'Skip completed series';
+
+  @override
+  String get setdLibrarySkipCompletedDesc =>
+      'Finished series won\'t get new chapters';
+
+  @override
+  String get setdLibraryRefreshCovers => 'Refresh library covers';
+
+  @override
+  String get setdLibraryRefreshCoversDesc => 'Fetch covers again from source';
+
+  @override
+  String get setdActionMove => 'Move';
+
+  @override
+  String get setdActionConfirm => 'Confirm';
+
+  @override
+  String get setdActionRemove => 'Remove';
+
+  @override
+  String get setdActionUndo => 'Undo';
+
+  @override
+  String get setxSecurityLockAfterTitle => 'Lock after';
+
+  @override
+  String get setxSecurityLockAfterSubtitle =>
+      'Wait this long before re-locking on reopen';
+
+  @override
+  String get setxSecurityLockAfterImmediately => 'Immediately';
+
+  @override
+  String setxSecurityLockAfterMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes',
+      one: '1 minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get setdVaultChangeDecoyPassword => 'Change decoy password';
+
+  @override
+  String get setdVaultSetDecoyPassword => 'Set decoy password';
+
+  @override
+  String get setdVaultDecoyPasswordDesc =>
+      'A second password that opens a separate, empty-looking vault';
+
+  @override
+  String get setdVaultBiometricUnlock => 'Unlock with biometrics';
+
+  @override
+  String get setdVaultBiometricDesc =>
+      'Use Face ID / fingerprint to open the vault';
+
+  @override
+  String get setdVaultConfirmPasswordTitle => 'Confirm vault password';
+
+  @override
+  String get setdVaultBiometricEnabled => 'Biometric unlock enabled';
+
+  @override
+  String get setdVaultShakeToExit => 'Shake to exit';
+
+  @override
+  String get setdVaultShakeToExitDesc =>
+      'While in the vault, shake the phone to instantly leave it';
+
+  @override
+  String get setdVaultLibraryMoveAction => 'Move-to-vault in library';
+
+  @override
+  String get setdVaultLibraryMoveActionDesc =>
+      'Add a \"Move to vault\" action when selecting titles in your library';
+
+  @override
+  String get setdVaultPasswordHint => 'Password';
+
+  @override
+  String get setdVaultDecoyPasswordDialogTitle => 'Decoy password';
+
+  @override
+  String get setdVaultDecoyPasswordExplain =>
+      'Entering this instead of your real password opens a separate, isolated vault - so you can hand over the phone without revealing your real content.';
+
+  @override
+  String get setdVaultDecoyPasswordHint => 'Decoy password';
+
+  @override
+  String get setdVaultEnterPassword => 'Enter a password';
+
+  @override
+  String get setdVaultDecoyPasswordSet => 'Decoy password set';
+
+  @override
+  String get setdVaultDecoyMustDiffer => 'Must differ from your real password';
+
+  @override
+  String setdVaultContentsMovedInCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Moved $count to vault',
+      one: 'Moved 1 to vault',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String setdVaultContentsMovedOutCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Moved $count out of vault',
+      one: 'Moved 1 out of vault',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String setdVaultContentsMoveConfirmTitle(String what) {
+    return 'Move $what?';
+  }
+
+  @override
+  String setdVaultContentsMoveConfirmBody(int count, String dest, String into) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Move $count titles to $dest$into?',
+      one: 'Move 1 title to $dest$into?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get setdVaultContentsDestVault => 'the vault';
+
+  @override
+  String get setdVaultContentsDestLibrary => 'your library';
+
+  @override
+  String setdVaultContentsIntoCategory(String name) {
+    return ' → \"$name\"';
+  }
+
+  @override
+  String setdVaultContentsMoveAllShown(int count) {
+    return 'all $count shown';
+  }
+
+  @override
+  String setdVaultContentsMoveEverythingIn(String name) {
+    return 'everything in \"$name\"';
+  }
+
+  @override
+  String get setdVaultContentsNoMatches => 'No matches';
+
+  @override
+  String get setdVaultContentsDone => 'Done';
+
+  @override
+  String get setdVaultContentsSelect => 'Select';
+
+  @override
+  String get setdVaultContentsDirToVault => 'To Vault';
+
+  @override
+  String get setdVaultContentsDirFromVault => 'From Vault';
+
+  @override
+  String get setdVaultContentsSearchHint => 'Search titles';
+
+  @override
+  String get setdVaultContentsMoveCategoryTooltip => 'Move a category';
+
+  @override
+  String get setdVaultContentsMoveAllToVault => 'Move all to vault';
+
+  @override
+  String get setdVaultContentsMoveAllOut => 'Move all out';
+
+  @override
+  String get setdVaultContentsSelectNone => 'None';
+
+  @override
+  String get setdVaultContentsSelectAll => 'All';
+
+  @override
+  String setdVaultContentsSelectedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count selected',
+      one: '1 selected',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get setdVaultContentsMoveToVault => 'Move to vault';
+
+  @override
+  String get setdVaultContentsMoveOut => 'Move out';
+
+  @override
+  String get setdVaultContentsPickSourceLibrary =>
+      'Move which library category?';
+
+  @override
+  String get setdVaultContentsPickSourceVault => 'Move which vault category?';
+
+  @override
+  String get setdVaultContentsPickDestVault => 'Into which vault category?';
+
+  @override
+  String get setdVaultContentsPickDestLibrary => 'Into which library category?';
+
+  @override
+  String get setdVaultContentsNoCategoriesToPick =>
+      'No categories to pick from.';
+
+  @override
+  String get setdVaultContentsNoCategory => 'No category';
+
+  @override
+  String setdVaultContentsNothingIn(String name) {
+    return 'Nothing in \"$name\"';
+  }
+
+  @override
+  String get settingsHelpSubtitle => 'Tutorial, Discord & quick tips';
+
+  @override
+  String get dictNetworkError =>
+      'Couldn\'t reach the dictionary. Check your connection and try again.';
+
+  @override
+  String dictNoDefinition(String word) {
+    return 'No definition found for \"$word\".';
+  }
+
+  @override
+  String get readerAlignment => 'Alignment';
+
+  @override
+  String get readerBrightness => 'Brightness';
+
+  @override
+  String readerCalibrateSampleLine(int n) {
+    return 'Sample line $n';
+  }
+
+  @override
+  String get readerChapterArrowsSubtitle =>
+      'Prev / next chapter beside the page slider';
+
+  @override
+  String get readerChapterArrowsTitle => 'Chapter arrows on the slider';
+
+  @override
+  String get readerCustomizeMenu => 'Customize menu';
+
+  @override
+  String get readerCustomizeMenuMangaSubtitle =>
+      'Choose and reorder the manga actions';
+
+  @override
+  String get readerCustomizeMenuNovelSubtitle =>
+      'Choose and reorder the light novel actions';
+
+  @override
+  String get readerDoublePages => 'Double pages';
+
+  @override
+  String get readerDoublePagesSubtitle =>
+      'Show two pages side-by-side when the phone is in landscape (page-by-page modes only)';
+
+  @override
+  String get readerHandsFreeIntro =>
+      'Scroll or turn pages without touching the screen. These share one scroll input, so turning one on turns the others off.';
+
+  @override
+  String get readerHandsFreeMotion => 'Hands-free & motion';
+
+  @override
+  String get readerHandsFreeMotionSubtitle =>
+      'Volume buttons, tilt and gaze scrolling';
+
+  @override
+  String get readerHyphenation => 'Hyphenation';
+
+  @override
+  String get readerHyphenationSubtitle =>
+      'Break long words to even out justified lines';
+
+  @override
+  String get readerLightNovel => 'Light novel';
+
+  @override
+  String get readerLightNovelMenu => 'Light novel menu';
+
+  @override
+  String get readerLineSpacing => 'Line spacing';
+
+  @override
+  String get readerManga => 'Manga';
+
+  @override
+  String get readerMangaMenu => 'Manga menu';
+
+  @override
+  String get readerMargins => 'Margins';
+
+  @override
+  String get readerMenuStyle => 'Menu style';
+
+  @override
+  String get readerMenuStyleTail => 'Tail';
+
+  @override
+  String get readerMenuStyleWheel => 'Wheel';
+
+  @override
+  String get readerModeLtrShort => 'LTR';
+
+  @override
+  String get readerModeRtlShort => 'RTL';
+
+  @override
+  String get readerModeVerticalShort => 'Vertical';
+
+  @override
+  String get readerNovelLayoutPaged => 'Paged';
+
+  @override
+  String get readerNovelLayoutScroll => 'Scroll';
+
+  @override
+  String get readerNovelRadialMenuSubtitle =>
+      'Use the wheel in the novel reader (off = classic bars)';
+
+  @override
+  String get readerPitch => 'Pitch';
+
+  @override
+  String readerRadialReorderHint(int count) {
+    return 'Drag to reorder the wheel; toggle to show or hide. $count shown.';
+  }
+
+  @override
+  String get readerReaderTheme => 'Reader theme';
+
+  @override
+  String get readerReset => 'Reset';
+
+  @override
+  String get readerSectionEyeComfort => 'Eye comfort';
+
+  @override
+  String get readerSectionImage => 'Image';
+
+  @override
+  String get readerSectionLayout => 'Layout';
+
+  @override
+  String get readerSectionListen => 'Listen (text to speech)';
+
+  @override
+  String get readerSectionText => 'Text';
+
+  @override
+  String get readerSentenceHighlight => 'Sentence highlight';
+
+  @override
+  String get readerSettingsFor => 'Settings for';
+
+  @override
+  String get readerSideLeft => 'Left';
+
+  @override
+  String get readerSideRight => 'Right';
+
+  @override
+  String get readerSplitWidePages => 'Split wide pages';
+
+  @override
+  String get readerSplitWidePagesSubtitle =>
+      'Give a wide double-page spread its own screen instead of pairing it with another page';
+
+  @override
+  String get readerTextSize => 'Text size';
+
+  @override
+  String get readerVolumeAutoScroll => 'Volume sets auto-scroll speed';
+
+  @override
+  String get readerVolumeAutoScrollSubtitle =>
+      'While the manga reader auto-scrolls, the volume buttons speed it up or slow it down. They do not turn pages.';
+
+  @override
+  String get readerVolumeButtons => 'Volume buttons';
+
+  @override
+  String get readerWarmFilter => 'Warm filter';
+
+  @override
+  String get readerWordHighlight => 'Word highlight';
+
+  @override
+  String get libraryUpdateTitle => 'Library update';
+
+  @override
+  String libraryUpdateCounts(int completed, int skipped, int failed) {
+    return '$completed completed · $skipped skipped · $failed failed';
+  }
+
+  @override
+  String libraryNewChaptersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count new chapters',
+      one: '1 new chapter',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryUpToDate => 'Up to date';
+
+  @override
+  String get librarySkipped => 'Skipped';
+
+  @override
+  String libraryUpdateCount(int count) {
+    return 'Update $count';
+  }
+
+  @override
+  String libraryStatusTapUpdate(String status) {
+    return '$status · tap Update to force';
+  }
+
+  @override
+  String libraryStatusNoNewChapters(String status) {
+    return '$status · no new chapters expected';
+  }
+
+  @override
+  String get libraryUpdateThisTitle => 'Update this title';
+
+  @override
+  String get libraryFailed => 'Failed';
+
+  @override
+  String get libraryRetryAll => 'Retry all';
+
+  @override
+  String get libraryUpdateFailedTapOpen => 'Update failed · tap to open';
+
+  @override
+  String get libraryRetryThisTitle => 'Retry this title';
+
+  @override
+  String get libraryNoTitlesChecked => 'No titles were checked.';
+
+  @override
+  String libraryCategoryWithCount(String label, int count) {
+    return '$label ($count)';
+  }
+
+  @override
+  String libraryEntriesWithNewChapters(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entries have new chapters.',
+      one: '1 entry has new chapters.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryUnlockVaultFirst =>
+      'Unlock the vault first to move titles into it';
+
+  @override
+  String get libraryCouldNotMoveToVault => 'Could not move to vault';
+
+  @override
+  String get libraryCouldNotMoveOutOfVault => 'Could not move out of vault';
+
+  @override
+  String libraryMovedToVault(int count) {
+    return 'Moved $count to vault';
+  }
+
+  @override
+  String libraryMovedOutOfVault(int count) {
+    return 'Moved $count out of vault';
+  }
+
+  @override
+  String get libraryMoveOut => 'Move out';
+
+  @override
+  String get libraryToVault => 'To vault';
+
+  @override
+  String get libraryUpdateComplete => 'Update complete';
+
+  @override
+  String libraryUpdatingProgress(String title, int checked, int total) {
+    return 'Updating $title  $checked/$total';
+  }
+
+  @override
+  String get libraryUpdating => 'Updating…';
+
+  @override
+  String get libraryTapRetryUpdateSkipped => 'Tap to retry / update skipped';
+
+  @override
+  String get librarySortBy => 'Sort by';
+
+  @override
+  String get libraryCoverTitle => 'Cover title';
+
+  @override
+  String get libraryBadgePlacement => 'Badge placement';
+
+  @override
+  String get libraryReadingProgress => 'Reading progress';
+
+  @override
+  String get libraryLanguage => 'Language';
+
+  @override
+  String get libraryLocal => 'Local';
+
+  @override
+  String get libraryFilterShowOnly => 'show only';
+
+  @override
+  String get libraryFilterHide => 'hide';
+
+  @override
+  String get libraryArchetypeNewcomer => 'The Newcomer';
+
+  @override
+  String get libraryArchetypeNewcomerDesc =>
+      'Just getting started - your type sharpens as you read.';
+
+  @override
+  String get libraryArchetypeOmnivore => 'The Omnivore';
+
+  @override
+  String get libraryArchetypeOmnivoreDesc =>
+      'A bit of everything - manga, anime and novels all in rotation.';
+
+  @override
+  String get libraryArchetypeBinger => 'The Binger';
+
+  @override
+  String get libraryArchetypeBingerDesc =>
+      'You tear through chapters in long sittings.';
+
+  @override
+  String get libraryArchetypeCompletionist => 'The Completionist';
+
+  @override
+  String get libraryArchetypeCompletionistDesc =>
+      'You go deep - few series at a time, read to the end.';
+
+  @override
+  String get libraryArchetypeDevoted => 'The Devoted';
+
+  @override
+  String get libraryArchetypeDevotedDesc =>
+      'Day after day - you keep a steady habit.';
+
+  @override
+  String get libraryArchetypeExplorer => 'The Explorer';
+
+  @override
+  String get libraryArchetypeExplorerDesc =>
+      'Always something new - you spread across many series.';
+
+  @override
+  String libraryChaptersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count chapters',
+      one: '1 chapter',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String libraryBestStreakDays(int days) {
+    return '$days-day best streak';
+  }
+
+  @override
+  String librarySeriesCount(int count) {
+    return '$count series';
+  }
+
+  @override
+  String get libraryReadingActivity => 'Reading activity';
+
+  @override
+  String get libraryChaptersPerDayHint =>
+      'Chapters read each day - brighter = more.';
+
+  @override
+  String get libraryByType => 'Library by type';
+
+  @override
+  String get libraryByStatus => 'Library by status';
+
+  @override
+  String get libraryBacklog => 'Backlog';
+
+  @override
+  String libraryWaitingCount(int count) {
+    return '$count waiting';
+  }
+
+  @override
+  String get libraryAddedNeverStarted => 'Added but never started';
+
+  @override
+  String get libraryNothingWaiting =>
+      'Nothing waiting - you\'ve started everything.';
+
+  @override
+  String get libraryMilestones => 'Milestones';
+
+  @override
+  String get libraryReadingPersonality => 'Reading personality';
+
+  @override
+  String get libraryTotalTimeRead => 'Total time read · tap for breakdown';
+
+  @override
+  String get libraryStatTitles => 'Titles';
+
+  @override
+  String get libraryStatChaptersRead => 'Chapters read';
+
+  @override
+  String get libraryStatDayStreak => 'Day streak';
+
+  @override
+  String libraryActivitySummary(int activeDays, int chapters) {
+    return 'You read on $activeDays of the last 35 days · $chapters chapters this week.';
+  }
+
+  @override
+  String libraryTrendVsLastWeek(int pct) {
+    return '$pct% vs last week';
+  }
+
+  @override
+  String get libraryStatusOther => 'Other';
+
+  @override
+  String libraryMostReadGenre(String genre) {
+    return 'Most-read genre · $genre';
+  }
+
+  @override
+  String get libraryContentWordManga => 'manga';
+
+  @override
+  String get libraryContentWordAnime => 'anime';
+
+  @override
+  String get libraryContentWordLightNovels => 'light novels';
+
+  @override
+  String libraryBacklogAddedAge(String age, String type) {
+    return 'Added $age · $type';
+  }
+
+  @override
+  String get libraryStart => 'Start';
+
+  @override
+  String get libraryAllMilestonesUnlocked => 'All milestones unlocked 🎉';
+
+  @override
+  String get libraryNextUp => 'NEXT UP';
+
+  @override
+  String get libraryYourReadingType => 'YOUR READING TYPE';
+
+  @override
+  String get libraryAxisVolume => 'Volume';
+
+  @override
+  String get libraryAxisDepth => 'Depth';
+
+  @override
+  String get libraryAxisConsistency => 'Consist.';
+
+  @override
+  String get libraryAxisBreadth => 'Breadth';
+
+  @override
+  String get libraryAxisVariety => 'Variety';
+
+  @override
+  String get libraryUnitChapters => 'ch';
+
+  @override
+  String get libraryUnitHours => 'h';
+
+  @override
+  String get libraryUnitDays => 'days';
+
+  @override
+  String get libraryUnitTitles => 'titles';
+
+  @override
+  String get libraryUnitSources => 'sources';
+
+  @override
+  String get libraryUnitFormats => 'formats';
+
+  @override
+  String get libraryUnitEpisodes => 'ep';
+
+  @override
+  String get libraryBadgeFirstSteps => 'First Steps';
+
+  @override
+  String get libraryBadgeFirstStepsDesc => 'Read your first chapter.';
+
+  @override
+  String get libraryBadgeGettingStarted => 'Getting Started';
+
+  @override
+  String get libraryBadgeGettingStartedDesc => 'Read 10 chapters.';
+
+  @override
+  String get libraryBadgeBookworm => 'Bookworm';
+
+  @override
+  String get libraryBadgeBookwormDesc => 'Read 50 chapters.';
+
+  @override
+  String get libraryBadgeCenturion => 'Centurion';
+
+  @override
+  String get libraryBadgeCenturionDesc => 'Read 100 chapters.';
+
+  @override
+  String get libraryBadgeDevourer => 'Devourer';
+
+  @override
+  String get libraryBadgeDevourerDesc => 'Read 250 chapters.';
+
+  @override
+  String get libraryBadgeQuincentenary => 'Quincentenary';
+
+  @override
+  String get libraryBadgeQuincentenaryDesc => 'Read 500 chapters.';
+
+  @override
+  String get libraryBadgeMarathoner => 'Marathoner';
+
+  @override
+  String get libraryBadgeMarathonerDesc => 'Read 1,000 chapters.';
+
+  @override
+  String get libraryBadgeChapterFiend => 'Chapter Fiend';
+
+  @override
+  String get libraryBadgeChapterFiendDesc => 'Read 2,500 chapters.';
+
+  @override
+  String get libraryBadgeLoremaster => 'Loremaster';
+
+  @override
+  String get libraryBadgeLoremasterDesc => 'Read 5,000 chapters.';
+
+  @override
+  String get libraryBadgeTenThousandClub => 'Ten-Thousand Club';
+
+  @override
+  String get libraryBadgeTenThousandClubDesc => 'Read 10,000 chapters.';
+
+  @override
+  String get libraryBadgeFirstHour => 'First Hour';
+
+  @override
+  String get libraryBadgeFirstHourDesc => 'Spend 1 hour reading.';
+
+  @override
+  String get libraryBadgeGettingComfortable => 'Getting Comfortable';
+
+  @override
+  String get libraryBadgeGettingComfortableDesc => 'Spend 10 hours reading.';
+
+  @override
+  String get libraryBadgeWeekendLost => 'Weekend Lost';
+
+  @override
+  String get libraryBadgeWeekendLostDesc => 'Spend 50 hours reading.';
+
+  @override
+  String get libraryBadgeDedicated => 'Dedicated';
+
+  @override
+  String get libraryBadgeDedicatedDesc => 'Spend 100 hours reading.';
+
+  @override
+  String get libraryBadgeTimeSink => 'Time Sink';
+
+  @override
+  String get libraryBadgeTimeSinkDesc => 'Spend 250 hours reading.';
+
+  @override
+  String get libraryBadgeImmersed => 'Immersed';
+
+  @override
+  String get libraryBadgeImmersedDesc => 'Spend 500 hours reading.';
+
+  @override
+  String get libraryBadgeEternal => 'Eternal';
+
+  @override
+  String get libraryBadgeEternalDesc => 'Spend 1,000 hours reading.';
+
+  @override
+  String get libraryBadgeWarmingUp => 'Warming Up';
+
+  @override
+  String get libraryBadgeWarmingUpDesc => 'Read 3 days in a row.';
+
+  @override
+  String get libraryBadgeHotStreak => 'Hot Streak';
+
+  @override
+  String get libraryBadgeHotStreakDesc => 'Read 7 days in a row.';
+
+  @override
+  String get libraryBadgeFortnight => 'Fortnight';
+
+  @override
+  String get libraryBadgeFortnightDesc => 'Read 14 days in a row.';
+
+  @override
+  String get libraryBadgeDevoted => 'Devoted';
+
+  @override
+  String get libraryBadgeDevotedDesc => 'Read 30 days in a row.';
+
+  @override
+  String get libraryBadgeStarterShelf => 'Starter Shelf';
+
+  @override
+  String get libraryBadgeStarterShelfDesc => 'Collect 10 titles.';
+
+  @override
+  String get libraryBadgeBibliophile => 'Bibliophile';
+
+  @override
+  String get libraryBadgeBibliophileDesc => 'Collect 50 titles.';
+
+  @override
+  String get libraryBadgeCurator => 'Curator';
+
+  @override
+  String get libraryBadgeCuratorDesc => 'Collect 100 titles.';
+
+  @override
+  String get libraryBadgeArchivist => 'Archivist';
+
+  @override
+  String get libraryBadgeArchivistDesc => 'Collect 250 titles.';
+
+  @override
+  String get libraryBadgeExplorer => 'Explorer';
+
+  @override
+  String get libraryBadgeExplorerDesc => 'Read from 5 sources.';
+
+  @override
+  String get libraryBadgeGlobetrotter => 'Globetrotter';
+
+  @override
+  String get libraryBadgeGlobetrotterDesc => 'Read from 15 sources.';
+
+  @override
+  String get libraryBadgeBoundless => 'Boundless';
+
+  @override
+  String get libraryBadgeBoundlessDesc => 'Read from 30 sources.';
+
+  @override
+  String get libraryBadgeDabbler => 'Dabbler';
+
+  @override
+  String get libraryBadgeDabblerDesc => 'Read 2 different formats.';
+
+  @override
+  String get libraryBadgeOmnivore => 'Omnivore';
+
+  @override
+  String get libraryBadgeOmnivoreDesc => 'Read all 3 formats.';
+
+  @override
+  String get libraryBadgeMangaDevotee => 'Manga Devotee';
+
+  @override
+  String get libraryBadgeMangaDevoteeDesc => 'Read 500 manga chapters.';
+
+  @override
+  String get libraryBadgeBingeWatcher => 'Binge Watcher';
+
+  @override
+  String get libraryBadgeBingeWatcherDesc => 'Watch 250 anime episodes.';
+
+  @override
+  String get libraryBadgeNovelNerd => 'Novel Nerd';
+
+  @override
+  String get libraryBadgeNovelNerdDesc => 'Read 250 novel chapters.';
+
+  @override
+  String get discoverGenres => 'Genres';
+
+  @override
+  String get discoverRemovedFromWishlist => 'Removed from wishlist';
+
+  @override
+  String get discoverRemove => 'Remove';
+
+  @override
+  String get novelDefine => 'Define';
+
+  @override
+  String get novelTts => 'Text-to-speech';
+
+  @override
+  String get novelVoice => 'Voice';
+
+  @override
+  String get novelVoiceSystemDefault => 'System default';
+
+  @override
+  String get novelVoiceEngine => 'Voice engine (experimental)';
+
+  @override
+  String get novelVoiceDevice => 'Device';
+
+  @override
+  String get novelSearchVoices => 'Search voices';
+
+  @override
+  String get novelResetPill => 'Reset pill position';
+
+  @override
+  String get novelMoreVoices => 'More voices & tuning →';
+
+  @override
+  String get novelActionSize => 'Size';
+
+  @override
+  String get novelActionTheme => 'Theme';
+
+  @override
+  String get novelActionAlign => 'Align';
+
+  @override
+  String get novelActionSpacing => 'Spacing';
+
+  @override
+  String get novelActionListen => 'Listen';
+
+  @override
+  String get novelHighlightColours => 'Highlight colours';
+
+  @override
+  String get novelHighlightSentence => 'Sentence';
+
+  @override
+  String get novelHighlightWord => 'Word';
+
+  @override
   String get readerExperimentalOnIos => 'Experimental on iOS';
 
   @override
@@ -914,20 +2074,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get readerFontSize => 'Font Size';
 
   @override
-  String get readerImageZoom => 'Image Zoom';
-
-  @override
   String get readerAutoPreloadNextChapter => 'Auto-Preload Next Chapter';
 
   @override
   String get readerAutoPreloadNextChapterSubtitle =>
       'Load next chapter in background';
-
-  @override
-  String get readerCropBorders => 'Crop Borders';
-
-  @override
-  String get readerCropBordersSubtitle => 'Remove white borders from pages';
 
   @override
   String get readerGrayscale => 'Grayscale';
@@ -937,6 +2088,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get readerAutoCrop => 'Auto-crop borders';
+
+  @override
+  String get readerAutoScroll => 'Auto-scroll';
+
+  @override
+  String get readerAutoScrollSpeed => 'Auto-scroll speed';
+
+  @override
+  String get readerFilterReset => 'Reset';
+
+  @override
+  String get readerFilterPaper => 'Paper';
+
+  @override
+  String get readerFilterNight => 'Night';
+
+  @override
+  String get readerFilterVivid => 'Vivid';
+
+  @override
+  String get readerFilterSepia => 'Sepia';
+
+  @override
+  String get readerFilterContrast => 'Contrast';
+
+  @override
+  String get readerFilterSaturation => 'Saturation';
+
+  @override
+  String get readerEyeComfort => 'Eye comfort';
+
+  @override
+  String get readerEyeComfortWarm => 'Warm';
+
+  @override
+  String get readerEyeComfortBrightness => 'Brightness';
+
+  @override
+  String get readerGazeModeEyes => 'Eyes';
+
+  @override
+  String get readerGazeModeHead => 'Head';
+
+  @override
+  String get readerGazeModeBoth => 'Both';
 
   @override
   String get readerAutoCropSubtitle =>
@@ -953,9 +2149,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get readerScaleType => 'Scale Type';
-
-  @override
-  String get readerZoomStartPosition => 'Zoom Start Position';
 
   @override
   String get readerBackgroundColor => 'Background Color';
@@ -999,12 +2192,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get readerHoldScrollSpeed => 'Hold-scroll Speed';
-
-  @override
-  String get readerTransitions => 'Transitions';
-
-  @override
-  String get readerPageTransition => 'Page Transition';
 
   @override
   String get readerSourceNotInstalled => 'Source not installed';
@@ -1058,11 +2245,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get readerLoadingNextChapter => 'Loading next chapter...';
-
-  @override
-  String readerFinishedChapter(Object name) {
-    return 'Finished: $name';
-  }
 
   @override
   String get readerAllCaughtUp => 'You\'re all caught up!';
@@ -1191,9 +2373,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get browseSearch => 'Search';
-
-  @override
-  String get browseRepoForgeTooltip => 'RepoForge — build & manage sources';
 
   @override
   String get browseAddRepo => 'Add repo';
@@ -1516,6 +2695,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get browseNoLanguagesMatch => 'No languages match';
+
+  @override
+  String get browseYourLanguages => 'Your languages';
+
+  @override
+  String get browseSearchLanguages => 'Search languages';
+
+  @override
   String get browseUpdating => 'Updating...';
 
   @override
@@ -1635,9 +2823,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get browseSeeAll => 'See all';
 
   @override
-  String get browseNoResultsFound => 'No results found';
-
-  @override
   String get globalSearchSourceNoResults => 'No results';
 
   @override
@@ -1717,6 +2902,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setxAdvancedDnsProviderTitle => 'DNS Provider';
 
   @override
+  String get setxAdvancedDnsAddCustom => 'Add custom DNS';
+
+  @override
+  String get setxAdvancedDnsName => 'Name';
+
+  @override
+  String get setxAdvancedDnsNameHint => 'My DNS';
+
+  @override
+  String get setxAdvancedDnsUrlLabel => 'DoH URL';
+
+  @override
+  String get setxAdvancedDnsInvalidUrl => 'Enter a valid https:// URL';
+
+  @override
+  String get setxAdvancedDnsAdd => 'Add';
+
+  @override
+  String get setxAdvancedDnsDelete => 'Delete';
+
+  @override
+  String get setxAdvancedDnsDeleteTitle => 'Delete custom DNS?';
+
+  @override
+  String setxAdvancedDnsDeleteBody(String name) {
+    return 'Remove \"$name\" from your DNS providers?';
+  }
+
+  @override
   String get commonBeta => 'BETA';
 
   @override
@@ -1727,7 +2941,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setxAdvancedBetaDesc =>
-      'Show experimental features — hands-free & volume-key scrolling, RepoForge, AI translation and auto-crop. They may be unstable or change.';
+      'Show experimental features: hands-free and volume-key scrolling, AI translation and auto-crop. They may be unstable or change.';
 
   @override
   String get setxAdvancedSectionExtensions => 'Extensions';
@@ -1803,6 +3017,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setxAdvancedFilterLevel => 'Level';
+
+  @override
+  String get setxAdvancedLogAll => 'All';
+
+  @override
+  String get setxAdvancedLogCatRepo => 'Repo';
+
+  @override
+  String get setxAdvancedLogCatExtension => 'Extension';
+
+  @override
+  String get setxAdvancedLogCatNetwork => 'Network';
+
+  @override
+  String get setxAdvancedLogCatInstall => 'Install';
+
+  @override
+  String get setxAdvancedLogCatLibrary => 'Library';
+
+  @override
+  String get setxAdvancedLogCatGeneral => 'General';
+
+  @override
+  String get setxAdvancedLogLvlDebug => 'Debug';
+
+  @override
+  String get setxAdvancedLogLvlInfo => 'Info';
+
+  @override
+  String get setxAdvancedLogLvlWarning => 'Warning';
+
+  @override
+  String get setxAdvancedLogLvlError => 'Error';
 
   @override
   String get setxAdvancedNoLogs => 'No logs yet';
@@ -2216,6 +3463,114 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setxAboutClose => 'Close';
 
   @override
+  String setxAboutVersionBuild(String version, String build) {
+    return 'Version $version (Build $build)';
+  }
+
+  @override
+  String get setxAboutDiscordSubtitle => 'Join the community';
+
+  @override
+  String get helpTipsTitle => 'Help & Tips';
+
+  @override
+  String get helpTipsViewTutorial => 'View tutorial';
+
+  @override
+  String get helpTipsViewTutorialSub => 'A quick tour of the app';
+
+  @override
+  String get helpTipsDiscord => 'Join our Discord';
+
+  @override
+  String get helpTipsDiscordSub => 'Help, requests & community';
+
+  @override
+  String get helpTipsSectionTips => 'Tips';
+
+  @override
+  String get helpTipsNoContentTitle => 'No content showing?';
+
+  @override
+  String get helpTipsNoContentBody =>
+      'Add an extension repository in Browse → ⋯ to install sources first.';
+
+  @override
+  String get helpTipsGesturesTitle => 'Reader gestures';
+
+  @override
+  String get helpTipsGesturesBody =>
+      'Tap the edges to turn pages, the center to show controls; long-press a page for more.';
+
+  @override
+  String get helpTipsVaultTitle => 'The Vault';
+
+  @override
+  String get helpTipsVaultBody =>
+      'Move private titles into the Vault to keep them behind a lock.';
+
+  @override
+  String get helpTipsUpdateTitle => 'Keep up to date';
+
+  @override
+  String get helpTipsUpdateBody =>
+      'Pull down on the Library to check for new chapters; set a schedule in Library settings.';
+
+  @override
+  String get tutorialSkip => 'Skip';
+
+  @override
+  String get tutorialNext => 'Next';
+
+  @override
+  String get tutorialGetStarted => 'Get started';
+
+  @override
+  String get tutorialJoinDiscord => 'Join Discord';
+
+  @override
+  String get tutorialSlide1Title => 'Welcome to Foxlations';
+
+  @override
+  String get tutorialSlide1Body =>
+      'One app for manga and manhwa, anime, and light novels - read, watch and listen, all from sources you add yourself. No account, no ads, nothing phoning home.';
+
+  @override
+  String get tutorialSlide2Title => 'Get your content';
+
+  @override
+  String get tutorialSlide2Body =>
+      'Foxlations ships empty - you choose the sources. In the Browse tab, open the ⋯ menu to add an extension repository (a link your community shares). Installed sources show up ready to search.';
+
+  @override
+  String get tutorialSlide3Title => 'Build your library';
+
+  @override
+  String get tutorialSlide3Body =>
+      'Search a source or use global search across all of them, open a title, and tap the heart to add it. Your library is organized with categories (Reading, On-hold, your own…) and a “Continue reading” shortcut right up top.';
+
+  @override
+  String get tutorialSlide4Title => 'Read your way';
+
+  @override
+  String get tutorialSlide4Body =>
+      'Paged, webtoon or double-page; tap the edges to turn pages and the centre for controls. Dial in eye-comfort (warm filter + dim), customise the novel reader, let it read novels aloud, and skip anime intros automatically.';
+
+  @override
+  String get tutorialSlide5Title => 'Private & offline';
+
+  @override
+  String get tutorialSlide5Body =>
+      'Download chapters and episodes to read with no connection, back up your whole library, and keep private titles locked away in the Vault. There’s incognito mode and an app lock too.';
+
+  @override
+  String get tutorialSlide6Title => 'Join the community';
+
+  @override
+  String get tutorialSlide6Body =>
+      'Questions, source help, feature requests, or just want to chat? Come say hi on our Discord - and you can reopen this tour any time from Settings → Help & Tips.';
+
+  @override
   String setxAboutWhatsNewVersioned(Object version) {
     return 'What\'s New in v$version';
   }
@@ -2296,6 +3651,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get miscAdd => 'Add';
+
+  @override
+  String get deeplinkAddRepoTitle => 'Add source repo?';
+
+  @override
+  String deeplinkFromHost(String host) {
+    return 'From $host';
+  }
+
+  @override
+  String deeplinkAddedNamed(String name) {
+    return 'Added \"$name\" - see Browse > Extensions';
+  }
+
+  @override
+  String get deeplinkAdded => 'Repo added - see Browse > Extensions';
+
+  @override
+  String deeplinkAddFailed(String error) {
+    return 'Couldn\'t add repo: $error';
+  }
 
   @override
   String get miscRepositoriesHeader => 'REPOSITORIES';
@@ -2569,327 +3945,77 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get repoDeleteSourceTitle => 'Delete source?';
+  String get repoReinstallSources => 'Reinstall sources';
 
   @override
-  String repoDeleteSourceBody(Object name) {
-    return '\"$name\" will be removed from My Sources.';
+  String get repoCopyUrl => 'Copy repo URL';
+
+  @override
+  String get repoOpenGithubPage => 'Open GitHub page';
+
+  @override
+  String get repoOpenWebsite => 'Open website';
+
+  @override
+  String get repoOpenDiscord => 'Open Discord';
+
+  @override
+  String get repoDeleteRepo => 'Delete repo';
+
+  @override
+  String repoCouldNotOpen(String url) {
+    return 'Couldn\'t open $url';
+  }
+
+  @override
+  String get repoReinstalling => 'Reinstalling sources…';
+
+  @override
+  String get repoRefreshed => 'Repo refreshed';
+
+  @override
+  String repoReinstalledCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Reinstalled $count sources',
+      one: 'Reinstalled 1 source',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String repoReinstallFailed(String error) {
+    return 'Reinstall failed: $error';
+  }
+
+  @override
+  String get repoDeleteTitle => 'Delete repo?';
+
+  @override
+  String repoDeleteBody(String name) {
+    return 'Remove \"$name\" and uninstall its sources?';
+  }
+
+  @override
+  String get repoDeleteConfirm => 'Delete';
+
+  @override
+  String repoSourceCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sources',
+      one: '1 source',
+    );
+    return '$_temp0';
   }
 
   @override
   String get repoCancel => 'Cancel';
 
   @override
-  String get repoDelete => 'Delete';
-
-  @override
-  String repoDeletedSource(Object name) {
-    return 'Deleted \"$name\"';
-  }
-
-  @override
-  String get repoNoSourcesToExport => 'No sources to export';
-
-  @override
-  String get repoExportDialogTitle => 'Export RepoForge sources';
-
-  @override
-  String repoExportedSources(Object count) {
-    return 'Exported $count sources';
-  }
-
-  @override
-  String repoExportFailed(Object error) {
-    return 'Export failed: $error';
-  }
-
-  @override
-  String repoImportedSources(Object count) {
-    return 'Imported $count source(s)';
-  }
-
-  @override
-  String repoImportFailed(Object error) {
-    return 'Import failed: $error';
-  }
-
-  @override
-  String get repoBuildFromUrl => 'Build sources from any URL';
-
-  @override
-  String get repoBeta => 'BETA';
-
-  @override
-  String get repoHeroDescription =>
-      'Detect a site\'s framework, tune selectors, and install a working manga / anime / novel source — no server, all on-device. RepoForge is in beta, so it won\'t always get a source right — check the result and tweak the selectors if a site doesn\'t come out correct.';
-
-  @override
-  String repoCoverageSummary(Object frameworks, Object manga, Object novel) {
-    return '$frameworks frameworks · $manga manga + $novel novel sites known';
-  }
-
-  @override
-  String get repoNewSource => 'New Source';
-
-  @override
-  String get repoImport => 'Import';
-
-  @override
-  String get repoMySources => 'MY SOURCES';
-
-  @override
-  String get repoExportAll => 'Export all';
-
-  @override
-  String get repoNoSourcesYet => 'No sources yet';
-
-  @override
-  String get repoEmptyStateHint =>
-      'Tap \"New Source\" to generate one from a site URL.';
-
-  @override
-  String get repoNotInstalled => 'not installed';
-
-  @override
-  String get repoOpenInBrowse => 'Open in browse';
-
-  @override
-  String get repoEditRedetect => 'Edit / re-detect';
-
-  @override
-  String get repoKnownNovelSite => 'Known light-novel site';
-
-  @override
-  String get repoNovelGenericDetail =>
-      'Recognized as a novel site — generated with the generic novel body (browse may need selector tuning).';
-
-  @override
-  String repoNovelFrameworkDetail(Object framework) {
-    return 'Generated as a Novel source using the $framework body — browsing + reader work out of the box.';
-  }
-
-  @override
-  String get repoKnownMangaSite => 'Known manga site';
-
-  @override
-  String get repoMangaApiDetail =>
-      'Community-verified API source — RepoForge builds it from the site\'s API.';
-
-  @override
-  String repoMangaThemeDetail(Object theme) {
-    return 'Community-verified theme: $theme — selectors are known.';
-  }
-
-  @override
-  String get repoMangaCustomDetail =>
-      'Community-verified custom selectors are on file for this site.';
-
-  @override
-  String get repoNotInKb => 'Not in the knowledge base';
-
-  @override
-  String get repoNotInKbDetail =>
-      'RepoForge will detect its framework live when you add it, then fall back to heuristic \"what-is-what\" scraping if it\'s bespoke.';
-
-  @override
-  String get repoCoverage => 'Coverage';
-
-  @override
-  String get repoCheckASite => 'Check a site';
-
-  @override
-  String get repoPasteSiteUrlHint => 'paste a site URL';
-
-  @override
-  String get repoCheck => 'Check';
-
-  @override
-  String get repoSupportedFrameworks => 'Supported frameworks';
-
-  @override
-  String get repoMangaSites => 'manga sites';
-
-  @override
-  String get repoNovelSites => 'novel sites';
-
-  @override
-  String get repoFrameworks => 'frameworks';
-
-  @override
-  String get repoRoleItem => 'List item (each card)';
-
-  @override
-  String get repoRoleTitle => 'Title';
-
-  @override
-  String get repoRoleCover => 'Cover image';
-
-  @override
-  String get repoRoleNextPage => 'Next-page link';
-
-  @override
-  String get repoRoleDetailTitle => 'Detail — title';
-
-  @override
-  String get repoRoleChapters => 'Chapter list item';
-
-  @override
-  String get repoRolePageImages => 'Reader page images';
-
-  @override
-  String get repoRoleEpisodes => 'Episode list (anime)';
-
-  @override
-  String get repoStepFetching => 'Fetching page…';
-
-  @override
-  String get repoStepMatching => 'Matching framework signatures…';
-
-  @override
-  String get repoStepExtracting => 'Extracting selectors…';
-
-  @override
-  String get repoStepFinalizing => 'Finalizing…';
-
-  @override
-  String get repoEnterUrlFirst => 'Enter a site URL first.';
-
-  @override
-  String repoDetectionFailed(Object error) {
-    return 'Detection failed: $error';
-  }
-
-  @override
-  String get repoFetchFailed => 'Fetch failed';
-
-  @override
-  String repoFetchedChars(Object count) {
-    return 'Fetched $count chars — now test selectors';
-  }
-
-  @override
-  String get repoFetchPageFirst => 'Fetch a page first';
-
-  @override
-  String repoGenerationFailed(Object error) {
-    return 'Generation failed: $error';
-  }
-
-  @override
-  String get repoDetectSiteFirst => 'Detect a site first';
-
-  @override
-  String repoCreatedInstalled(Object name) {
-    return 'Created & installed \"$name\"';
-  }
-
-  @override
-  String repoSaveFailed(Object error) {
-    return 'Save failed: $error';
-  }
-
-  @override
-  String get repoCreateSource => 'Create Source';
-
-  @override
-  String get repoSiteUrl => 'Site URL';
-
-  @override
-  String get repoDetect => 'Detect';
-
-  @override
-  String repoConfidence(Object pct) {
-    return 'confidence $pct%';
-  }
-
-  @override
-  String get repoApiSource => 'API source';
-
-  @override
-  String get repoDetails => 'Details';
-
-  @override
-  String get repoSourceNameHint => 'Source name';
-
-  @override
   String get repoName => 'Name';
-
-  @override
-  String get repoLang => 'Lang';
-
-  @override
-  String get repoManga => 'Manga';
-
-  @override
-  String get repoAnime => 'Anime';
-
-  @override
-  String get repoNovel => 'Novel';
-
-  @override
-  String get repoNsfw => 'NSFW';
-
-  @override
-  String get repoScrapingStudio => 'Scraping Studio';
-
-  @override
-  String get repoScrapingStudioHint =>
-      'Fetch a page, then test each selector to see how many elements it matches.';
-
-  @override
-  String get repoUrlToTestHint => 'URL to test against';
-
-  @override
-  String get repoFetch => 'Fetch';
-
-  @override
-  String get repoFetchFailedBlocked =>
-      'Fetch failed — the site may block automated access.';
-
-  @override
-  String repoLoadedChars(Object count) {
-    return 'Loaded $count chars.';
-  }
-
-  @override
-  String get repoPreviewJs => 'Preview JS';
-
-  @override
-  String get repoCreateInstall => 'Create & Install';
-
-  @override
-  String get repoPickKnownSelector => 'Pick a known selector';
-
-  @override
-  String get repoTest => 'Test';
-
-  @override
-  String repoNoCatalogedSelectors(Object label) {
-    return 'No cataloged selectors for \"$label\"';
-  }
-
-  @override
-  String get repoInvalid => 'invalid';
-
-  @override
-  String get repoNoMatch => 'no match';
-
-  @override
-  String get repoGeneratedSource => 'Generated source';
-
-  @override
-  String get repoCopy => 'Copy';
-
-  @override
-  String get repoCopiedToClipboard => 'Copied source to clipboard';
-
-  @override
-  String repoSelectorFor(Object field) {
-    return 'Selector for $field';
-  }
-
-  @override
-  String get repoSearchSelectors => 'Search selectors…';
 
   @override
   String repoImportedSource(Object id) {
@@ -3314,18 +4440,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setdVaultContentsTabNovels => 'Novels';
 
   @override
-  String get setdVaultContentsInLibrary => 'In your library';
-
-  @override
-  String get setdVaultContentsMoveIntoHint => '→ move into vault';
-
-  @override
-  String get setdVaultContentsInVault => 'In the vault';
-
-  @override
-  String get setdVaultContentsMoveOutHint => '← move back out';
-
-  @override
   String setdVaultContentsEmptyLibrary(Object type) {
     return 'No $type in your library';
   }
@@ -3527,6 +4641,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setdAppearanceNavOrderReset => 'Reset';
+
+  @override
+  String get setdAppearanceStartTab => 'Open to';
+
+  @override
+  String get setdAppearanceStartTabDesc =>
+      'Which screen the app opens on at launch';
 
   @override
   String get setdAppearanceDarkMode => 'Dark Mode';
@@ -3765,6 +4886,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get readerRadialMenuSubtitle =>
       'Replace the reader bars with a back button and a corner wheel. Hold the wheel for quick actions and the page slider.';
+
+  @override
+  String get readerShiftPages => 'Shift double pages';
+
+  @override
+  String get readerShiftPagesDesc =>
+      'Nudge the pairing by one if two-page spreads land split across the middle.';
+
+  @override
+  String get readerFinishedLabel => 'Finished';
+
+  @override
+  String get readerUpNextLabel => 'Up next';
 
   @override
   String get readerRadialCorner => 'Wheel corner';

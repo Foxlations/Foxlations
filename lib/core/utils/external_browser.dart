@@ -8,7 +8,7 @@ import '../../routes/app_routes.dart';
 ///
 /// Advanced > "External browser": when ON, hands the link to the system browser;
 /// when OFF (default) it uses the in-app WebView (which also carries the
-/// Cloudflare cookie jar). Only call this for explicit "open this page" actions —
+/// Cloudflare cookie jar). Only call this for explicit "open this page" actions - 
 /// the Cloudflare challenge and OAuth flows must stay in the in-app WebView.
 /// Falls back to the in-app WebView if the external launch fails.
 class ExternalBrowser {

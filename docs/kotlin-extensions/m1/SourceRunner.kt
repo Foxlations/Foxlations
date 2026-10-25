@@ -71,8 +71,10 @@ import java.util.zip.ZipFile
  */
 object SourceRunner {
     @Volatile private var booted = false
-    // Holds either a manga CatalogueSource or an anime AnimeCatalogueSource.
-    private val sourceCache = HashMap<String, Any>()
+    // Holds either a manga CatalogueSource or an anime AnimeCatalogueSource. Shared across
+    // concurrent per-op threads (each invoke runs on its own thread; loadSource reads+writes it
+    // during browse/global-search fan-out) → concurrent, with computeIfAbsent to dedupe loads.
+    private val sourceCache = java.util.concurrent.ConcurrentHashMap<String, Any>()
     // Documents dir; where the persisted memo cache lives (survives app restarts).
     @Volatile private var rootDirPath: String? = null
     // The AndroidCompat Application — used as a Context for source-preference extraction.
@@ -597,34 +599,35 @@ object SourceRunner {
 
     private fun loadSource(jarPath: String, lang: String?, entry: String): Any {
         val key = "$jarPath|$lang"
-        sourceCache[key]?.let { return it }
-        // Re-frame a stale (pre-build-109) anime jar in place if needed, so existing
-        // installs load without a reinstall. No-op for already-fixed or manga jars.
-        ensureSanitized(jarPath)
-        val ej = File(jarPath)
-        // Manga/novel jars ship a plaintext AndroidManifest we can read the entry class from;
-        // anime jars come from dex2jar (which drops the manifest), so the app decodes the
-        // binary manifest and passes `entry` explicitly. Fall back to the manifest scan.
-        val entryClass = entry.ifBlank { findEntryClass(ej) ?: error("no entry class in $jarPath") }
-        val cl = URLClassLoader(arrayOf(ej.toURI().toURL()), SourceRunner::class.java.classLoader)
-        val obj = Class.forName(entryClass, true, cl).getDeclaredConstructor().newInstance()
-        val src: Any = when (obj) {
-            is SourceFactory -> {
-                val subs = obj.createSources().filterIsInstance<CatalogueSource>()
-                (lang?.let { l -> subs.firstOrNull { it.lang == l } } ?: subs.firstOrNull())
-                    ?: error("factory has no CatalogueSource")
+        // computeIfAbsent so concurrent first-loads of the same source dedupe cleanly (the
+        // classloader + newInstance run once per key, not once per racing thread).
+        return sourceCache.computeIfAbsent(key) {
+            // Re-frame a stale (pre-build-109) anime jar in place if needed, so existing
+            // installs load without a reinstall. No-op for already-fixed or manga jars.
+            ensureSanitized(jarPath)
+            val ej = File(jarPath)
+            // Manga/novel jars ship a plaintext AndroidManifest we can read the entry class from;
+            // anime jars come from dex2jar (which drops the manifest), so the app decodes the
+            // binary manifest and passes `entry` explicitly. Fall back to the manifest scan.
+            val entryClass = entry.ifBlank { findEntryClass(ej) ?: error("no entry class in $jarPath") }
+            val cl = URLClassLoader(arrayOf(ej.toURI().toURL()), SourceRunner::class.java.classLoader)
+            val obj = Class.forName(entryClass, true, cl).getDeclaredConstructor().newInstance()
+            when (obj) {
+                is SourceFactory -> {
+                    val subs = obj.createSources().filterIsInstance<CatalogueSource>()
+                    (lang?.let { l -> subs.firstOrNull { it.lang == l } } ?: subs.firstOrNull())
+                        ?: error("factory has no CatalogueSource")
+                }
+                is AnimeSourceFactory -> {
+                    val subs = obj.createSources().filterIsInstance<AnimeCatalogueSource>()
+                    (lang?.let { l -> subs.firstOrNull { it.lang == l } } ?: subs.firstOrNull())
+                        ?: error("factory has no AnimeCatalogueSource")
+                }
+                is CatalogueSource -> obj
+                is AnimeCatalogueSource -> obj
+                else -> error("not a (Anime)CatalogueSource: ${obj.javaClass.name}")
             }
-            is AnimeSourceFactory -> {
-                val subs = obj.createSources().filterIsInstance<AnimeCatalogueSource>()
-                (lang?.let { l -> subs.firstOrNull { it.lang == l } } ?: subs.firstOrNull())
-                    ?: error("factory has no AnimeCatalogueSource")
-            }
-            is CatalogueSource -> obj
-            is AnimeCatalogueSource -> obj
-            else -> error("not a (Anime)CatalogueSource: ${obj.javaClass.name}")
         }
-        sourceCache[key] = src
-        return src
     }
 
     // Entry keys across formats: 1.6 manga (extension), Tsundoku novels (novelextension),
@@ -697,8 +700,10 @@ object SourceRunner {
     // browse/detail) and restore it before getPageList / getHtmlContent. Cleared when the JVM
     // process restarts — the source's own "Refresh Chapter List" message then tells the user to
     // reopen/refresh the chapter list, which repopulates the cache.
-    private val mangaMemoCache = java.util.concurrent.ConcurrentHashMap<String, JsonObject>()
-    private val chapterMemoCache = java.util.concurrent.ConcurrentHashMap<String, JsonObject>()
+    // Bounded (insertion-order eviction) so the persisted foxlations_memo.json can't grow
+    // without end — best-effort caches that repopulate on demand, so eviction is safe.
+    private val mangaMemoCache = boundedMemoCache<JsonObject>(MANGA_MEMO_CAP)
+    private val chapterMemoCache = boundedMemoCache<JsonObject>(CHAPTER_MEMO_CAP)
     // SManga.title is a Tachiyomi `lateinit var`. getDetail builds a bare stub (only url is
     // known) and hands it to the source's getMangaUpdate; a source whose mangaDetailsParse
     // reads `manga.title` (e.g. to build a request or log) hits the uninitialized lateinit and
@@ -707,6 +712,23 @@ object SourceRunner {
     // so the stub is never title-less. (iOS Suwayomi's SMangaImpl.title is lateinit and throws;
     // Android's is a plain `var = ""` which is why Android never crashed here.)
     private val mangaTitleCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    // Caps on the in-memory memo caches (and thus on the persisted foxlations_memo.json).
+    // Chapter memos are keyed per-chapter, so the chapter cap must comfortably hold several
+    // large chapter lists at once; manga memos are one-per-title. Kept in lockstep with
+    // ExtensionHost.kt.
+    private const val MANGA_MEMO_CAP = 2000
+    private const val CHAPTER_MEMO_CAP = 10000
+
+    /** A size-capped, thread-safe, insertion-ordered map: once [cap] entries are present each
+     *  new key evicts the oldest. Synchronized, so callers MUST hold its monitor when iterating
+     *  it (see persistMemo); plain get/set are already guarded. */
+    private fun <V> boundedMemoCache(cap: Int): MutableMap<String, V> =
+        java.util.Collections.synchronizedMap(
+            object : LinkedHashMap<String, V>() {
+                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, V>): Boolean = size > cap
+            }
+        )
 
     // memo may be a lateinit/uninitialized field on the host impl; never let a read throw.
     private fun SManga.memoOrNull(): JsonObject? = runCatching { this.memo }.getOrNull()
@@ -729,9 +751,16 @@ object SourceRunner {
     private fun persistMemo() {
         val root = rootDirPath ?: return
         try {
+            // The memo caches are synchronizedMap(LinkedHashMap): iterating one requires holding
+            // its monitor, or a concurrent put/evict from another op thread throws
+            // ConcurrentModificationException. The file write stays outside the locks.
             val obj = buildJsonObject {
-                put("chapters", buildJsonObject { chapterMemoCache.forEach { (k, v) -> put(k, v) } })
-                put("mangas", buildJsonObject { mangaMemoCache.forEach { (k, v) -> put(k, v) } })
+                put("chapters", buildJsonObject {
+                    synchronized(chapterMemoCache) { chapterMemoCache.forEach { (k, v) -> put(k, v) } }
+                })
+                put("mangas", buildJsonObject {
+                    synchronized(mangaMemoCache) { mangaMemoCache.forEach { (k, v) -> put(k, v) } }
+                })
             }
             val tmp = File(root, "foxlations_memo.json.tmp")
             tmp.writeText(obj.toString())
@@ -784,20 +813,35 @@ object SourceRunner {
     // "GET https://example.orghttps://example.org/…", whose host ("example.orghttps") won't
     // resolve. Strip the domain when the host matches the source's own baseUrl; leave a
     // relative path (the common case) or a different host untouched.
+    @Suppress("UNUSED_PARAMETER")
     private fun relativize(url: String, cat: Any): String {
-        if (!url.startsWith("http://", ignoreCase = true) &&
-            !url.startsWith("https://", ignoreCase = true)) return url
-        val base = runCatching { cat.javaClass.getMethod("getBaseUrl").invoke(cat) as? String }
-            .getOrNull()?.takeIf { it.isNotBlank() } ?: return url
-        return runCatching {
-            val u = java.net.URI(url)
-            val b = java.net.URI(base)
-            if (u.host == null || !u.host.equals(b.host, ignoreCase = true)) return url
-            val path = u.rawPath ?: ""
-            val q = if (u.rawQuery != null) "?" + u.rawQuery else ""
-            val f = if (u.rawFragment != null) "#" + u.rawFragment else ""
-            (path + q + f).ifBlank { url }
-        }.getOrDefault(url)
+        // Strip scheme + authority from an ABSOLUTE url, leaving path(+query+fragment).
+        // The extension's default requests always rebuild `baseUrl + url`, so ANY
+        // absolute url double-joins (e.g. "https://host" + "https://host/…" -> host
+        // "hosthttps", which won't resolve). This is string-based and HOST-AGNOSTIC
+        // on purpose:
+        //   * the old version used java.net.URI, which THREW on a space / '{' / '|' /
+        //     non-ASCII and then leaked the absolute url straight through;
+        //   * it also only stripped when the host matched the current baseUrl, so a
+        //     saved url from a since-changed source domain (or a backup import) leaked.
+        // Tachiyomi's contract is that these urls are always domain-relative, so an
+        // absolute one is stripped unconditionally. A url that is already relative
+        // (the common case) is returned untouched.
+        val lower = url.lowercase()
+        val schemeEnd = when {
+            lower.startsWith("https://") -> 8
+            lower.startsWith("http://") -> 7
+            url.startsWith("//") -> 2 // protocol-relative //host/path
+            else -> return url
+        }
+        var i = schemeEnd
+        while (i < url.length && url[i] != '/' && url[i] != '?' && url[i] != '#') i++
+        val rest = url.substring(i)
+        return when {
+            rest.isEmpty() -> "/"
+            rest[0] == '/' -> rest
+            else -> "/$rest" // query/fragment only -> anchor at root
+        }
     }
 
     private fun detailJson(cat: CatalogueSource, url: String): String {
@@ -835,10 +879,13 @@ object SourceRunner {
         // Cache each chapter's memo (and this manga's) so getPageList / getHtmlContent can
         // restore it later — including across app restarts and the app's library chapter
         // cache, which shows chapters without re-running getDetail.
+        // Persist only when something actually changed — re-opening a manga whose memo is
+        // already cached (identical value) must NOT rewrite the whole file. put() returns the
+        // previous value; a different (or absent) one means a real change.
         var cachedAny = false
-        details.memoOrNull()?.let { runCatching { mangaMemoCache[url] = it; cachedAny = true } }
+        details.memoOrNull()?.let { m -> runCatching { if (mangaMemoCache.put(url, m) != m) cachedAny = true } }
         chapters.forEach { ch ->
-            ch.memoOrNull()?.let { runCatching { chapterMemoCache[ch.url] = it; cachedAny = true } }
+            ch.memoOrNull()?.let { m -> runCatching { if (chapterMemoCache.put(ch.url, m) != m) cachedAny = true } }
         }
         if (cachedAny) persistMemo()
         // The source's own browsable page URL ("Open in browser"). getMangaUrl is a
@@ -979,6 +1026,10 @@ object SourceRunner {
         val stub = SAnime.create().apply { this.url = relativize(url, cat) }
         val details = runBlocking(Dispatchers.Default) { cat.getAnimeDetails(stub) }
         if (details.url.isBlank()) details.url = url
+        // animeDetailsParse re-sets details.url via the source's setUrlWithoutDomain (and
+        // the blank-fallback above can inject the incoming absolute url), so strip it
+        // again before the episode list + getAnimeUrl, which both do baseUrl + details.url.
+        details.url = relativize(details.url, cat)
         var episodes: List<SEpisode> = emptyList()
         var chErr: String? = null
         try {

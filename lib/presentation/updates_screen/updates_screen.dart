@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../core/services/library_update_service.dart';
 import '../../core/providers/library_provider.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/download_provider.dart';
 import '../../routes/app_routes.dart';
-import '../../theme/app_theme.dart';
 import '../../l10n/app_localizations.dart';
 import '../widgets/manga_image.dart';
+import '../widgets/ds/ds.dart';
 
 class UpdatesScreen extends StatefulWidget {
   const UpdatesScreen({super.key});
@@ -98,8 +98,8 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
       backgroundColor: cs.surface,
       appBar: AppBar(
         backgroundColor: cs.surface, elevation: 0,
-        title: Text(t.appUpdatesTitle, style: GoogleFonts.manrope(
-            fontSize: 20, fontWeight: FontWeight.w800, color: cs.onSurface)),
+        title: Text(t.appUpdatesTitle, style: Theme.of(context).textTheme.titleLarge
+            ?.copyWith(fontWeight: FontWeight.w800, color: cs.onSurface)),
         actions: [
           if (_isUpdating)
             Padding(padding: const EdgeInsetsDirectional.only(end: 16),
@@ -129,7 +129,8 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
                 backgroundColor: cs.surfaceContainerHighest, color: cs.primary, minHeight: 3),
               const SizedBox(height: 4),
               Text(t.appCheckingProgress(_checkedCount, _totalCount),
-                  style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(fontWeight: FontWeight.w400, color: cs.outline)),
             ])),
 
         // Last update
@@ -139,7 +140,8 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
               Icon(Icons.schedule_rounded, size: 12, color: cs.outline),
               const SizedBox(width: 4),
               Text(t.appLastChecked(_formatTime(_lastUpdate!)),
-                  style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+                  style: Theme.of(context).textTheme.labelSmall
+                      ?.copyWith(fontWeight: FontWeight.w400, color: cs.outline)),
             ])),
 
         // List
@@ -151,8 +153,8 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-                        child: Text(_dateHeader(e.key), style: GoogleFonts.manrope(
-                            fontSize: 11, fontWeight: FontWeight.w700,
+                        child: Text(_dateHeader(e.key), style: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(fontWeight: FontWeight.w700,
                             color: cs.primary, letterSpacing: 1.0))),
                       ...e.value.map((u) => _UpdateTile(update: u, onTap: () {
                         Navigator.pushNamed(context, AppRoutes.mangaDetail, arguments: {
@@ -171,19 +173,19 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
     final t = AppLocalizations.of(context);
     return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
       Container(width: 64, height: 64,
-        decoration: BoxDecoration(color: cs.primary.withAlpha(31),
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
+        decoration: oledIconChip(context,
+            color: cs.primary, fill: cs.primary.withAlpha(31)),
         child: Icon(Icons.update_rounded, size: 32, color: cs.primary)),
       const SizedBox(height: 16),
-      Text(t.appNoUpdatesYet, style: GoogleFonts.manrope(
-          fontSize: 15, fontWeight: FontWeight.w700, color: cs.onSurface)),
+      Text(t.appNoUpdatesYet, style: Theme.of(context).textTheme.titleMedium
+          ?.copyWith(fontSize: 15, fontWeight: FontWeight.w700, color: cs.onSurface)),
       const SizedBox(height: 6),
       Text(t.appTapRefreshForChapters,
-          style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline)),
       const SizedBox(height: 16),
       FilledButton.icon(
         icon: const Icon(Icons.refresh_rounded, size: 18),
-        label: Text(t.appCheckNow, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        label: Text(t.appCheckNow, style: const TextStyle(fontWeight: FontWeight.w700)),
         style: FilledButton.styleFrom(backgroundColor: cs.primary, foregroundColor: Colors.white),
         onPressed: _isUpdating ? null : _refreshUpdates),
     ]));
@@ -201,9 +203,9 @@ class _UpdatesScreenState extends State<UpdatesScreen> {
   String _dateHeader(String date) {
     final t = AppLocalizations.of(context);
     final now = DateTime.now();
-    final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final today = DateFormat('yyyy-MM-dd').format(now);
     final yd = now.subtract(const Duration(days: 1));
-    final yesterday = '${yd.year}-${yd.month.toString().padLeft(2, '0')}-${yd.day.toString().padLeft(2, '0')}';
+    final yesterday = DateFormat('yyyy-MM-dd').format(yd);
     if (date == today) return t.appToday;
     if (date == yesterday) return t.appYesterday;
     return date.toUpperCase();
@@ -230,10 +232,10 @@ class _UpdateTile extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(update.mangaTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
           const SizedBox(height: 2),
           Text(update.chapterName, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline)),
         ])),
         if (!update.isRead)
           Container(width: 8, height: 8,

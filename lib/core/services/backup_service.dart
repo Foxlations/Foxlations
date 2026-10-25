@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:collection/collection.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,7 +14,7 @@ import '../models/category_model.dart';
 import 'app_logger.dart';
 import 'settings_store.dart';
 
-/// A backup file on disk (native `.fox` — or legacy `.fxbackup` — or
+/// A backup file on disk (native `.fox` - or legacy `.fxbackup` - or
 /// Tachiyomi/Mihon `.tachibk`).
 class BackupFile {
   final String path;
@@ -85,7 +86,7 @@ class BackupTarget {
   ];
 }
 
-/// Create/restore library backups — a native gzipped-JSON format, plus
+/// Create/restore library backups - a native gzipped-JSON format, plus
 /// read/write of the Tachiyomi/Mihon gzipped-protobuf `.tachibk` format for
 /// cross-app migration. Also manages automatic scheduled backups.
 class BackupService {
@@ -138,6 +139,7 @@ class BackupService {
         'contentType': m.contentType,
         'lastWatchSeconds': m.lastWatchSeconds,
         'totalSeconds': m.totalSeconds,
+        'timeSpentSeconds': m.timeSpentSeconds,
         'novelProgressOffset': m.novelProgressOffset,
         'novelProgressFraction': m.novelProgressFraction,
         'totalChapters': m.totalChapters,
@@ -165,6 +167,7 @@ class BackupService {
         contentType: m['contentType'] as String?,
         lastWatchSeconds: (m['lastWatchSeconds'] as num?)?.toInt() ?? 0,
         totalSeconds: (m['totalSeconds'] as num?)?.toInt() ?? 0,
+        timeSpentSeconds: (m['timeSpentSeconds'] as num?)?.toInt() ?? 0,
         novelProgressOffset: (m['novelProgressOffset'] as num?)?.toInt() ?? 0,
         novelProgressFraction: (m['novelProgressFraction'] as num?)?.toDouble() ?? 0.0,
         totalChapters: (m['totalChapters'] as num?)?.toInt() ?? 0,
@@ -228,7 +231,7 @@ class BackupService {
     // Include the vault's contents WHEN it's unlocked (its boxes are open),
     // represented as NORMAL library entries whose categories are namespaced
     // "Vault-<category>" (or plain "Vault" when uncategorised). This keeps vault
-    // titles in the backup — portable to other apps — without a special format;
+    // titles in the backup - portable to other apps - without a special format;
     // they just land under Vault- categories on import. Locked vaults are skipped.
     if (includeVault && Hive.isBoxOpen('vault_manga')) {
       final vMangaBox = Hive.box<LibraryManga>('vault_manga');
@@ -508,7 +511,7 @@ class BackupService {
         if (c.sourceIndex != null) bc.varintUnconditional(10, c.sourceIndex!);
         bm.message(16, bc.toBytes());
       }
-      // categories (by order index — index 0 is valid, so write unconditionally)
+      // categories (by order index - index 0 is valid, so write unconditionally)
       for (final cat in catRefs) {
         final idx = catOrder[cat];
         if (idx != null) bm.varintUnconditional(17, idx);
@@ -540,7 +543,7 @@ class BackupService {
     }
     // sources (name = foxlations sourceId, so our own restores recover it):
     // manga/novel -> field 101, anime -> field 103.
-    // BackupSource = { name = field 1 (string), sourceId = field 2 (int64) } —
+    // BackupSource = { name = field 1 (string), sourceId = field 2 (int64) } - 
     // the order Mihon/Tachiyomi/Aniyomi/Tachimanga all use. Writing sourceId
     // first is a wire-type mismatch that makes their decoder reject the whole
     // file. (Our own importer keys on wire type, so round-trips are unaffected.)
@@ -583,7 +586,7 @@ class BackupService {
     }
   }
 
-  /// Export to a Mangayomi-compatible `*.backup` — a ZIP wrapping a single
+  /// Export to a Mangayomi-compatible `*.backup` - a ZIP wrapping a single
   /// `*.backup.db` JSON of { version, manga[], chapters[], categories[],
   /// extensions[] }. Mangayomi handles manga, anime AND light novels in one file
   /// (`itemType` 0/1/2), so this is also our anime-only / novel-only path. The
@@ -750,7 +753,7 @@ class BackupService {
   /// `Version.json` manifest (formatVersion 2 + sections), one
   /// `NovelAndChapters/<n>.json` per novel (flat novel object + `chapters`), and
   /// a `Category.json`. LNReader is light-novels only and resolves a novel's
-  /// source by (pluginId, path) — our novel lane runs LNReader's own plugins, so
+  /// source by (pluginId, path) - our novel lane runs LNReader's own plugins, so
   /// pluginId = our sourceId and path = the novel url line up.
   Future<String> createLnreaderBackup(
       {DateTime? now, bool includeVault = false}) async {
@@ -912,12 +915,10 @@ class BackupService {
     try {
       archive = ZipDecoder().decodeBytes(bytes);
     } catch (_) {
-      return null; // encrypted or unreadable ZIP — let the caller's path error
+      return null; // encrypted or unreadable ZIP - let the caller's path error
     }
-    final db = archive.files.cast<ArchiveFile?>().firstWhere(
-          (f) => f!.isFile && f.name.toLowerCase().endsWith('.backup.db'),
-          orElse: () => null,
-        );
+    final db = archive.files.firstWhereOrNull(
+        (f) => f.isFile && f.name.toLowerCase().endsWith('.backup.db'));
     if (db == null) return null; // a ZIP, but not Mangayomi's
     try {
       return utf8.decode(db.content as List<int>);
@@ -1076,7 +1077,7 @@ class BackupService {
       {Map<String, String> installedSources = const {}}) async {
     final bytes = await File(path).readAsBytes();
     // Mangayomi backups are a ZIP wrapping a *.backup.db JSON (manga/anime/
-    // novel in one file) — detect and route to the JSON importer before the
+    // novel in one file) - detect and route to the JSON importer before the
     // protobuf path, which only understands Tachiyomi/Mihon/Aniyomi.
     final mangayomiJson = _extractMangayomiJson(bytes);
     if (mangayomiJson != null) {
@@ -1137,7 +1138,7 @@ class BackupService {
           // The standard order (Mihon/Tachiyomi/Aniyomi/Tachimanga) is
           // { name = field 1 (string), sourceId = field 2 (int64) }. We still
           // match on the WIRE TYPE rather than the field number so an app that
-          // ever emits them swapped also parses — the varint is the id, the
+          // ever emits them swapped also parses - the varint is the id, the
           // string is the name.
           final sr = _ProtoReader(r.readBytes());
           int id = 0;
@@ -1548,7 +1549,7 @@ class BackupService {
   }
 
   /// Run an automatic backup if the configured interval has elapsed. Safe to
-  /// call on every app launch — no-ops when off or not yet due. Prunes old
+  /// call on every app launch - no-ops when off or not yet due. Prunes old
   /// automatic backups to [_maxAutoKept].
   Future<void> maybeRunAuto() async {
     final freq = await getFrequency();
@@ -1562,7 +1563,7 @@ class BackupService {
       await SettingsStore.instance.setInt(_lastAutoKey, now.millisecondsSinceEpoch);
       await _pruneAuto();
     } catch (e, s) {
-      // A failed scheduled backup was invisible — the user thought backups were
+      // A failed scheduled backup was invisible - the user thought backups were
       // running. Surface it (still non-throwing).
       await logger.error('Automatic backup failed',
           category: LogCategory.general, detail: '$e\n$s');
@@ -1603,7 +1604,7 @@ class _ProtoWriter {
     _rawVarint(value);
   }
 
-  /// Always write, even for 0 — required for repeated fields / index values
+  /// Always write, even for 0 - required for repeated fields / index values
   /// where 0 is meaningful (e.g. category index 0, chapter source order 0).
   void varintUnconditional(int field, int value) {
     _tag(field, 0);
@@ -1664,7 +1665,7 @@ String resolveBackupSourceId(
   final want = norm(backupName);
   if (want.isEmpty) return backupName;
 
-  // Exact (normalised) name first — "Asura Scans" == "asurascans".
+  // Exact (normalised) name first - "Asura Scans" == "asurascans".
   for (final e in installed.entries) {
     if (norm(e.value) == want) return e.key;
   }
@@ -1679,7 +1680,7 @@ String resolveBackupSourceId(
 
 /// Unwrap a backup file down to raw protobuf bytes.
 ///
-/// The extension is not trusted — different apps wrap the same payload
+/// The extension is not trusted - different apps wrap the same payload
 /// differently and users rename files:
 ///   * Tachiyomi/Mihon `.tachibk` / `.proto.gz` → gzip (magic `1f 8b`)
 ///   * Tachimanga `.tmb`                        → ZIP  (magic `50 4b`)
@@ -1718,15 +1719,15 @@ Uint8List unwrapBackupBytes(Uint8List raw, {int depth = 0}) {
     return unwrapBackupBytes(chosen.first.content, depth: depth + 1);
   }
 
-  // No known container — assume it is already raw protobuf.
+  // No known container - assume it is already raw protobuf.
   return raw;
 }
 
 /// Minimal protobuf reader.
 ///
-/// Every read is bounds-checked. Previously any surprise in the stream — an
+/// Every read is bounds-checked. Previously any surprise in the stream - an
 /// unexpected wire type, a field written by a newer Tachiyomi fork, a container
-/// we mis-detected — walked straight off the end of the buffer and surfaced as
+/// we mis-detected - walked straight off the end of the buffer and surfaced as
 /// a bare `RangeError (length): Not in inclusive range 0..17: 18`, which says
 /// nothing about what actually went wrong. Now it throws a [FormatException]
 /// naming the offset, so a bad backup produces a message a user can act on.

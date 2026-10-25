@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart' show CupertinoRouteTransitionMixin;
 import '../presentation/browse_screen/browse_screen.dart';
 import '../presentation/library_screen/library_screen.dart';
 import '../presentation/updates_screen/updates_screen.dart';
@@ -9,9 +10,8 @@ import '../presentation/manga_detail_screen/manga_detail_screen.dart';
 import '../presentation/reader_screen/reader_screen.dart';
 import '../presentation/player_screen/player_screen.dart';
 import '../presentation/webview_screen/webview_screen.dart';
-import '../presentation/source_creator_screen/source_creator_screen.dart';
-import '../presentation/repoforge_hub_screen/repoforge_hub_screen.dart';
 import '../presentation/novel_reader_screen/novel_reader_screen.dart';
+import '../presentation/reading_insights_screen/reading_insights_screen.dart';
 
 /// Lets a screen know when a route pushed on top of it (e.g. a settings page)
 /// has been popped, so it can re-read preferences that page may have changed.
@@ -31,9 +31,8 @@ class AppRoutes {
   static const String reader = '/reader';
   static const String player = '/player';
   static const String webview = '/webview';
-  static const String sourceCreator = '/source-creator';
-  static const String repoForgeHub = '/repoforge';
   static const String novelReader = '/novel-reader';
+  static const String readingInsights = '/reading-insights';
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -44,7 +43,7 @@ class AppRoutes {
       case browse:
         return _fadeSlide(const BrowseScreen(), settings);
       case AppRoutes.settings:
-        return _fadeSlide(const SettingsScreen(), settings);
+        return _swipeable(const SettingsScreen(), settings);
       case globalSearch:
         final args = settings.arguments as Map<String, dynamic>?;
         return _fadeSlide(
@@ -65,13 +64,14 @@ class AppRoutes {
         );
       case mangaDetail:
         final args = settings.arguments as Map<String, dynamic>;
-        return _fadeSlide(
+        return _swipeable(
           MangaDetailScreen(
             mangaUrl: args['mangaUrl'] as String,
             sourceId: args['sourceId'] as String,
             title: args['title'] as String?,
             coverUrl: args['coverUrl'] as String?,
             resume: args['resume'] as bool? ?? false,
+            isVault: args['isVault'] as bool? ?? false,
           ),
           settings,
         );
@@ -87,6 +87,7 @@ class AppRoutes {
             chapters: args['chapters'] as List<Map<String, dynamic>>?,
             currentIndex: args['currentIndex'] as int? ?? 0,
             startPage: args['startPage'] as int? ?? 0,
+            isVault: args['isVault'] as bool? ?? false,
           ),
           settings,
         );
@@ -101,16 +102,19 @@ class AppRoutes {
             mangaUrl: args['mangaUrl'] as String?,
             episodes: args['episodes'] as List<Map<String, dynamic>>?,
             currentIndex: args['currentIndex'] as int? ?? 0,
+            isVault: args['isVault'] as bool? ?? false,
           ),
           settings,
         );
-      case sourceCreator:
-        final args = settings.arguments;
-        final seedUrl =
-            args is Map<String, dynamic> ? args['seedUrl'] as String? : null;
-        return _fadeSlide(SourceCreatorScreen(seedUrl: seedUrl), settings);
-      case repoForgeHub:
-        return _fadeSlide(const RepoForgeHubScreen(), settings);
+      case readingInsights:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return _fadeSlide(
+          ReadingInsightsScreen(
+            isVault: args?['isVault'] as bool? ?? false,
+            initialType: args?['contentType'] as String?,
+          ),
+          settings,
+        );
       case novelReader:
         final args = settings.arguments as Map<String, dynamic>;
         return _scaleFade(
@@ -124,6 +128,7 @@ class AppRoutes {
             currentIndex: args['currentIndex'] as int? ?? 0,
             startOffset: args['startOffset'] as int? ?? 0,
             startFraction: (args['startFraction'] as num?)?.toDouble() ?? 0.0,
+            isVault: args['isVault'] as bool? ?? false,
           ),
           settings,
         );
@@ -147,8 +152,8 @@ class AppRoutes {
       settings: settings,
       transitionDuration: const Duration(milliseconds: 220),
       reverseTransitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (_, __, ___) => page,
-      transitionsBuilder: (_, animation, __, child) {
+      pageBuilder: (_, _, _) => page,
+      transitionsBuilder: (_, animation, _, child) {
         return FadeTransition(
           opacity: animation,
           child: SlideTransition(
@@ -171,8 +176,8 @@ class AppRoutes {
       settings: settings,
       transitionDuration: const Duration(milliseconds: 320),
       reverseTransitionDuration: const Duration(milliseconds: 280),
-      pageBuilder: (_, __, ___) => page,
-      transitionsBuilder: (_, animation, __, child) {
+      pageBuilder: (_, _, _) => page,
+      transitionsBuilder: (_, animation, _, child) {
         return FadeTransition(
           opacity: animation,
           child: ScaleTransition(
@@ -186,6 +191,40 @@ class AppRoutes {
           ),
         );
       },
+    );
+  }
+
+  // Keeps a fade transition but adds the iOS edge-swipe-back gesture (via
+  // CupertinoRouteTransitionMixin) - used for top-level pushed pages like
+  // Details and Settings.
+  static Route<dynamic> _swipeable(Widget page, RouteSettings settings) =>
+      _SwipeableRoute<dynamic>(child: page, settings: settings);
+}
+
+class _SwipeableRoute<T> extends PageRoute<T>
+    with CupertinoRouteTransitionMixin<T> {
+  _SwipeableRoute({required this.child, super.settings});
+
+  final Widget child;
+
+  @override
+  Widget buildContent(BuildContext context) => child;
+
+  @override
+  String? get title => null;
+
+  @override
+  bool get maintainState => true;
+
+  @override
+  Widget buildTransitions(BuildContext context, Animation<double> animation,
+      Animation<double> secondaryAnimation, Widget child) {
+    // The mixin's transition carries the Cupertino slide + the back-swipe
+    // gesture; layer a gentle fade over it.
+    return FadeTransition(
+      opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+      child:
+          super.buildTransitions(context, animation, secondaryAnimation, child),
     );
   }
 }

@@ -1,8 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:provider/provider.dart';
@@ -12,12 +12,16 @@ import '../../eval/model/m_video.dart';
 import '../../eval/lib.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/library_provider.dart';
+import '../../core/providers/vault_provider.dart';
+import '../../core/providers/library_like.dart';
 import '../../core/providers/tracking_provider.dart';
 import '../../core/providers/incognito_provider.dart';
 import '../../core/services/download_service.dart';
 import '../../core/services/aniskip_service.dart';
 import '../../core/services/app_logger.dart';
+import '../../core/services/read_time_tracker.dart';
 import '../../l10n/app_localizations.dart';
+import '../widgets/duration_format.dart';
 
 class PlayerScreen extends StatefulWidget {
   final String sourceId;
@@ -34,6 +38,9 @@ class PlayerScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? episodes;
   final int currentIndex;
 
+  /// True when watching a VAULT anime - routes progress/seen-marks to the vault.
+  final bool isVault;
+
   const PlayerScreen({
     super.key,
     required this.sourceId,
@@ -43,6 +50,7 @@ class PlayerScreen extends StatefulWidget {
     this.mangaUrl,
     this.episodes,
     this.currentIndex = 0,
+    this.isVault = false,
   });
 
   @override
@@ -57,7 +65,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   List<MVideo> _videos = [];
   int _currentVideoIndex = 0;
 
-  // Current episode (mutable — Next/Previous swap it in place).
+  // Current episode (mutable - Next/Previous swap it in place).
   late List<Map<String, dynamic>> _episodes;
   late int _epIndex;
 
@@ -68,7 +76,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
 
-  LibraryProvider? _lib;
+  LibraryLike? _lib;
+  // Accumulates ACTIVE watch time per anime for Reading Insights. Pinged on
+  // playback position updates; a paused video stops pinging and idles out.
+  ReadTimeTracker? _timeTracker;
   int _resumeSeconds = 0;
   Duration _lastSaved = Duration.zero;
   Duration _seekTarget = Duration.zero;
@@ -95,21 +106,41 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool get _hasNext =>
       _episodes.isNotEmpty && _epIndex >= 0 && _epIndex < _episodes.length - 1;
 
+  /// The owning store for this anime (vault vs public library), selected by the
+  /// [isVault] flag threaded through navigation.
+  LibraryLike get _store => widget.isVault
+      ? context.read<VaultProvider>()
+      : context.read<LibraryProvider>();
+
+  /// Saved playback position (seconds) for the current episode, from the owning
+  /// store (vault or public library) so vault anime resumes like normal.
+  int _episodeResume() =>
+      _lib?.episodeLastPosition(widget.sourceId, _epUrl) ?? 0;
+
   @override
   void initState() {
     super.initState();
-    _player = Player();
+    // logLevel: warn pipes libmpv's own warnings/errors (bad codec, unreadable
+    // file, unsupported protocol, HLS failure) into stream.log → the in-app log,
+    // so a "stuck at 00:00 / no duration" stall is diagnosable instead of silent.
+    _player = Player(
+        configuration: const PlayerConfiguration(logLevel: MPVLogLevel.warn));
     _controller = VideoController(_player);
     // Episodes come NEWEST-first from the source; store oldest-first and remap
     // the opened index so "next" (index+1) is the LATER episode. Same bug/fix as
-    // the manga reader — autoplay/next used to go to the previous episode.
+    // the manga reader - autoplay/next used to go to the previous episode.
     final eps = widget.episodes ?? const <Map<String, dynamic>>[];
     _episodes = eps.reversed.toList();
     _epIndex = eps.isEmpty
         ? 0
         : (eps.length - 1 - widget.currentIndex).clamp(0, eps.length - 1);
-    _lib = context.read<LibraryProvider>();
-    _resumeSeconds = _lib?.episodeLastPosition(widget.sourceId, _epUrl) ?? 0;
+    _lib = _store;
+    _resumeSeconds = _episodeResume();
+    _timeTracker = ReadTimeTracker(onCredit: (secs) async {
+      final url = widget.mangaUrl;
+      if (!mounted || url == null) return;
+      await _store.addReadTime(widget.sourceId, url, secs);
+    })..start();
     WakelockPlus.enable();
     _setupListeners();
     _init();
@@ -130,6 +161,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _subs.addAll([
       _player.stream.position.listen((pos) {
         _position = pos;
+        _timeTracker?.ping(); // position advances only while playing → active watch
         _maybeSaveProgress(pos);
         _updateSkip(pos);
       }),
@@ -152,19 +184,58 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _player.stream.error.listen((e) {
         logger.error('Player error: $e', category: LogCategory.general);
       }),
+      // libmpv's own diagnostics (why a file/stream won't demux or decode).
+      _player.stream.log.listen((l) {
+        logger.warning('mpv[${l.level}] ${l.prefix}: ${l.text}',
+            category: LogCategory.general);
+      }),
     ]);
   }
 
   Future<void> _loadVideoList() async {
     setState(() { _isLoading = true; _error = null; });
     try {
-      // Play a DOWNLOADED episode from disk if we have it — the player used to
+      // Play a DOWNLOADED episode from disk if we have it - the player used to
       // always go to the network, so downloaded episodes couldn't be watched
       // offline at all.
       final localPath = await DownloadService().getEpisodePath(
           widget.sourceId, widget.animeTitle ?? '', _epTitle ?? '');
       if (localPath != null) {
-        final local = MVideo(localPath, 'Downloaded', localPath);
+        // A per-episode folder keeps the video as `<ep>/video.<ext>` plus, for
+        // DASH, a sibling `audio.mp4`, and a `tracks.json` listing the subtitle
+        // and extra-audio files downloaded with it - so offline playback offers
+        // the same audio/subtitle options as streaming.
+        List<MTrack>? localAudios;
+        List<MTrack>? localSubs;
+        final match = RegExp(r'^(.*)/video\.[^/]+$').firstMatch(localPath);
+        if (match != null) {
+          final folder = match.group(1)!;
+          final audios = <MTrack>[];
+          final subs = <MTrack>[];
+          final audioMp4 = File('$folder/audio.mp4');
+          if (await audioMp4.exists()) {
+            audios.add(MTrack(file: audioMp4.path, label: 'Audio'));
+          }
+          final tracksFile = File('$folder/tracks.json');
+          if (await tracksFile.exists()) {
+            try {
+              final meta = jsonDecode(await tracksFile.readAsString())
+                  as Map<String, dynamic>;
+              for (final s in (meta['subtitles'] as List? ?? const [])) {
+                subs.add(MTrack(
+                    file: '$folder/${s['file']}', label: s['label'] as String?));
+              }
+              for (final a in (meta['extAudios'] as List? ?? const [])) {
+                audios.add(MTrack(
+                    file: '$folder/${a['file']}', label: a['label'] as String?));
+              }
+            } catch (_) {}
+          }
+          if (audios.isNotEmpty) localAudios = audios;
+          if (subs.isNotEmpty) localSubs = subs;
+        }
+        final local = MVideo(localPath, 'Downloaded', localPath,
+            audios: localAudios, subtitles: localSubs);
         if (mounted) {
           setState(() {
             _videos = [local];
@@ -222,11 +293,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _seekTarget = Duration.zero;
     final resuming = seekTo > Duration.zero;
     // Resume is platform-split: iOS resumes reliably only when opened PLAYING and then
-    // sought; Android resumes reliably only when opened PAUSED, sought, then played —
+    // sought; Android resumes reliably only when opened PAUSED, sought, then played - 
     // seeking during active playback on Android is silently dropped and restarts at 0
     // (opening paused was the pre-rewrite behaviour that worked on Android; the media
     // still demuxes and reports a duration while paused).
     final openPlaying = !resuming || Platform.isIOS;
+    logger.info(
+        'Player open: ${video.url} (headers: ${video.headers?.length ?? 0}, playing: $openPlaying)',
+        category: LogCategory.general);
     await _player.open(Media(video.url, httpHeaders: video.headers ?? {}),
         play: openPlaying);
     await _player.setRate(_speed);
@@ -244,7 +318,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
     if (resuming) {
       // Check the already-known duration first (the stream event can fire before we
-      // subscribe), otherwise wait for it — a seek before the media is loaded is dropped.
+      // subscribe), otherwise wait for it - a seek before the media is loaded is dropped.
       var dur = _player.state.duration;
       if (dur <= Duration.zero) {
         dur = await _player.stream.duration
@@ -317,7 +391,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _markedSeen = false;
       _aniskipTried = false;
     });
-    _resumeSeconds = _lib?.episodeLastPosition(widget.sourceId, _epUrl) ?? 0;
+    _resumeSeconds = _episodeResume();
     await _loadVideoList();
   }
 
@@ -330,7 +404,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text(t.miscResumePlaybackTitle,
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+            style: const TextStyle(fontWeight: FontWeight.w700)),
         content: Text(t.miscStoppedWatchingAt(at)),
         actions: [
           TextButton(
@@ -373,7 +447,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (_markedSeen || mangaUrl == null || _lib == null) return;
     _markedSeen = true;
     if (!IncognitoProvider.active) {
-      _lib!.markChapterRead(widget.sourceId, mangaUrl, _epUrl);
+      _lib!.markChapterRead(widget.sourceId, mangaUrl, _epUrl, active: true);
     }
     try {
       final n = _episodeNumberOf(_epTitle ?? '');
@@ -442,7 +516,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     MTimeStamp? active;
     int? idx;
     for (var i = 0; i < _stamps.length; i++) {
-      // Don't re-show a window the user already skipped/dismissed — even if a
+      // Don't re-show a window the user already skipped/dismissed - even if a
       // keyframe seek landed a hair before its end.
       if (_skipped.contains(i)) continue;
       final s = _stamps[i];
@@ -461,7 +535,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (active != _activeStamp) {
       setState(() => _activeStamp = active);
     } else if (active != null) {
-      // Same window, new position — rebuild so the countdown ticks down live.
+      // Same window, new position - rebuild so the countdown ticks down live.
       setState(() {});
     }
   }
@@ -506,7 +580,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   void _setSubDelay(double seconds) {
     setState(() => _subDelay = seconds);
-    // sub-delay isn't on the cross-platform Player API — reach the native handle.
+    // sub-delay isn't on the cross-platform Player API - reach the native handle.
     try {
       (_player.platform as dynamic)?.setProperty('sub-delay', _subDelay.toString());
     } catch (_) {}
@@ -540,16 +614,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
         // Landscape has little vertical room; cap the sheet and let the options
         // scroll so the last row (e.g. Subtitle delay) is never clipped off-screen.
         constraints:
-            BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+            BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.85),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(title,
-                  style: GoogleFonts.manrope(
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: Colors.white,
-                      fontSize: 16,
                       fontWeight: FontWeight.w700)),
             ),
             Flexible(
@@ -585,7 +658,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _openSheet(_sheet(t.miscQuality, [
         ..._videos.asMap().entries.map((e) => ListTile(
               title: Text(e.value.quality.isEmpty ? t.miscSourceIndex(e.key) : e.value.quality,
-                  style: GoogleFonts.manrope(color: Colors.white)),
+                  style: const TextStyle(color: Colors.white)),
               trailing: e.key == _currentVideoIndex
                   ? const Icon(Icons.check_rounded, color: Colors.white)
                   : null,
@@ -604,7 +677,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _openSheet(StatefulBuilder(
       builder: (ctx, setSheet) => _sheet(t.miscSubtitles, [
         ListTile(
-          title: Text(t.miscSubtitleOff, style: GoogleFonts.manrope(color: Colors.white)),
+          title: Text(t.miscSubtitleOff, style: const TextStyle(color: Colors.white)),
           onTap: () {
             Navigator.pop(context);
             _player.setSubtitleTrack(SubtitleTrack.no());
@@ -612,7 +685,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ),
         ...subs.map((track) => ListTile(
               title: Text(track.label ?? track.file ?? t.miscUnknownTrack,
-                  style: GoogleFonts.manrope(color: Colors.white)),
+                  style: const TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 if (track.file != null) {
@@ -623,9 +696,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
         const Divider(color: Colors.white24),
         ListTile(
           title: Text(t.miscSubtitleDelay,
-              style: GoogleFonts.manrope(color: Colors.white)),
+              style: const TextStyle(color: Colors.white)),
           subtitle: Text('${_subDelay.toStringAsFixed(1)}s',
-              style: GoogleFonts.manrope(color: Colors.white54, fontSize: 12)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white54)),
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
             IconButton(
               icon: const Icon(Icons.remove_circle_outline, color: Colors.white),
@@ -648,7 +721,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _openSheet(_sheet(t.miscAudio, [
       ...audios.map((track) => ListTile(
             title: Text(track.label ?? track.file ?? t.miscUnknownTrack,
-                style: GoogleFonts.manrope(color: Colors.white)),
+                style: const TextStyle(color: Colors.white)),
             onTap: () {
               Navigator.pop(context);
               if (track.file != null) {
@@ -664,7 +737,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _openSheet(_sheet(t.miscPlaybackSpeed, [
         for (final s in const [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0])
           ListTile(
-            title: Text('${s}x', style: GoogleFonts.manrope(color: Colors.white)),
+            title: Text('${s}x', style: const TextStyle(color: Colors.white)),
             trailing: s == _speed
                 ? const Icon(Icons.check_rounded, color: Colors.white)
                 : null,
@@ -683,6 +756,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
     _subs.clear();
     _focus.dispose();
+    _timeTracker?.dispose();
     WakelockPlus.disable();
     _saveNow(notify: true);
     _player.dispose();
@@ -691,12 +765,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
-  String _fmt(Duration d) {
-    final h = d.inHours;
-    final m = (d.inMinutes % 60).toString().padLeft(2, '0');
-    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-    return h > 0 ? '$h:$m:$s' : '$m:$s';
-  }
+  String _fmt(Duration d) => formatDuration(d);
 
   @override
   Widget build(BuildContext context) {
@@ -749,10 +818,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final hasAudio =
         _videos.isNotEmpty && (_videos[_currentVideoIndex].audios?.isNotEmpty ?? false);
     // We drive our OWN immersive landscape (not media_kit's fullscreen), so media_kit
-    // applies no safe-area padding and the controls sit flush at the screen edges —
+    // applies no safe-area padding and the controls sit flush at the screen edges - 
     // the seek bar + time clip under the bottom/gesture area in landscape. Inset them
     // by the device's real system insets (plus a small floor for the bottom).
-    final vp = MediaQuery.of(context).viewPadding;
+    final vp = MediaQuery.viewPaddingOf(context);
     return MaterialVideoControlsThemeData(
       seekOnDoubleTap: true,
       seekOnDoubleTapBackwardDuration: Duration(seconds: _settings.seekBackwardSeconds),
@@ -786,12 +855,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
             children: [
               if (widget.animeTitle != null)
                 Text(widget.animeTitle!,
-                    style: GoogleFonts.manrope(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
                     overflow: TextOverflow.ellipsis),
               if (_epTitle != null)
                 Text(_epTitle!,
-                    style: GoogleFonts.manrope(color: Colors.white70, fontSize: 12),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70, fontSize: 12),
                     overflow: TextOverflow.ellipsis),
             ],
           ),
@@ -830,7 +899,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             iconSize: 30,
           ),
       ],
-      // No fullscreen button — the player already forces immersive landscape, so a
+      // No fullscreen button - the player already forces immersive landscape, so a
       // second media_kit fullscreen layer would just fight our orientation setup.
       bottomButtonBar: const [
         MaterialPositionIndicator(),
@@ -934,7 +1003,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           const Icon(Icons.error_outline_rounded, color: Colors.white54, size: 52),
           const SizedBox(height: 16),
           Text(_error ?? t.miscUnknownError,
-              style: GoogleFonts.manrope(color: Colors.white70, fontSize: 14),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70, fontSize: 14),
               textAlign: TextAlign.center),
           const SizedBox(height: 20),
           ElevatedButton.icon(

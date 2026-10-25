@@ -19,7 +19,7 @@ class SecureScreenService {
     try {
       await _channel.invokeMethod('setSecure', enabled);
     } catch (_) {
-      // Channel not available (e.g. during early startup) — the next apply() or
+      // Channel not available (e.g. during early startup) - the next apply() or
       // toggle will re-push the value.
     }
   }

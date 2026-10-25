@@ -89,6 +89,12 @@ class LibraryUpdateService {
   static const _updatesKey = 'manga_updates';
   static const _lastUpdateKey = 'last_library_update';
 
+  /// Live count of unread new-chapter updates for the Updates-tab badge. The
+  /// check bumps it as titles gain chapters (so the badge ticks up live) and
+  /// [clearUpdates] zeroes it (so it clears without leaving the page); seeded
+  /// from [getUnreadCount] at app start.
+  static final ValueNotifier<int> badge = ValueNotifier<int>(0);
+
   static Future<List<MangaUpdate>> loadUpdates() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_updatesKey) ?? [];
@@ -112,7 +118,7 @@ class LibraryUpdateService {
 
   /// Checks the library for new chapters.
   ///
-  /// [only] restricts the check to a subset — used by "Category Update" so it
+  /// [only] restricts the check to a subset - used by "Category Update" so it
   /// checks just the visible category instead of every entry.
   static Future<LibraryUpdateResult> checkForUpdates({
     required LibraryProvider libraryProvider,
@@ -131,20 +137,24 @@ class LibraryUpdateService {
     final skippedTitles = <LibraryManga>[];
     final failedTitles = <LibraryManga>[];
     int checked = 0;
+    // Seed the live Updates badge; the gained-block below ticks it up as titles
+    // gain chapters, and getUnreadCount reconciles it at the end.
+    final badgeBase = await getUnreadCount();
+    badge.value = badgeBase;
 
     // Settings > Library > "Skip titles you haven't started". readChapters == 0
     // means the user has never opened a chapter, so there's nothing to catch up
-    // on — checking it just spends network on titles they may never read.
+    // on - checking it just spends network on titles they may never read.
     final prefs = await SharedPreferences.getInstance();
     final skipNotStarted =
         SettingsStore.instance.getBool('lib_skip_not_started') ?? false;
-    // Smart-update skip rules — each avoids a source request (anti-ban/battery).
+    // Smart-update skip rules - each avoids a source request (anti-ban/battery).
     final skipHasUnread =
         SettingsStore.instance.getBool('lib_skip_has_unread') ?? false;
     final skipCompleted =
         SettingsStore.instance.getBool('lib_skip_completed') ?? false;
 
-    // Throttle the live "a title just got new chapters" refresh — workers run
+    // Throttle the live "a title just got new chapters" refresh - workers run
     // concurrently and we don't want a notify per entry.
     var lastPing = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -157,7 +167,7 @@ class LibraryUpdateService {
             (SourceSettings.cached(m.sourceId).excludeFromUpdates ||
                 // Ground-truth read count (chapter-box isRead tally), not the
                 // denormalized readChapters counter, so manual or imported read
-                // marks count — otherwise an imported-and-read title drifts to
+                // marks count - otherwise an imported-and-read title drifts to
                 // readChapters==0 and gets wrongly skipped as "not started".
                 (skipNotStarted && libraryProvider.readCountForManga(m) <= 0) ||
                 (skipHasUnread && libraryProvider.unreadForManga(m) > 0) ||
@@ -208,10 +218,11 @@ class LibraryUpdateService {
                 await libraryProvider.cacheChaptersQuiet(m.sourceId, m.url,
                     detail.chapters!.map((c) => c.toJson()).toList());
               }
-              // Refresh this title's card live (throttled) — cacheChaptersQuiet
+              // Refresh this title's card live (throttled) - cacheChaptersQuiet
               // already wrote the box (invalidating the unread tally), so a bare
               // notify repaints the badge without a full library rebuild.
               if (gained) {
+                badge.value = badgeBase + newUpdates.length;
                 final t = DateTime.now();
                 if (t.difference(lastPing).inMilliseconds > 400) {
                   lastPing = t;
@@ -243,12 +254,12 @@ class LibraryUpdateService {
       }
     }
 
-    // Check several entries at once instead of strictly one-at-a-time — a big
+    // Check several entries at once instead of strictly one-at-a-time - a big
     // library was spending most of the time blocked on sequential network
     // round-trips. Android's ART/QuickJS engines are reentrant, so fan out
     // there. iOS stays sequential: its embedded Zero-JVM shares a process-wide
     // crash-signal save/restore that isn't concurrency-safe (concurrent source
-    // calls could race it and SIGABRT), and iOS JS already serialises itself —
+    // calls could race it and SIGABRT), and iOS JS already serialises itself - 
     // iOS still wins big from the one-reload change below, just not from fan-out.
     final concurrency = Platform.isIOS ? 1 : 5;
     var next = 0;
@@ -293,6 +304,8 @@ class LibraryUpdateService {
       if (all.length > 500) all.removeRange(500, all.length);
       await saveUpdates(all);
     }
+    // Reconcile the live badge with the persisted count (dedupe / 500-cap).
+    badge.value = await getUnreadCount();
 
     final result = LibraryUpdateResult(
       updates: newUpdates,
@@ -379,6 +392,7 @@ class LibraryUpdateService {
   static Future<void> clearUpdates() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_updatesKey);
+    badge.value = 0;
   }
 
   // ── Automatic updates ──────────────────────────────────────────────────────
@@ -414,7 +428,7 @@ class LibraryUpdateService {
   static Future<bool> shouldAutoUpdate() async {
     final interval = _frequencyInterval(
         SettingsStore.instance.getString('lib_update_frequency') ?? 'Manual');
-    if (interval == null) return false; // Manual — never auto-update.
+    if (interval == null) return false; // Manual - never auto-update.
 
     final last = await getLastUpdate();
     if (last != null && DateTime.now().difference(last) < interval) {

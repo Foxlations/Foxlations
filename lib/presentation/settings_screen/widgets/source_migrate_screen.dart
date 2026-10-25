@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/models/manga_model.dart';
@@ -14,13 +13,13 @@ import '../../../eval/model/m_manga.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 
-/// Moves *every* library entry from one source to another in one pass — the
+/// Moves *every* library entry from one source to another in one pass - the
 /// bulk companion to the per-entry Migrate. Two main uses:
 ///  • swapping an old source for a newer one on the SAME site (e.g. a
 ///    keiyoushi Asura source → a Foxtensions Asura source), where the manga
 ///    URLs match and the move is exact; and
 ///  • re-homing entries imported from a Kotlin reader's backup, whose original
-///    source isn't installed here — they show up as an "imported" group that
+///    source isn't installed here - they show up as an "imported" group that
 ///    can be pointed at a real Foxlations source.
 class SourceMigrateScreen extends StatefulWidget {
   const SourceMigrateScreen({super.key});
@@ -142,7 +141,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
         _activeManga.where((m) => m.sourceId == fromId).toList(growable: false);
     if (entries.isEmpty) return;
 
-    // Phase 1 — analyse: find each entry on the target (exact URL, then an
+    // Phase 1 - analyse: find each entry on the target (exact URL, then an
     // optional title search) and cache the fetched detail for the commit.
     setState(() {
       _busy = true;
@@ -165,7 +164,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
 
-    // Phase 2 — confirm.
+    // Phase 2 - confirm.
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -184,7 +183,8 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
             const SizedBox(height: 10),
             Text(
               t.repoMigrateCarryOver,
-              style: GoogleFonts.manrope(fontSize: 12, height: 1.4),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w400, height: 1.4),
             ),
           ],
         ),
@@ -202,12 +202,12 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
     );
     if (ok != true || !mounted) return;
 
-    // Phase 3 — commit.
+    // Phase 3 - commit.
     await _commit(plan, fromId, toId);
   }
 
   Future<_PlanItem> _plan(LibraryManga e, InstalledSource to) async {
-    // Exact URL first — works for same-site swaps and most Kotlin imports.
+    // Exact URL first - works for same-site swaps and most Kotlin imports.
     try {
       final detail = await withExtensionService(
         to.source, to.sourceCode, (s) => s.getDetail(e.url));
@@ -215,7 +215,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           (detail.name ?? '').isNotEmpty) {
         return _PlanItem(e, matchType: 'url', targetUrl: e.url, detail: detail);
       }
-    } catch (_) {/* not a URL match — fall through */}
+    } catch (_) {/* not a URL match - fall through */}
 
     if (_matchByTitle && e.title.trim().isNotEmpty) {
       try {
@@ -282,7 +282,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
     final detail = p.detail;
     final sameUrl = targetUrl == old.url;
 
-    // Which chapters were read on the old entry — matched to the new list by
+    // Which chapters were read on the old entry - matched to the new list by
     // URL (same-site) or by chapter number (cross-site).
     final readUrls = <String>{};
     final readNums = <String>{};
@@ -361,7 +361,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
         backgroundColor: cs.surface,
         elevation: 0,
         title: Text(t.repoMigrateASource,
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontSize: 18, fontWeight: FontWeight.w700)),
       ),
       body: _finished
@@ -383,7 +383,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         Text(t.repoMigrateIntro,
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontSize: 12.5, height: 1.4, color: cs.onSurfaceVariant)),
         const SizedBox(height: 20),
         _label(t.repoFrom, cs),
@@ -395,13 +395,14 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           fromGroups.isEmpty,
           () => _pickFrom(fromGroups),
         ),
-        // Explain a legitimately-empty FROM list so it isn't read as a bug — the
+        // Explain a legitimately-empty FROM list so it isn't read as a bug - the
         // picker only lists sources that actually have entries in this library.
         if (fromGroups.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6, left: 4),
-            child: Text('No titles in this library to migrate.',
-                style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline)),
+            child: Text(t.repoNoTitlesToMigrate,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontSize: 11.5, color: cs.outline)),
           ),
         const SizedBox(height: 16),
         _label(t.repoTo, cs),
@@ -414,8 +415,9 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
         if (_fromId == null)
           Padding(
             padding: const EdgeInsets.only(top: 6, left: 4),
-            child: Text('Choose a source to migrate from first.',
-                style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline)),
+            child: Text(t.repoChooseSourceFirst,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontSize: 11.5, color: cs.outline)),
           ),
         const SizedBox(height: 8),
         SwitchListTile(
@@ -423,11 +425,12 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           value: _matchByTitle,
           activeThumbColor: cs.primary,
           title: Text(t.repoAlsoMatchByTitle,
-              style: GoogleFonts.manrope(
-                  fontSize: 14, fontWeight: FontWeight.w600)),
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600)),
           subtitle: Text(
               t.repoAlsoMatchByTitleHint,
-              style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontSize: 11.5, color: cs.outline)),
           onChanged: (v) => setState(() => _matchByTitle = v),
         ),
         const SizedBox(height: 20),
@@ -448,8 +451,10 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
           Text('$_busyLabel  $_progress/$_progressTotal',
-              style: GoogleFonts.manrope(
-                  fontWeight: FontWeight.w600, color: cs.onSurface)),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyLarge
+                  ?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
         ]),
       );
 
@@ -461,7 +466,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           Icon(Icons.check_circle_rounded, color: cs.primary, size: 48),
           const SizedBox(height: 12),
           Text(t.repoMigrationComplete,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           _summaryRow(context, t.repoMovedByUrl(_movedUrl), Icons.link_rounded),
@@ -473,17 +478,18 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           if (_unmatched.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(t.repoNotMigratedHeader,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     fontSize: 12.5, fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             ..._unmatched.take(50).map((title) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Text('• $title',
-                      style: GoogleFonts.manrope(
-                          fontSize: 12, color: cs.onSurfaceVariant)),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant)),
                 )),
             Text(t.repoUsePerTitleMigrate,
-                style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline)),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontSize: 11.5, color: cs.outline)),
           ],
           const SizedBox(height: 24),
           FilledButton(
@@ -498,8 +504,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
   Widget _label(String t, ColorScheme cs) => Padding(
         padding: const EdgeInsets.only(bottom: 6),
         child: Text(t,
-            style: GoogleFonts.manrope(
-                fontSize: 11,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1,
                 color: cs.primary)),
@@ -520,8 +525,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
         child: Row(children: [
           Expanded(
               child: Text(text,
-                  style: GoogleFonts.manrope(
-                      fontSize: 14,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: disabled ? cs.outline : cs.onSurface))),
           Icon(Icons.expand_more_rounded, color: cs.outline),
         ]),
@@ -560,7 +564,8 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
           ...options.map((o) => ListTile(
                 leading: Icon(o.icon, color: cs.primary),
                 title: Text(o.label,
-                    style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600)),
                 onTap: () {
                   Navigator.pop(context);
                   o.onTap();
@@ -581,7 +586,7 @@ class _SourceMigrateScreenState extends State<SourceMigrateScreen> {
         const SizedBox(width: 8),
         Expanded(
             child: Text(text,
-                style: GoogleFonts.manrope(
+                style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
                     fontSize: 13.5, fontWeight: FontWeight.w600))),
       ]),
     );

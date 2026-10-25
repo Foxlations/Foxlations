@@ -1,0 +1,45 @@
+# Weblate configuration for the Foxlations translation project.
+#
+# This file declares the repo <-> Weblate wiring in INI format so maintainers
+# can drive the hosted Weblate project with the `wlc` CLI:
+#   https://docs.weblate.org/en/latest/wlc.html
+# Example commands (run from the repo root):
+#   wlc pull      # pull latest translations from Weblate into the component
+#   wlc commit    # commit pending changes on Weblate
+#   wlc push      # push Weblate's committed changes to the Git remote
+#   wlc lock / unlock
+#   wlc repo      # show component repository status
+#
+# An API key is needed for write operations. Do NOT commit it here — put it in
+# ~/.config/weblate or export WLC_CONFIG, e.g.:
+#   [keys]
+#   https://hosted.weblate.org/api/ = <your-api-token>
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# The authoritative component configuration lives SERVER-SIDE on Weblate and is
+# not stored in this repo. The notes below record the INTENDED wiring so it can
+# be recreated or verified against the real component:
+#
+#   file mask:                    lib/l10n/app_*.arb
+#   monolingual base / template:  lib/l10n/app_en.arb
+#   file format:                  ARB (aresource / Android-style ARB)
+#   new base / source language:   en
+#
+# NOTE: the project/component slug below is inferred from README.md, which links
+# to hosted.weblate.org/engage/foxlations (so the project is `foxlations`). The
+# component name `app` is a reasonable default. If the real Weblate component
+# uses a different slug, adjust both the `translation` key and the
+# [component "..."] section header to match the server.
+
+[weblate]
+url = https://hosted.weblate.org/api/
+# Default component that `wlc` acts on when none is given on the command line.
+translation = foxlations/app
+
+[component "foxlations/app"]
+# Intended component wiring (documented above); mirrored here for clarity.
+# These keys are informational — Weblate's own component settings are the
+# source of truth and must be configured in the Weblate web UI / API.
+filemask = lib/l10n/app_*.arb
+template = lib/l10n/app_en.arb
+file_format = aresource

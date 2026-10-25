@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/services/ios_folder_access.dart';
 import '../../../core/services/local_source_service.dart';
@@ -113,7 +112,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
           Icon(Icons.folder_rounded, size: 16, color: cs.primary),
           const SizedBox(width: 8),
           Text(t.browseFolderCount(_folders.length),
-              style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600, color: cs.onSurface)),
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
           const Spacer(),
           IconButton(
             icon: Icon(Icons.settings_rounded, size: 18, color: cs.outline),
@@ -149,7 +148,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
             // Local imports can be manga, comics or novels (.epub/.pdf), so
             // stay neutral here.
             ? Center(child: Text(t.browseNothingImportedYet,
-                style: GoogleFonts.manrope(fontSize: 14, color: cs.outline)))
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.outline)))
             : GridView.builder(
                 padding: const EdgeInsets.all(12),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -191,17 +190,17 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
           ),
           const SizedBox(height: 20),
           Text(t.browseNoLocalSources,
-              style: GoogleFonts.manrope(fontSize: 17, fontWeight: FontWeight.w700, color: cs.onSurface)),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 17, fontWeight: FontWeight.w700, color: cs.onSurface)),
           const SizedBox(height: 8),
           Text(
             t.browseLocalSourcesDesc,
             textAlign: TextAlign.center,
-            style: GoogleFonts.manrope(fontSize: 13, color: cs.outline, height: 1.5)),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline, height: 1.5)),
           const SizedBox(height: 20),
           Row(mainAxisSize: MainAxisSize.min, children: [
             FilledButton.icon(
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(t.browseAddFolderButton, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+              label: Text(t.browseAddFolderButton, style: const TextStyle(fontWeight: FontWeight.w700)),
               style: FilledButton.styleFrom(
                 backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10)),
@@ -210,7 +209,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
             const SizedBox(width: 10),
             OutlinedButton.icon(
               icon: const Icon(Icons.note_add_rounded, size: 18),
-              label: Text(t.browseImportFile, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+              label: Text(t.browseImportFile, style: const TextStyle(fontWeight: FontWeight.w700)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: cs.primary,
                 side: BorderSide(color: cs.primary.withAlpha(80)),
@@ -239,12 +238,12 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
                 decoration: BoxDecoration(color: cs.outline, borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
             Text(t.browseLocalSourceFolders,
-                style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
             const SizedBox(height: 12),
             if (_folders.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Text(t.browseNoFoldersAdded, style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                child: Text(t.browseNoFoldersAdded, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline)),
               ),
             ..._folders.map((f) => Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -252,7 +251,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
                 Icon(Icons.folder_rounded, size: 18, color: cs.primary),
                 const SizedBox(width: 10),
                 Expanded(child: Text(f,
-                    style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurface),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface),
                     maxLines: 2, overflow: TextOverflow.ellipsis)),
                 IconButton(
                   icon: Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.error),
@@ -267,7 +266,7 @@ class _LocalSourcesTabWidgetState extends State<LocalSourcesTabWidget> {
             const SizedBox(height: 12),
             SizedBox(width: double.infinity, child: OutlinedButton.icon(
               icon: const Icon(Icons.add_rounded, size: 16),
-              label: Text(t.browseAddFolderButton, style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13)),
+              label: Text(t.browseAddFolderButton, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: cs.primary)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: cs.primary,
                 side: BorderSide(color: cs.primary.withAlpha(80)),
@@ -306,7 +305,7 @@ class _LocalMangaCard extends StatelessWidget {
           // Cover
           if (manga.coverPath != null)
             Image.file(File(manga.coverPath!), fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                errorBuilder: (_, _, _) => Container(
                     color: cs.surfaceContainerHighest,
                     child: Icon(Icons.image_rounded, color: cs.outline, size: 32)))
           else
@@ -316,7 +315,7 @@ class _LocalMangaCard extends StatelessWidget {
                 Icon(Icons.book_rounded, color: cs.outline, size: 32),
                 const SizedBox(height: 4),
                 Text(t.browseChaptersAbbrev(manga.chapters.length),
-                    style: GoogleFonts.manrope(fontSize: 10, color: cs.outline)),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10, color: cs.outline)),
               ]),
             ),
           // Gradient + title
@@ -328,7 +327,8 @@ class _LocalMangaCard extends StatelessWidget {
           )),
           Positioned(bottom: 8, left: 8, right: 8,
             child: Text(manga.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                     color: Colors.white, height: 1.3,
                     shadows: const [Shadow(color: Colors.black, blurRadius: 4)]))),
         ]),

@@ -98,7 +98,7 @@ class LocalSourceService {
   /// disappears roughly weekly on a sideloaded build.
   ///
   /// On iOS, a folder picked OUTSIDE the sandbox is also re-opened here via its
-  /// security-scoped bookmark — which both yields the live path and re-acquires
+  /// security-scoped bookmark - which both yields the live path and re-acquires
   /// read access for the session (a stale bookmark is refreshed and saved back).
   Future<List<String>> getFolders() async {
     final prefs = await SharedPreferences.getInstance();
@@ -317,7 +317,7 @@ class LocalSourceService {
     final file = File(archivePath);
     if (!await file.exists()) return [];
 
-    // PDFs aren't archives — rasterize their pages to images instead.
+    // PDFs aren't archives - rasterize their pages to images instead.
     if (ext == 'pdf') {
       return _rasterizePdfPages(archivePath);
     }
@@ -340,7 +340,7 @@ class LocalSourceService {
             bytes[4] == 0x1A &&
             bytes[5] == 0x07;
         if (isRealRar) {
-          debugPrint('[LocalSource] True RAR archives are unsupported — '
+          debugPrint('[LocalSource] True RAR archives are unsupported - '
               'repack as CBZ/ZIP: $archivePath');
           return [];
         }

@@ -3,15 +3,16 @@ import 'package:provider/provider.dart';
 
 import '../../../core/providers/locale_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../theme/app_tokens.dart';
 
 /// Lets the user pick the app UI language, or follow the system default.
 ///
 /// The list is driven by [AppLocalizations.supportedLocales], so every language
 /// added under `lib/l10n/` (e.g. a community translation merged via Weblate)
-/// shows up here automatically — including its native name, with no code change
+/// shows up here automatically - including its native name, with no code change
 /// needed, as long as its code is in [_nativeNames] below. This page's own
 /// strings come from the ARBs, so it re-renders in the chosen language the
-/// instant it's picked — the quickest way to confirm localization is live.
+/// instant it's picked - the quickest way to confirm localization is live.
 class LanguageSettingsPage extends StatelessWidget {
   const LanguageSettingsPage({super.key});
 
@@ -157,11 +158,11 @@ class LanguageSettingsPage extends StatelessWidget {
       body: ListView(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
             child: Text(
               t.settingsLanguageHeader,
-              style: TextStyle(
-                fontSize: 13,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: cs.primary,
               ),

@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 import 'package:d4rt/d4rt.dart';
 import 'bridge/registrer.dart';
@@ -12,6 +14,7 @@ import '../model/source_preference.dart';
 import '../model/preferences.dart';
 import '../interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/services/app_logger.dart';
 import '../../core/services/cookie_store.dart';
 import 'bridge/m_provider.dart';
 
@@ -110,7 +113,7 @@ class DartExtensionService implements ExtensionService {
       final store = await SharedPreferences.getInstance();
       final prefix = 'source_pref_${_mSource.id}_';
       final vals = <String, dynamic>{};
-      // 1) Stored user overrides win — load them first.
+      // 1) Stored user overrides win - load them first.
       for (final k in store.getKeys()) {
         if (k.startsWith(prefix)) {
           final v = store.get(k);
@@ -145,7 +148,7 @@ class DartExtensionService implements ExtensionService {
       } catch (_) {}
       SourcePrefCache.put(_mSource.id, vals);
     } catch (_) {
-      // No prefs / store unavailable — sources fall back to their defaults.
+      // No prefs / store unavailable - sources fall back to their defaults.
     }
   }
 
@@ -188,7 +191,7 @@ class DartExtensionService implements ExtensionService {
     // Merge source-level headers with per-page headers
     final sourceHeaders = getHeaders();
     // safeOrigin guards Uri.origin, which throws on non-http(s) or hostless
-    // URLs (hasScheme alone isn't enough — ftp:// or a scheme with no host
+    // URLs (hasScheme alone isn't enough - ftp:// or a scheme with no host
     // still throw).
     final referer = safeOrigin(url) ?? _baseUrl;
     final storedUA = await CookieStore().getUserAgent();
@@ -209,21 +212,30 @@ class DartExtensionService implements ExtensionService {
     if (result.isNotEmpty) {
       debugPrint('[Service] First item type: ${result.first.runtimeType}, value: "${result.first.toString().substring(0, result.first.toString().length.clamp(0, 100))}"');
     }
-    final pages = result.map((e) {
+    // Dedupe by page url (LinkedHashSet keeps first-seen order) so a source that
+    // emits the same image URL twice doesn't render duplicate reader pages - 
+    // matches the JS lane (javascript/service.dart getPageList).
+    final pages = LinkedHashSet<PageUrl>(
+      equals: (a, b) => a.url == b.url,
+      hashCode: (p) => p.url.hashCode,
+    );
+    for (final e in result) {
+      final PageUrl pageUrl;
       if (e is String) {
-        return PageUrl(e.trim(),
+        pageUrl = PageUrl(e.trim(),
             headers: Map<String, String>.from(defaultHeaders));
+      } else {
+        pageUrl = PageUrl.fromJson(
+            (e as Map).map((k, v) => MapEntry(k.toString(), v)));
+        pageUrl.headers = {
+          ...defaultHeaders,
+          ...?pageUrl.headers,
+        };
       }
-      final pageUrl = PageUrl.fromJson(
-          (e as Map).map((k, v) => MapEntry(k.toString(), v)));
-      pageUrl.headers = {
-        ...defaultHeaders,
-        ...?pageUrl.headers,
-      };
-      return pageUrl;
-    }).toList();
+      pages.add(pageUrl);
+    }
 
-    return pages;
+    return pages.toList();
   }
 
   @override
@@ -255,7 +267,9 @@ class DartExtensionService implements ExtensionService {
     try {
       final result = await _interpreter!.invoke('getListing', [listingUrl, page]);
       return result as MPages;
-    } catch (_) {
+    } catch (e) {
+      await logger.warning('getListing failed for ${_mSource.name}',
+          category: LogCategory.extension, detail: e.toString());
       return MPages(list: const [], hasNextPage: false);
     }
   }
@@ -265,7 +279,9 @@ class DartExtensionService implements ExtensionService {
     try {
       final result = await _interpreter!.invoke('getHtmlContent', [url]);
       return result?.toString() ?? '';
-    } catch (_) {
+    } catch (e) {
+      await logger.warning('getHtmlContent failed for ${_mSource.name}',
+          category: LogCategory.extension, detail: e.toString());
       return '';
     }
   }

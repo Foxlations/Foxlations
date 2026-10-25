@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/type_toggle.dart';
@@ -9,6 +8,7 @@ import '../../../core/providers/vault_provider.dart';
 import '../../../core/services/app_logger.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
 import 'browse_source_detail_sheet.dart';
 import 'source_icon.dart';
 import 'source_settings_page.dart';
@@ -50,7 +50,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
       setState(() => _pinnedLangs
         ..clear()
         ..addAll(saved.map(MangaSource.normalizeLang)));
-    } catch (_) {/* prefs unavailable — pins just start empty */}
+    } catch (_) {/* prefs unavailable - pins just start empty */}
   }
 
   Future<void> _savePinnedLangs() async {
@@ -74,10 +74,10 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
         var allSources = provider.allSources;
 
         // Fold in installed sources that aren't in any loaded repo index right
-        // now: locally-authored RepoForge sources ("My Sources"), or a repo
-        // whose index didn't load this session. Without this they'd only reach
-        // the grid through a separate orphan path and never show up in the
-        // Repository filter or respond to repo/language filtering.
+        // now (e.g. a locally-added source, or a repo whose index didn't load
+        // this session). Without this they'd only reach the grid through a
+        // separate orphan path and never show up in the Repository filter or
+        // respond to repo/language filtering.
         final catalogIds = allSources.map((s) => s.id).toSet();
         allSources = [
           ...allSources,
@@ -131,7 +131,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
 
         // Language options + counts are scoped to the selected repositories, so
         // the filter only offers (and counts) languages those repos actually
-        // have — pick a repo and languages it lacks disappear.
+        // have - pick a repo and languages it lacks disappear.
         final repoScoped = _selectedRepos.isEmpty
             ? baseSources
             : baseSources
@@ -178,7 +178,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
             installed.where((s) => !updateIds.contains(s.id)).toList();
 
         // Per-type update tally (across ALL types, not just the active one) so
-        // the toggle can badge the type that actually has the update — otherwise
+        // the toggle can badge the type that actually has the update - otherwise
         // an anime/novel update is invisible behind the manga tab.
         final updatesByType = <String, int>{'manga': 0, 'anime': 0, 'novel': 0};
         for (final s in provider.updatesForContext(
@@ -212,7 +212,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         children: [
                           SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.6,
+                            height: MediaQuery.sizeOf(context).height * 0.6,
                             child: _buildEmptyState(cs),
                           ),
                         ],
@@ -315,7 +315,8 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   Widget _buildTypeToggle(ColorScheme cs, Map<String, int> updatesByType) {
     final t = AppLocalizations.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: cs.surfaceContainerHighest)),
       ),
@@ -347,15 +348,17 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
     final hasFilters = _selectedLangs.isNotEmpty || _selectedRepos.isNotEmpty;
     return Container(
       height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
       child: Row(
         children: [
-          // Filter button — opens a scrollable, tabbed Language / Repository sheet.
+          // Filter button - opens a scrollable, tabbed Language / Repository sheet.
           GestureDetector(
             onTap: () => _openFilterModal(baseSources, repos),
             child: AnimatedContainer(
               duration: AppTheme.fastMicro,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.xs),
               decoration: BoxDecoration(
                 color: hasFilters ? cs.primary : cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppTheme.radiusFull),
@@ -368,8 +371,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                       color: hasFilters ? Colors.white : cs.onSurface),
                   const SizedBox(width: 4),
                   Text(t.browseFilter,
-                      style: GoogleFonts.manrope(
-                        fontSize: 12,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: hasFilters ? Colors.white : cs.onSurface,
                       )),
@@ -395,7 +397,8 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
           ],
           const Spacer(),
           Text(t.browseResultCount(resultCount),
-              style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w400, color: cs.outline)),
         ],
       ),
     );
@@ -425,7 +428,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
     final cs = Theme.of(context).colorScheme;
     final searchCtrl = TextEditingController();
     var langQuery = '';
-    // Source count per repo (total for this content type — repos stay fully
+    // Source count per repo (total for this content type - repos stay fully
     // selectable regardless of the language filter).
     final repoCounts = <String, int>{};
     for (final s in baseSources) {
@@ -466,7 +469,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                   MangaSource.languageName(l).toLowerCase().contains(query) ||
                   l.toLowerCase().contains(query);
 
-              // "Your languages": device first, then pinned — limited to what
+              // "Your languages": device first, then pinned - limited to what
               // the current repo scope actually has.
               final pinnedAvail = <String>[
                 if (counts.containsKey(device)) device,
@@ -506,7 +509,8 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.sm),
                       child: _langSearchField(cs, searchCtrl, (v) {
                         langQuery = v;
                         setModal(() {});
@@ -521,15 +525,17 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                               SliverToBoxAdapter(
                                 child: Padding(
                                   padding: const EdgeInsets.all(28),
-                                  child: Text('No languages match',
+                                  child: Text(t.browseNoLanguagesMatch,
                                       textAlign: TextAlign.center,
-                                      style: GoogleFonts.manrope(
-                                          fontSize: 13, color: cs.outline)),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(color: cs.outline)),
                                 ),
                               ),
                           ] else ...[
                             if (pinnedAvail.isNotEmpty) ...[
-                              _langHeader(cs, 'Your languages', star: true),
+                              _langHeader(cs, t.browseYourLanguages, star: true),
                               _langGrid(cs, pinnedAvail, counts, device, onPick,
                                   onStar),
                             ],
@@ -581,18 +587,22 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                                           t.browseAllRepositories,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: GoogleFonts.manrope(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: cs.onSurface,
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                color: cs.onSurface,
+                                              ),
                                         ),
                                       ),
                                       Text('${baseSources.length}',
-                                          style: GoogleFonts.manrope(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: cs.outline)),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                  color: cs.outline)),
                                     ],
                                   ),
                                 ),
@@ -628,20 +638,26 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                                               r.name,
                                               maxLines: 2,
                                               overflow: TextOverflow.ellipsis,
-                                              style: GoogleFonts.manrope(
-                                                fontSize: 12.5,
-                                                height: 1.15,
-                                                fontWeight: FontWeight.w600,
-                                                color: cs.onSurface,
-                                              ),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelMedium
+                                                  ?.copyWith(
+                                                    fontSize: 12.5,
+                                                    height: 1.15,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: cs.onSurface,
+                                                  ),
                                             ),
                                           ),
                                           const SizedBox(width: 4),
                                           Text('${repoCounts[r.url] ?? 0}',
-                                              style: GoogleFonts.manrope(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: cs.outline)),
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelSmall
+                                                  ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: cs.outline)),
                                         ],
                                       ),
                                     );
@@ -676,10 +692,12 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
                         child: Row(
                           children: [
                             Text(t.browseFilter,
-                                style: GoogleFonts.manrope(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                    color: cs.onSurface)),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: cs.onSurface)),
                             const Spacer(),
                             IconButton(
                               icon:
@@ -716,14 +734,17 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
 
   Widget _langSearchField(ColorScheme cs, TextEditingController ctrl,
       ValueChanged<String> onChanged) {
+    final t = AppLocalizations.of(context);
     return TextField(
       controller: ctrl,
       onChanged: onChanged,
-      style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface),
+      style:
+          Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurface),
       decoration: InputDecoration(
         isDense: true,
-        hintText: 'Search languages',
-        hintStyle: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
+        hintText: t.browseSearchLanguages,
+        hintStyle:
+            Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline),
         prefixIcon: Icon(Icons.search_rounded, size: 18, color: cs.outline),
         contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         filled: true,
@@ -748,7 +769,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
             ],
             Text(
               text.toUpperCase(),
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.2,
@@ -806,16 +827,15 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
               AppLocalizations.of(context).browseAllLanguages,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(
-                fontSize: 13,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface,
               ),
             ),
           ),
           Text('$count',
-              style: GoogleFonts.manrope(
-                  fontSize: 11, fontWeight: FontWeight.w700, color: cs.outline)),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w700, color: cs.outline)),
         ],
       ),
     );
@@ -840,7 +860,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
               label,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontSize: 12.5,
                 height: 1.15,
                 fontWeight: FontWeight.w600,
@@ -858,14 +878,14 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
             ),
           const SizedBox(width: 4),
           Text('$count',
-              style: GoogleFonts.manrope(
-                  fontSize: 11, fontWeight: FontWeight.w700, color: cs.outline)),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w700, color: cs.outline)),
           if (onStar != null)
             GestureDetector(
               onTap: onStar,
               behavior: HitTestBehavior.opaque,
               child: Padding(
-                padding: const EdgeInsets.only(left: 4),
+                padding: const EdgeInsets.only(left: AppSpacing.xs),
                 child: Icon(
                   pinned ? Icons.star_rounded : Icons.star_outline_rounded,
                   size: 17,
@@ -910,8 +930,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
           const SizedBox(height: 16),
           Text(
             t.browseNoExtensions,
-            style: GoogleFonts.manrope(
-              fontSize: 16,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               color: cs.onSurface,
             ),
@@ -920,7 +939,8 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
           Text(
             t.browseNoExtensionsDesc,
             textAlign: TextAlign.center,
-            style: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
+            style:
+                Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline),
           ),
         ],
       ),
@@ -946,7 +966,7 @@ class _ExtensionsTabWidgetState extends State<ExtensionsTabWidget> {
   }
 
   /// Update a single source. Mirrors [_updateAll]: awaits, surfaces the outcome as
-  /// a snackbar, and logs any failure — the per-row button used to be fire-and-forget,
+  /// a snackbar, and logs any failure - the per-row button used to be fire-and-forget,
   /// so a failing install just silently did nothing while "Update all" appeared to work.
   Future<void> _updateOne(
       BuildContext context, SourceProvider provider, String id) async {
@@ -1051,8 +1071,7 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       child: Text(
         '$title ($count)',
-        style: GoogleFonts.manrope(
-          fontSize: 11,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.w700,
           color: cs.outline,
           letterSpacing: 1.2,
@@ -1083,8 +1102,7 @@ class _UpdatesHeader extends StatelessWidget {
           Expanded(
             child: Text(
               t.browseUpdatesAvailable(count),
-              style: GoogleFonts.manrope(
-                fontSize: 11,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.w800,
                 color: cs.primary,
                 letterSpacing: 1.2,
@@ -1102,8 +1120,8 @@ class _UpdatesHeader extends StatelessWidget {
                       strokeWidth: 2, color: cs.primary),
                 ),
                 const SizedBox(width: 8),
-                Text('Updating…',
-                    style: GoogleFonts.manrope(
+                Text(t.browseUpdating,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: cs.primary)),
@@ -1118,7 +1136,7 @@ class _UpdatesHeader extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(t.browseUpdateAll,
-                  style: GoogleFonts.manrope(
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w700,
                       color: cs.primary)),
@@ -1195,8 +1213,7 @@ class _ExtensionRow extends StatelessWidget {
                       source.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(
-                        fontSize: 14,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: cs.onSurface,
                       ),
@@ -1214,7 +1231,7 @@ class _ExtensionRow extends StatelessWidget {
                       ),
                       child: Text(
                         source.lang.toUpperCase(),
-                        style: GoogleFonts.manrope(
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                           color: cs.outline,
@@ -1233,8 +1250,8 @@ class _ExtensionRow extends StatelessWidget {
                             source.repoName.isNotEmpty ? source.repoName : source.framework,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.manrope(
-                                fontSize: 11, color: cs.outline),
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w400, color: cs.outline),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -1243,8 +1260,8 @@ class _ExtensionRow extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           'v${source.version}',
-                          style: GoogleFonts.manrope(
-                              fontSize: 11, color: cs.outline),
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w400, color: cs.outline),
                         ),
                       ],
                     ),
@@ -1270,7 +1287,7 @@ class _ExtensionRow extends StatelessWidget {
                               strokeWidth: 2, color: Colors.white),
                         )
                       : Text(t.browseUpdate,
-                          style: GoogleFonts.manrope(
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               fontSize: 12.5,
                               fontWeight: FontWeight.w700,
                               color: Colors.white)),
@@ -1328,8 +1345,7 @@ class _InstallButton extends StatelessWidget {
               )
             : Text(
                 isInstalled ? t.browseSettings : t.browseInstall,
-                style: GoogleFonts.manrope(
-                  fontSize: 12,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: color,
                 ),
@@ -1361,8 +1377,7 @@ class _ActiveFilterChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: GoogleFonts.manrope(
-              fontSize: 11,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.w600,
               color: cs.primary,
             ),

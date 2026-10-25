@@ -34,7 +34,7 @@ class NeuralVoice {
 
   static const ljspeech = NeuralVoice(
     id: 'en_US-ljspeech-medium',
-    label: 'English — LJSpeech (neural)',
+    label: 'English - LJSpeech (neural)',
     locale: 'en-US',
     url:
         'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-ljspeech-medium.tar.bz2',
@@ -45,7 +45,7 @@ class NeuralVoice {
   );
   static const libritts = NeuralVoice(
     id: 'en_US-libritts_r-medium',
-    label: 'English — LibriTTS-R (neural, multi-voice)',
+    label: 'English - LibriTTS-R (neural, multi-voice)',
     locale: 'en-US',
     url:
         'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-libritts_r-medium.tar.bz2',
@@ -63,7 +63,7 @@ class NeuralVoice {
 /// Offline neural text-to-speech via sherpa-onnx (Piper VITS). Downloads the
 /// model on first use, then synthesizes a chunk of text to a WAV file the reader
 /// plays. Everything is offline after the one-time download. All operations are
-/// best-effort and never throw to the UI — callers check [isReady] / the return
+/// best-effort and never throw to the UI - callers check [isReady] / the return
 /// value. Experimental: gated behind Advanced → Experimental in the UI.
 class NeuralTtsService {
   NeuralTtsService._();

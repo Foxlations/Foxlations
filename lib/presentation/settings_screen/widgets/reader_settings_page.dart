@@ -1,16 +1,14 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
+import '../../widgets/ds/ds.dart';
+import 'settings_tiles.dart';
+import 'hands_free_scroll_settings_page.dart';
 import '../../../core/providers/beta_provider.dart';
-import '../../../widgets/beta_badge.dart';
-import '../../../core/services/gaze_scroll_service.dart';
 import '../../../core/services/settings_store.dart';
-import '../../../core/services/tilt_scroll_service.dart';
-import '../../reader_screen/widgets/gaze_calibration_screen.dart';
+import '../../reader_screen/widgets/radial_menu_settings_page.dart';
+import '../../novel_reader_screen/novel_reader_options.dart';
 
 /// Reader preference keys. The reader screen and ReaderProvider read from
 /// these same keys, so toggling here takes effect on the next chapter open.
@@ -42,14 +40,14 @@ class ReaderPrefs {
   static const tiltSmoothing = 'reader_tilt_smoothing';
   static const autoPreload = 'reader_auto_preload';
   static const autoCrop = 'reader_auto_crop';
-  static const fontSize = 'reader_font_size';
   static const radialEnabled = 'reader_radial_enabled';
   static const radialSide = 'reader_radial_side';
+  static const novelRadialEnabled = 'novel_radial_enabled';
 }
 
-/// Reading mode labels — kept in sync with [ReadingMode] enum order
-/// (ltr, rtl, vertical, webtoon) so the int index round-trips cleanly.
-const _readingModeLabels = ['LTR', 'RTL', 'Vertical', 'Webtoon'];
+/// Number of reading modes, kept in sync with the [ReadingMode] enum order
+/// (ltr, rtl, vertical, webtoon) so the stored int index round-trips cleanly.
+const _readingModeCount = 4;
 
 class ReaderSettingsPage extends StatefulWidget {
   const ReaderSettingsPage({super.key});
@@ -58,7 +56,7 @@ class ReaderSettingsPage extends StatefulWidget {
 }
 
 class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
-  String _readingMode = 'LTR';
+  int _readingModeIdx = 0;
   String _scaleType = 'Fit Screen';
   String _navLayout = 'Right & Left';
   String _bgColor = 'Black';
@@ -68,26 +66,36 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
   bool _grayscale = false;
   bool _invertColors = false;
   bool _invertTapZones = false;
-  bool _volumeKeys = false;
-  double _volumeScrollSpeed = 600.0;
   bool _autoPreload = true;
   bool _autoCrop = false;
-  double _fontSize = 16.0;
   double _warmTint = 0.0;
   double _brightness = 1.0;
   bool _dualPage = false;
   bool _dualPageSplit = false;
-  bool _gazeSupported = false;
-  bool _gazeEnabled = false;
-  String _gazeMode = 'Both';
-  double _gazeThreshold = 0.8;
-  double _gazeDwell = 300;
-  double _gazeSmoothing = 0.25;
-  bool _tiltEnabled = false;
-  double _tiltThreshold = 0.20;
-  double _tiltSmoothing = 0.20;
   bool _radialEnabled = false;
   String _radialSide = 'right';
+  String _radialStyle = 'wheel';
+  bool _novelRadialEnabled = true;
+  String _novelRadialStyle = 'wheel';
+
+  // Which reader's settings are shown (segmented at the top of the page).
+  bool _showNovel = false;
+  // Per-reader (novel) copies of the shared toggles.
+  bool _novelFullscreen = false;
+  bool _novelKeepScreenOn = true;
+  // Light-novel text + Listen settings - mirror the in-reader menu (same prefs).
+  String _novelFont = 'serif';
+  double _novelFontSize = 18;
+  double _novelLineHeight = 1.6;
+  double _novelMargin = 16;
+  String _novelAlign = 'left';
+  bool _novelHyphenate = true;
+  String _novelLayout = 'scroll';
+  String _novelTheme = 'default';
+  double _novelTtsRate = 0.5;
+  double _novelTtsPitch = 1.0;
+  int? _novelSentColor;
+  int? _novelWordColor;
 
   @override
   void initState() {
@@ -99,9 +107,8 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
     final p = SettingsStore.instance;
     setState(() {
       // ReaderProvider stores reading mode as ReadingMode enum index.
-      final modeIdx = (p.getInt(ReaderPrefs.readingMode) ?? 0)
-          .clamp(0, _readingModeLabels.length - 1);
-      _readingMode = _readingModeLabels[modeIdx];
+      _readingModeIdx = (p.getInt(ReaderPrefs.readingMode) ?? 0)
+          .clamp(0, _readingModeCount - 1);
       _scaleType = p.getString(ReaderPrefs.scaleType) ?? 'Fit Screen';
       _navLayout = p.getString(ReaderPrefs.navLayout) ?? 'Right & Left';
       _bgColor = p.getString(ReaderPrefs.bgColor) ?? 'Black';
@@ -111,28 +118,38 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
       _grayscale = p.getBool(ReaderPrefs.grayscale) ?? false;
       _invertColors = p.getBool(ReaderPrefs.invertColors) ?? false;
       _invertTapZones = p.getBool(ReaderPrefs.invertTapZones) ?? false;
-      _volumeKeys = p.getBool(ReaderPrefs.volumeKeys) ?? false;
-      _volumeScrollSpeed = p.getDouble(ReaderPrefs.volumeScrollSpeed) ?? 600.0;
       _autoPreload = p.getBool(ReaderPrefs.autoPreload) ?? true;
       _autoCrop = p.getBool(ReaderPrefs.autoCrop) ?? false;
-      _fontSize = p.getDouble(ReaderPrefs.fontSize) ?? 16.0;
       _warmTint = (p.getDouble(ReaderPrefs.warmTint) ?? 0.0).clamp(0.0, 1.0);
       _brightness = (p.getDouble(ReaderPrefs.brightness) ?? 1.0).clamp(0.15, 1.0);
       _dualPage = p.getBool(ReaderPrefs.dualPage) ?? false;
       _dualPageSplit = p.getBool(ReaderPrefs.dualPageSplit) ?? false;
-      _gazeEnabled = p.getBool(ReaderPrefs.gazeEnabled) ?? false;
-      _gazeMode = _nativeToDisplay(p.getString(ReaderPrefs.gazeMode) ?? 'combined');
-      _gazeThreshold = p.getDouble(ReaderPrefs.gazeThreshold) ?? 0.8;
-      _gazeDwell = p.getDouble(ReaderPrefs.gazeDwell) ?? 300;
-      _gazeSmoothing = p.getDouble(ReaderPrefs.gazeSmoothing) ?? 0.25;
-      _tiltEnabled = p.getBool(ReaderPrefs.tiltEnabled) ?? false;
-      _tiltThreshold = p.getDouble(ReaderPrefs.tiltThreshold) ?? 0.20;
-      _tiltSmoothing = p.getDouble(ReaderPrefs.tiltSmoothing) ?? 0.20;
       _radialEnabled = p.getBool(ReaderPrefs.radialEnabled) ?? false;
       _radialSide = p.getString(ReaderPrefs.radialSide) ?? 'right';
+      _radialStyle = p.getString('reader_radial_style') ?? 'wheel';
+      _novelRadialEnabled = p.getBool(ReaderPrefs.novelRadialEnabled) ?? true;
+      _novelRadialStyle = p.getString('novel_radial_style') ?? 'wheel';
+      // Per-reader novel toggles fall back to the (old shared) manga value.
+      _novelFullscreen = p.getBool('novel_fullscreen') ?? _fullscreen;
+      _novelKeepScreenOn = p.getBool('novel_keep_screen_on') ?? _keepScreenOn;
+      _novelFont = p.getString('novel_font_family') ?? 'serif';
+      _novelFontSize = (p.getDouble('novel_font_size') ?? 18)
+          .clamp(novelFontSizeMin, novelFontSizeMax);
+      _novelLineHeight = (p.getDouble('novel_line_height') ?? 1.6)
+          .clamp(novelLineHeightMin, novelLineHeightMax);
+      _novelMargin = (p.getDouble('novel_margin') ?? 16)
+          .clamp(novelMarginMin, novelMarginMax);
+      _novelAlign = p.getString('novel_text_align') ?? 'left';
+      _novelHyphenate = p.getBool('novel_hyphenate') ?? true;
+      _novelLayout = p.getString('novel_layout') ?? 'scroll';
+      _novelTheme = p.getString('novel_reader_theme') ?? 'default';
+      _novelTtsRate = (p.getDouble('novel_tts_rate') ?? 0.5).clamp(0.25, 1.0);
+      _novelTtsPitch = (p.getDouble('novel_tts_pitch') ?? 1.0).clamp(0.5, 2.0);
+      final nsc = p.getInt('novel_tts_sentence_color') ?? 0;
+      _novelSentColor = nsc == 0 ? null : nsc;
+      final nwc = p.getInt('novel_tts_word_color') ?? 0;
+      _novelWordColor = nwc == 0 ? null : nwc;
     });
-    final gazeSupported = await GazeScroll.isSupported();
-    if (mounted) setState(() => _gazeSupported = gazeSupported);
   }
 
   Future<void> _setBool(String key, bool value) async {
@@ -147,101 +164,8 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
     await SettingsStore.instance.setDouble(key, value);
   }
 
-  // Hands-free (gaze) scrolling: display labels map to native mode ids.
-  String _displayToNative(String d) =>
-      d == 'Eyes' ? 'eyesOnly' : (d == 'Head' ? 'headOnly' : 'combined');
-  String _nativeToDisplay(String n) =>
-      n == 'eyesOnly' ? 'Eyes' : (n == 'headOnly' ? 'Head' : 'Both');
-
-  /// Gaze scrolling uses the front camera; warn (camera + battery) before enabling.
-  Future<bool> _confirmIosGaze() async {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: cs.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(t.readerGazeCameraTitle,
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
-        content: Text(t.readerGazeCameraWarning,
-            style: GoogleFonts.manrope(fontSize: 13)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t.readerCancel)),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(t.readerEnable)),
-        ],
-      ),
-    );
-    return ok ?? false;
-  }
-
-  Future<void> _calibrateGaze() async {
-    await GazeScroll.updateSettings(GazeSettings(
-      mode: _displayToNative(_gazeMode),
-      threshold: _gazeThreshold,
-      dwellMs: _gazeDwell.round(),
-      smoothing: _gazeSmoothing,
-    ));
-    if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => const GazeCalibrationScreen()));
-  }
-
-  // Volume / tilt / gaze are mutually exclusive scroll inputs — turning one on
-  // turns the others off (state + prefs) so they never fight over the loop.
-  void _selectScrollInput(String on) {
-    setState(() {
-      _volumeKeys = on == 'volume';
-      _tiltEnabled = on == 'tilt';
-      _gazeEnabled = on == 'gaze';
-    });
-    _setBool(ReaderPrefs.volumeKeys, _volumeKeys);
-    _setBool(ReaderPrefs.tiltEnabled, _tiltEnabled);
-    _setBool(ReaderPrefs.gazeEnabled, _gazeEnabled);
-  }
-
-  Future<void> _calibrateTilt() async {
-    final t = AppLocalizations.of(context);
-    TiltScroll.updateSettings(
-        TiltSettings(threshold: _tiltThreshold, smoothing: _tiltSmoothing));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(t.readerTiltCalibrating),
-        duration: const Duration(milliseconds: 1400)));
-    await TiltScroll.calibrate(durationMs: 1200);
-  }
-
-  /// iOS can't intercept the volume buttons; the workaround watches the system volume
-  /// and pins it to 50%, so warn the user (esp. that playing audio gets stuck) first.
-  Future<bool> _confirmIosVolume() async {
-    final cs = Theme.of(context).colorScheme;
-    final t = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: cs.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(t.readerExperimentalOnIos,
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
-        content: Text(
-          t.readerIosVolumeWarning,
-          style: GoogleFonts.manrope(fontSize: 13),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(t.readerCancel)),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(t.readerEnable)),
-        ],
-      ),
-    );
-    return ok ?? false;
+  Future<void> _setInt(String key, int value) async {
+    await SettingsStore.instance.setInt(key, value);
   }
 
   @override
@@ -249,6 +173,14 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
     final cs = Theme.of(context).colorScheme;
     final t = AppLocalizations.of(context);
     final beta = context.watch<BetaProvider>().enabled;
+    // Compact reading-mode labels for the segmented control, in ReadingMode enum
+    // order (ltr, rtl, vertical, webtoon) so the index maps to the stored value.
+    final modeLabels = [
+      t.readerModeLtrShort,
+      t.readerModeRtlShort,
+      t.readerModeVerticalShort,
+      t.readerModeWebtoonLabel,
+    ];
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -257,332 +189,416 @@ class _ReaderSettingsPageState extends State<ReaderSettingsPage> {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context)),
         title: Text(t.readerTitle,
-            style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: ListView(
         padding: EdgeInsets.only(
-            top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
+            top: 8, bottom: 8 + MediaQuery.viewPaddingOf(context).bottom),
         children: [
-          _SectionHeader(title: t.readerPreferences),
+          _readerTabs(cs, t),
+          if (_showNovel) ..._novelSections(cs, t, beta) else ...[
+          SettingsSectionHeader(title: t.readerPreferences),
           _SegmentedTile(icon: Icons.auto_stories_rounded, iconColor: cs.primary,
               title: t.readerReadingMode,
-              options: _readingModeLabels,
-              selected: _readingMode,
+              options: modeLabels,
+              selected: modeLabels[_readingModeIdx],
               onChanged: (v) async {
-                setState(() => _readingMode = v);
-                final idx = _readingModeLabels.indexOf(v);
+                final idx = modeLabels.indexOf(v);
                 if (idx >= 0) {
+                  setState(() => _readingModeIdx = idx);
                   await SettingsStore.instance.setInt(ReaderPrefs.readingMode, idx);
                 }
               }),
-          _SliderTile(icon: Icons.text_fields_rounded, iconColor: cs.primary,
-              title: t.readerFontSize, value: _fontSize, min: 10, max: 24, divisions: 14,
-              onChanged: (v) {
-                setState(() => _fontSize = v);
-                _setDouble(ReaderPrefs.fontSize, v);
-              }),
-          _SwitchTile(icon: Icons.skip_next_rounded, iconColor: cs.primary,
+          AppSettingsSwitchTile(icon: Icons.skip_next_rounded, iconColor: cs.primary,
               title: t.readerAutoPreloadNextChapter, subtitle: t.readerAutoPreloadNextChapterSubtitle,
               value: _autoPreload, onChanged: (v) {
                 setState(() => _autoPreload = v);
                 _setBool(ReaderPrefs.autoPreload, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: t.readerReadingMode),
-          _SwitchTile(icon: Icons.filter_b_and_w_rounded, iconColor: cs.primary,
+          SettingsSectionHeader(title: t.readerSectionImage),
+          AppSettingsSwitchTile(icon: Icons.filter_b_and_w_rounded, iconColor: cs.primary,
               title: t.readerGrayscale, subtitle: t.readerGrayscaleSubtitle,
               value: _grayscale, onChanged: (v) {
                 setState(() => _grayscale = v);
                 _setBool(ReaderPrefs.grayscale, v);
               }),
           if (beta)
-            _SwitchTile(icon: Icons.crop_rounded, iconColor: cs.primary,
+            AppSettingsSwitchTile(icon: Icons.crop_rounded, iconColor: cs.primary,
                 title: t.readerAutoCrop, subtitle: t.readerAutoCropSubtitle,
                 value: _autoCrop, onChanged: (v) {
                   setState(() => _autoCrop = v);
                   _setBool(ReaderPrefs.autoCrop, v);
                 }),
-          _SwitchTile(icon: Icons.invert_colors_rounded, iconColor: cs.primary,
+          AppSettingsSwitchTile(icon: Icons.invert_colors_rounded, iconColor: cs.primary,
               title: t.readerInvertColors, subtitle: t.readerInvertColorsSubtitle,
               value: _invertColors, onChanged: (v) {
                 setState(() => _invertColors = v);
                 _setBool(ReaderPrefs.invertColors, v);
               }),
           const SizedBox(height: 8),
-          const _SectionHeader(title: 'Eye comfort'),
-          _SliderTile(icon: Icons.wb_twilight_rounded, iconColor: AppTheme.warning,
-              title: 'Warm filter', value: _warmTint, min: 0, max: 1, divisions: 10,
+          SettingsSectionHeader(title: t.readerSectionEyeComfort),
+          SettingsSliderTile(icon: Icons.wb_twilight_rounded, iconColor: AppTheme.warning,
+              title: t.readerWarmFilter, value: _warmTint, min: 0, max: 1, divisions: 10,
               onChanged: (v) {
                 setState(() => _warmTint = v);
                 _setDouble(ReaderPrefs.warmTint, v);
               }),
-          _SliderTile(icon: Icons.brightness_6_rounded, iconColor: AppTheme.warning,
-              title: 'Brightness', value: _brightness, min: 0.15, max: 1, divisions: 17,
+          SettingsSliderTile(icon: Icons.brightness_6_rounded, iconColor: AppTheme.warning,
+              title: t.readerBrightness, value: _brightness, min: 0.15, max: 1, divisions: 17,
               onChanged: (v) {
                 setState(() => _brightness = v);
                 _setDouble(ReaderPrefs.brightness, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: t.readerDisplay),
-          _ChoiceTile(icon: Icons.aspect_ratio_rounded, iconColor: AppTheme.success,
+          SettingsSectionHeader(title: t.readerDisplay),
+          AppSettingsChoiceTile(icon: Icons.aspect_ratio_rounded, iconColor: AppTheme.success,
               title: t.readerScaleType, value: _scaleType,
               options: const ['Fit Screen', 'Stretch', 'Fit Width', 'Fit Height', 'Original Size', 'Smart Fit'],
               onChanged: (v) {
                 setState(() => _scaleType = v);
                 _setString(ReaderPrefs.scaleType, v);
               }),
-          _ChoiceTile(icon: Icons.format_color_fill_rounded, iconColor: AppTheme.success,
+          AppSettingsChoiceTile(icon: Icons.format_color_fill_rounded, iconColor: AppTheme.success,
               title: t.readerBackgroundColor, value: _bgColor,
               options: const ['Black', 'Gray', 'White', 'Automatic'],
               onChanged: (v) {
                 setState(() => _bgColor = v);
                 _setString(ReaderPrefs.bgColor, v);
               }),
-          _SwitchTile(icon: Icons.auto_stories_rounded, iconColor: AppTheme.success,
-              title: 'Double pages',
-              subtitle: 'Show two pages side-by-side when the phone is in '
-                  'landscape (page-by-page modes only)',
+          AppSettingsSwitchTile(icon: Icons.auto_stories_rounded, iconColor: AppTheme.success,
+              title: t.readerDoublePages,
+              subtitle: t.readerDoublePagesSubtitle,
               value: _dualPage, onChanged: (v) {
                 setState(() => _dualPage = v);
                 _setBool(ReaderPrefs.dualPage, v);
               }),
           if (_dualPage)
-            _SwitchTile(icon: Icons.open_in_full_rounded, iconColor: AppTheme.success,
-                title: 'Split wide pages',
-                subtitle: 'Give a wide double-page spread its own screen instead '
-                    'of pairing it with another page',
+            AppSettingsSwitchTile(icon: Icons.open_in_full_rounded, iconColor: AppTheme.success,
+                title: t.readerSplitWidePages,
+                subtitle: t.readerSplitWidePagesSubtitle,
                 value: _dualPageSplit, onChanged: (v) {
                   setState(() => _dualPageSplit = v);
                   _setBool(ReaderPrefs.dualPageSplit, v);
                 }),
-          _SwitchTile(icon: Icons.brightness_high_rounded, iconColor: AppTheme.success,
+          AppSettingsSwitchTile(icon: Icons.brightness_high_rounded, iconColor: AppTheme.success,
               title: t.readerKeepScreenOn, subtitle: t.readerKeepScreenOnSubtitle,
               value: _keepScreenOn, onChanged: (v) {
                 setState(() => _keepScreenOn = v);
                 _setBool(ReaderPrefs.keepScreenOn, v);
               }),
-          _SwitchTile(icon: Icons.numbers_rounded, iconColor: AppTheme.success,
+          AppSettingsSwitchTile(icon: Icons.numbers_rounded, iconColor: AppTheme.success,
               title: t.readerShowPageNumber, subtitle: t.readerShowPageNumberSubtitle,
               value: _showPageNumber, onChanged: (v) {
                 setState(() => _showPageNumber = v);
                 _setBool(ReaderPrefs.showPageNumber, v);
               }),
-          _SwitchTile(icon: Icons.fullscreen_rounded, iconColor: AppTheme.success,
+          AppSettingsSwitchTile(icon: Icons.fullscreen_rounded, iconColor: AppTheme.success,
               title: t.readerFullscreen, subtitle: t.readerFullscreenSubtitle,
               value: _fullscreen, onChanged: (v) {
                 setState(() => _fullscreen = v);
                 _setBool(ReaderPrefs.fullscreen, v);
               }),
           const SizedBox(height: 8),
-          _SectionHeader(title: t.readerNavigation),
-          _ChoiceTile(icon: Icons.touch_app_rounded, iconColor: AppTheme.secondary,
+          SettingsSectionHeader(title: t.readerNavigation),
+          AppSettingsChoiceTile(icon: Icons.touch_app_rounded, iconColor: AppTheme.secondary,
               title: t.readerNavigationLayout, value: _navLayout,
               options: const ['Right & Left', 'L-shaped', 'Kindle-like', 'Edge', 'Disabled'],
               onChanged: (v) {
                 setState(() => _navLayout = v);
                 _setString(ReaderPrefs.navLayout, v);
               }),
-          _SwitchTile(icon: Icons.swap_horiz_rounded, iconColor: AppTheme.secondary,
+          AppSettingsSwitchTile(icon: Icons.swap_horiz_rounded, iconColor: AppTheme.secondary,
               title: t.readerInvertTapZones, subtitle: t.readerInvertTapZonesSubtitle,
               value: _invertTapZones, onChanged: (v) {
                 setState(() => _invertTapZones = v);
                 _setBool(ReaderPrefs.invertTapZones, v);
               }),
-          if (beta) ...[
-            _SwitchTile(icon: Icons.volume_up_rounded, iconColor: AppTheme.secondary,
-                title: t.readerVolumeKeys,
-                subtitle: t.readerVolumeKeysSubtitle,
-                betaTrailing: true,
-                value: _volumeKeys, onChanged: (v) async {
-                  // iOS has no real volume-button API — warn before enabling.
-                  if (v && Platform.isIOS && !await _confirmIosVolume()) return;
-                  _selectScrollInput(v ? 'volume' : 'none');
-                }),
-            if (_volumeKeys)
-              _SliderTile(icon: Icons.speed_rounded, iconColor: AppTheme.secondary,
-                  title: t.readerHoldScrollSpeed, value: _volumeScrollSpeed,
-                  min: 150, max: 2000, divisions: 37,
-                  onChanged: (v) {
-                    setState(() => _volumeScrollSpeed = v);
-                    _setDouble(ReaderPrefs.volumeScrollSpeed, v);
-                  }),
-          ],
           const SizedBox(height: 8),
-          _SectionHeader(title: t.readerRadialMenu),
-          _SwitchTile(icon: Icons.blur_circular_rounded, iconColor: AppTheme.secondary,
+          SettingsSectionHeader(title: t.readerRadialMenu),
+          AppSettingsSwitchTile(icon: Icons.blur_circular_rounded, iconColor: AppTheme.secondary,
               title: t.readerRadialMenu, subtitle: t.readerRadialMenuSubtitle,
               value: _radialEnabled, onChanged: (v) {
                 setState(() => _radialEnabled = v);
                 _setBool(ReaderPrefs.radialEnabled, v);
               }),
           if (_radialEnabled)
-            _ChoiceTile(icon: Icons.align_horizontal_right_rounded,
+            AppSettingsChoiceTile(icon: Icons.view_agenda_rounded,
+                iconColor: AppTheme.secondary,
+                title: t.readerMenuStyle,
+                value: _radialStyle == 'tail' ? t.readerMenuStyleTail : t.readerMenuStyleWheel,
+                options: [t.readerMenuStyleWheel, t.readerMenuStyleTail],
+                onChanged: (v) {
+                  final s = v == t.readerMenuStyleTail ? 'tail' : 'wheel';
+                  setState(() => _radialStyle = s);
+                  _setString('reader_radial_style', s);
+                }),
+          if (_radialEnabled)
+            AppSettingsChoiceTile(icon: Icons.align_horizontal_right_rounded,
                 iconColor: AppTheme.secondary,
                 title: t.readerRadialCorner,
-                value: _radialSide == 'left' ? 'Left' : 'Right',
-                options: const ['Left', 'Right'],
+                value: _radialSide == 'left' ? t.readerSideLeft : t.readerSideRight,
+                options: [t.readerSideLeft, t.readerSideRight],
                 onChanged: (v) {
-                  final side = v == 'Left' ? 'left' : 'right';
+                  final side = v == t.readerSideLeft ? 'left' : 'right';
                   setState(() => _radialSide = side);
                   _setString(ReaderPrefs.radialSide, side);
                 }),
-          if (beta) ...[
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.readerTiltScroll, beta: true),
-          _SwitchTile(icon: Icons.screen_rotation_rounded, iconColor: AppTheme.secondary,
-              title: t.readerTiltScroll, subtitle: t.readerTiltScrollSubtitle,
-              value: _tiltEnabled, onChanged: (v) {
-                _selectScrollInput(v ? 'tilt' : 'none');
-              }),
-          if (_tiltEnabled) ...[
-            _SliderTile(icon: Icons.tune_rounded, iconColor: AppTheme.secondary,
-                title: t.readerGazeSensitivity, value: _tiltThreshold,
-                min: 0.08, max: 0.5, divisions: 21,
-                onChanged: (v) {
-                  setState(() => _tiltThreshold = v);
-                  _setDouble(ReaderPrefs.tiltThreshold, v);
-                }),
-            _SliderTile(icon: Icons.blur_on_rounded, iconColor: AppTheme.secondary,
-                title: t.readerGazeSmoothing, value: _tiltSmoothing,
-                min: 0.05, max: 0.5, divisions: 18,
-                onChanged: (v) {
-                  setState(() => _tiltSmoothing = v);
-                  _setDouble(ReaderPrefs.tiltSmoothing, v);
-                }),
-            _SliderTile(icon: Icons.speed_rounded, iconColor: AppTheme.secondary,
-                title: t.readerScrollSpeed, value: _volumeScrollSpeed,
-                min: 150, max: 2000, divisions: 37,
-                onChanged: (v) {
-                  setState(() => _volumeScrollSpeed = v);
-                  _setDouble(ReaderPrefs.volumeScrollSpeed, v);
-                }),
-            ListTile(
-              leading: Icon(Icons.center_focus_strong_rounded,
-                  color: AppTheme.secondary),
-              title: Text(t.readerGazeCalibrate,
-                  style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
-              subtitle: Text(t.readerTiltCalibrateSubtitle,
-                  style: GoogleFonts.manrope(fontSize: 12)),
-              onTap: _calibrateTilt,
-            ),
-          ],
-          if (_gazeSupported) ...[
-            const SizedBox(height: 8),
-            _SectionHeader(title: t.readerGazeScroll, beta: true),
-            _SwitchTile(icon: Icons.visibility_rounded, iconColor: AppTheme.secondary,
-                title: t.readerGazeScroll, subtitle: t.readerGazeScrollSubtitle,
-                value: _gazeEnabled, onChanged: (v) async {
-                  if (v && !await _confirmIosGaze()) return;
-                  _selectScrollInput(v ? 'gaze' : 'none');
-                }),
-            if (_gazeEnabled) ...[
-              _ChoiceTile(icon: Icons.control_camera_rounded, iconColor: AppTheme.secondary,
-                  title: t.readerGazeMode, value: _gazeMode,
-                  options: const ['Eyes', 'Head', 'Both'],
-                  onChanged: (v) {
-                    setState(() => _gazeMode = v);
-                    _setString(ReaderPrefs.gazeMode, _displayToNative(v));
-                  }),
-              _SliderTile(icon: Icons.tune_rounded, iconColor: AppTheme.secondary,
-                  title: t.readerGazeSensitivity, value: _gazeThreshold,
-                  min: 0.25, max: 0.9, divisions: 13,
-                  onChanged: (v) {
-                    setState(() => _gazeThreshold = v);
-                    _setDouble(ReaderPrefs.gazeThreshold, v);
-                  }),
-              _SliderTile(icon: Icons.timer_outlined, iconColor: AppTheme.secondary,
-                  title: t.readerGazeHoldTime, value: _gazeDwell,
-                  min: 150, max: 800, divisions: 13,
-                  onChanged: (v) {
-                    setState(() => _gazeDwell = v);
-                    _setDouble(ReaderPrefs.gazeDwell, v);
-                  }),
-              _SliderTile(icon: Icons.blur_on_rounded, iconColor: AppTheme.secondary,
-                  title: t.readerGazeSmoothing, value: _gazeSmoothing,
-                  min: 0.1, max: 0.6, divisions: 25,
-                  onChanged: (v) {
-                    setState(() => _gazeSmoothing = v);
-                    _setDouble(ReaderPrefs.gazeSmoothing, v);
-                  }),
-              _SliderTile(icon: Icons.speed_rounded, iconColor: AppTheme.secondary,
-                  title: t.readerScrollSpeed, value: _volumeScrollSpeed,
-                  min: 150, max: 2000, divisions: 37,
-                  onChanged: (v) {
-                    setState(() => _volumeScrollSpeed = v);
-                    _setDouble(ReaderPrefs.volumeScrollSpeed, v);
-                  }),
-              ListTile(
-                leading: Icon(Icons.center_focus_strong_rounded,
-                    color: AppTheme.secondary),
-                title: Text(t.readerGazeCalibrate,
-                    style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
-                subtitle: Text(t.readerGazeCalibrateSubtitle,
-                    style: GoogleFonts.manrope(fontSize: 12)),
-                onTap: _calibrateGaze,
-              ),
-            ],
-          ],
-          ], // end: hands-free (beta)
+          if (_radialEnabled)
+            AppSettingsNavTile(
+                icon: Icons.tune_rounded,
+                iconColor: AppTheme.secondary,
+                title: t.readerCustomizeMenu,
+                subtitle: t.readerCustomizeMenuMangaSubtitle,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) =>
+                        const RadialMenuSettingsPage(only: 'manga')))),
+          if (beta) _handsFreeNav(t),
+          ], // end: manga tab
           const SizedBox(height: 24),
         ],
       ),
     );
   }
+
+  // Manga / Light novel segmented switch at the top of the page.
+  Widget _readerTabs(ColorScheme cs, AppLocalizations t) => _SegmentedTile(
+        icon: Icons.menu_book_rounded,
+        iconColor: cs.primary,
+        title: t.readerSettingsFor,
+        options: [t.readerManga, t.readerLightNovel],
+        selected: _showNovel ? t.readerLightNovel : t.readerManga,
+        onChanged: (v) => setState(() => _showNovel = v == t.readerLightNovel),
+      );
+
+  // ── Light novel tab ────────────────────────────────────────────────────────
+  List<Widget> _novelSections(ColorScheme cs, AppLocalizations t, bool beta) {
+    String fontLabel(String id) =>
+        novelFonts.firstWhere((f) => f.$1 == id, orElse: () => novelFonts.first).$2;
+    String alignLabel(String id) => novelAligns
+        .firstWhere((a) => a.$1 == id, orElse: () => novelAligns.first)
+        .$2;
+    String themeLabel(String id) => novelThemes
+        .firstWhere((th) => th.$1 == id, orElse: () => novelThemes.first)
+        .$2;
+    return [
+      SettingsSectionHeader(title: t.readerSectionLayout),
+      AppSettingsChoiceTile(
+          icon: Icons.auto_stories_rounded,
+          iconColor: cs.primary,
+          title: t.readerReadingMode,
+          value: _novelLayout == 'paged' ? t.readerNovelLayoutPaged : t.readerNovelLayoutScroll,
+          options: [t.readerNovelLayoutScroll, t.readerNovelLayoutPaged],
+          onChanged: (label) {
+            final id = label == t.readerNovelLayoutPaged ? 'paged' : 'scroll';
+            setState(() => _novelLayout = id);
+            _setString('novel_layout', id);
+          }),
+      const SizedBox(height: 8),
+      SettingsSectionHeader(title: t.readerSectionText),
+      AppSettingsChoiceTile(
+          icon: Icons.font_download_rounded,
+          iconColor: cs.primary,
+          title: t.readerTabFont,
+          value: fontLabel(_novelFont),
+          options: novelFonts.map((f) => f.$2).toList(),
+          onChanged: (label) {
+            final id = novelFonts.firstWhere((f) => f.$2 == label).$1;
+            setState(() => _novelFont = id);
+            _setString('novel_font_family', id);
+          }),
+      SettingsSliderTile(
+          icon: Icons.format_size_rounded,
+          iconColor: cs.primary,
+          title: t.readerTextSize,
+          value: _novelFontSize,
+          min: novelFontSizeMin,
+          max: novelFontSizeMax,
+          divisions: (novelFontSizeMax - novelFontSizeMin).round(),
+          onChanged: (v) {
+            setState(() => _novelFontSize = v);
+            _setDouble('novel_font_size', v);
+          }),
+      SettingsSliderTile(
+          icon: Icons.format_line_spacing_rounded,
+          iconColor: cs.primary,
+          title: t.readerLineSpacing,
+          value: _novelLineHeight,
+          min: novelLineHeightMin,
+          max: novelLineHeightMax,
+          divisions: 12,
+          onChanged: (v) {
+            setState(() => _novelLineHeight = v);
+            _setDouble('novel_line_height', v);
+          }),
+      SettingsSliderTile(
+          icon: Icons.width_normal_rounded,
+          iconColor: cs.primary,
+          title: t.readerMargins,
+          value: _novelMargin,
+          min: novelMarginMin,
+          max: novelMarginMax,
+          divisions: 20,
+          onChanged: (v) {
+            setState(() => _novelMargin = v);
+            _setDouble('novel_margin', v);
+          }),
+      AppSettingsChoiceTile(
+          icon: Icons.format_align_left_rounded,
+          iconColor: cs.primary,
+          title: t.readerAlignment,
+          value: alignLabel(_novelAlign),
+          options: novelAligns.map((a) => a.$2).toList(),
+          onChanged: (label) {
+            final id = novelAligns.firstWhere((a) => a.$2 == label).$1;
+            setState(() => _novelAlign = id);
+            _setString('novel_text_align', id);
+          }),
+      AppSettingsSwitchTile(
+          icon: Icons.text_rotation_none_rounded,
+          iconColor: cs.primary,
+          title: t.readerHyphenation,
+          subtitle: t.readerHyphenationSubtitle,
+          value: _novelHyphenate,
+          onChanged: (v) {
+            setState(() => _novelHyphenate = v);
+            _setBool('novel_hyphenate', v);
+          }),
+      AppSettingsChoiceTile(
+          icon: Icons.palette_rounded,
+          iconColor: AppTheme.success,
+          title: t.readerReaderTheme,
+          value: themeLabel(_novelTheme),
+          options: novelThemes.map((th) => th.$2).toList(),
+          onChanged: (label) {
+            final id = novelThemes.firstWhere((th) => th.$2 == label).$1;
+            setState(() => _novelTheme = id);
+            _setString('novel_reader_theme', id);
+          }),
+      const SizedBox(height: 8),
+      SettingsSectionHeader(title: t.readerDisplay),
+      AppSettingsSwitchTile(
+          icon: Icons.brightness_high_rounded,
+          iconColor: AppTheme.success,
+          title: t.readerKeepScreenOn,
+          subtitle: t.readerKeepScreenOnSubtitle,
+          value: _novelKeepScreenOn,
+          onChanged: (v) {
+            setState(() => _novelKeepScreenOn = v);
+            _setBool('novel_keep_screen_on', v);
+          }),
+      AppSettingsSwitchTile(
+          icon: Icons.fullscreen_rounded,
+          iconColor: AppTheme.success,
+          title: t.readerFullscreen,
+          subtitle: t.readerFullscreenSubtitle,
+          value: _novelFullscreen,
+          onChanged: (v) {
+            setState(() => _novelFullscreen = v);
+            _setBool('novel_fullscreen', v);
+          }),
+      AppSettingsSwitchTile(
+          icon: Icons.skip_next_rounded,
+          iconColor: AppTheme.success,
+          title: t.readerAutoPreloadNextChapter,
+          subtitle: t.readerAutoPreloadNextChapterSubtitle,
+          value: _autoPreload,
+          onChanged: (v) {
+            setState(() => _autoPreload = v);
+            _setBool(ReaderPrefs.autoPreload, v);
+          }),
+      const SizedBox(height: 8),
+      SettingsSectionHeader(title: t.readerSectionListen),
+      SettingsSliderTile(
+          icon: Icons.speed_rounded,
+          iconColor: AppTheme.secondary,
+          title: t.readerTtsSpeed,
+          value: _novelTtsRate / 0.5,
+          min: 0.5,
+          max: 2.0,
+          divisions: 15,
+          onChanged: (v) {
+            final rate = (v * 0.5).clamp(0.25, 1.0);
+            setState(() => _novelTtsRate = rate);
+            _setDouble('novel_tts_rate', rate);
+          }),
+      SettingsSliderTile(
+          icon: Icons.graphic_eq_rounded,
+          iconColor: AppTheme.secondary,
+          title: t.readerPitch,
+          value: _novelTtsPitch,
+          min: 0.5,
+          max: 2.0,
+          divisions: 15,
+          onChanged: (v) {
+            setState(() => _novelTtsPitch = v);
+            _setDouble('novel_tts_pitch', v);
+          }),
+      _HighlightColourTile(
+          title: t.readerSentenceHighlight,
+          current: _novelSentColor,
+          onPick: (c) {
+            setState(() => _novelSentColor = c);
+            _setInt('novel_tts_sentence_color', c ?? 0);
+          }),
+      _HighlightColourTile(
+          title: t.readerWordHighlight,
+          current: _novelWordColor,
+          onPick: (c) {
+            setState(() => _novelWordColor = c);
+            _setInt('novel_tts_word_color', c ?? 0);
+          }),
+      const SizedBox(height: 8),
+      SettingsSectionHeader(title: t.readerRadialMenu),
+      AppSettingsSwitchTile(
+          icon: Icons.blur_circular_rounded,
+          iconColor: AppTheme.secondary,
+          title: t.readerRadialMenu,
+          subtitle: t.readerNovelRadialMenuSubtitle,
+          value: _novelRadialEnabled,
+          onChanged: (v) {
+            setState(() => _novelRadialEnabled = v);
+            _setBool(ReaderPrefs.novelRadialEnabled, v);
+          }),
+      if (_novelRadialEnabled)
+        AppSettingsChoiceTile(
+            icon: Icons.view_agenda_rounded,
+            iconColor: AppTheme.secondary,
+            title: t.readerMenuStyle,
+            value: _novelRadialStyle == 'tail' ? t.readerMenuStyleTail : t.readerMenuStyleWheel,
+            options: [t.readerMenuStyleWheel, t.readerMenuStyleTail],
+            onChanged: (v) {
+              final s = v == t.readerMenuStyleTail ? 'tail' : 'wheel';
+              setState(() => _novelRadialStyle = s);
+              _setString('novel_radial_style', s);
+            }),
+      if (_novelRadialEnabled)
+        AppSettingsNavTile(
+            icon: Icons.tune_rounded,
+            iconColor: AppTheme.secondary,
+            title: t.readerCustomizeMenu,
+            subtitle: t.readerCustomizeMenuNovelSubtitle,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const RadialMenuSettingsPage(only: 'novel')))),
+      if (beta) _handsFreeNav(t),
+      const SizedBox(height: 24),
+    ];
+  }
+
+  // Entry to the shared Hands-free & motion sub-page (volume buttons, tilt and
+  // gaze scrolling). Shown at the bottom of either reader tab under beta; the
+  // controls apply to scrolling in both readers.
+  Widget _handsFreeNav(AppLocalizations t) => AppSettingsNavTile(
+        icon: Icons.accessibility_new_rounded,
+        iconColor: AppTheme.secondary,
+        title: t.readerHandsFreeMotion,
+        subtitle: t.readerHandsFreeMotionSubtitle,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => const HandsFreeScrollSettingsPage())),
+      );
 }
 
 // ── Shared Tile Widgets ──────────────────────────────────────
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final bool beta;
-  const _SectionHeader({required this.title, this.beta = false});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Row(children: [
-        Text(title.toUpperCase(),
-            style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: cs.primary)),
-        if (beta) ...[const SizedBox(width: 8), const BetaBadge()],
-      ]),
-    );
-  }
-}
-
-class _SwitchTile extends StatelessWidget {
-  final IconData icon; final Color iconColor; final String title; final String subtitle;
-  final bool value; final ValueChanged<bool> onChanged;
-  final bool betaTrailing;
-  const _SwitchTile({required this.icon, required this.iconColor, required this.title,
-      required this.subtitle, required this.value, required this.onChanged,
-      this.betaTrailing = false});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: cs.outlineVariant)),
-      child: Row(children: [
-        Container(width: 36, height: 36,
-            decoration: BoxDecoration(color: iconColor.withAlpha(25), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: iconColor, size: 18)),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Flexible(child: Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface))),
-            if (betaTrailing) ...[const SizedBox(width: 8), const BetaBadge()],
-          ]),
-          Text(subtitle, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
-        ])),
-        Switch(value: value, onChanged: onChanged, activeThumbColor: cs.onPrimary, activeTrackColor: cs.primary),
-      ]),
-    );
-  }
-}
-
 class _SegmentedTile extends StatelessWidget {
   final IconData icon; final Color iconColor; final String title;
   final List<String> options; final String selected; final ValueChanged<String> onChanged;
@@ -600,10 +616,10 @@ class _SegmentedTile extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Container(width: 36, height: 36,
-              decoration: BoxDecoration(color: iconColor.withAlpha(25), borderRadius: BorderRadius.circular(10)),
+              decoration: oledIconChip(context, color: iconColor, fill: iconColor.withAlpha(25), radius: 10),
               child: Icon(icon, color: iconColor, size: 18)),
           const SizedBox(width: 12),
-          Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+          Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
         ]),
         const SizedBox(height: 12),
         Wrap(spacing: 6, runSpacing: 6, children: options.map((opt) {
@@ -617,7 +633,7 @@ class _SegmentedTile extends StatelessWidget {
                 color: isSelected ? cs.primary : cs.surface,
                 borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                 border: Border.all(color: isSelected ? cs.primary : cs.outlineVariant)),
-              child: Text(opt, style: GoogleFonts.manrope(fontSize: 11,
+              child: Text(opt, style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? cs.onPrimary : cs.onSurface)),
             ),
@@ -628,97 +644,64 @@ class _SegmentedTile extends StatelessWidget {
   }
 }
 
-class _SliderTile extends StatelessWidget {
-  final IconData icon; final Color iconColor; final String title;
-  final double value; final double min; final double max; final int? divisions;
-  final ValueChanged<double> onChanged;
-  const _SliderTile({required this.icon, required this.iconColor, required this.title,
-      required this.value, required this.min, required this.max, this.divisions, required this.onChanged});
+/// A swatch row for the TTS highlight colour (sentence / word). null = follow
+/// the theme accent; otherwise a fixed ARGB. Mirrors the in-reader picker.
+class _HighlightColourTile extends StatelessWidget {
+  final String title;
+  final int? current;
+  final ValueChanged<int?> onPick;
+  const _HighlightColourTile(
+      {required this.title, required this.current, required this.onPick});
+
+  static const _presets = <(String, int?)>[
+    ('Accent', null),
+    ('Amber', 0xFFFFB300),
+    ('Green', 0xFF43A047),
+    ('Blue', 0xFF1E88E5),
+    ('Pink', 0xFFD81B60),
+    ('Violet', 0xFF8E24AA),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: cs.surfaceContainerHighest,
+      decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           border: Border.all(color: cs.outlineVariant)),
-      child: Column(children: [
-        Row(children: [
-          Container(width: 36, height: 36,
-              decoration: BoxDecoration(color: iconColor.withAlpha(25), borderRadius: BorderRadius.circular(10)),
-              child: Icon(icon, color: iconColor, size: 18)),
-          const SizedBox(width: 12),
-          Expanded(child: Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface))),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: cs.primary.withAlpha(26), borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
-            child: Text(value.toStringAsFixed(value == value.roundToDouble() ? 0 : 1),
-                style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w700, color: cs.primary))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,
+            style: Theme.of(context)
+                .textTheme
+                .titleSmall
+                ?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
+        const SizedBox(height: 10),
+        Wrap(spacing: 10, runSpacing: 8, children: [
+          for (final (_, argb) in _presets)
+            GestureDetector(
+              onTap: () => onPick(argb),
+              child: Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: argb == null ? cs.primary : Color(argb),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: current == argb ? cs.onSurface : cs.outlineVariant,
+                      width: current == argb ? 2.5 : 1),
+                ),
+                child: current == argb
+                    ? const Icon(Icons.check_rounded,
+                        size: 15, color: Colors.white)
+                    : null,
+              ),
+            ),
         ]),
-        SliderTheme(
-          data: SliderThemeData(activeTrackColor: cs.primary, inactiveTrackColor: cs.surface,
-              thumbColor: cs.primary, overlayColor: cs.primary.withAlpha(26)),
-          child: Slider(value: value, min: min, max: max, divisions: divisions, onChanged: onChanged)),
       ]),
     );
   }
 }
 
-class _ChoiceTile extends StatelessWidget {
-  final IconData icon; final Color iconColor; final String title; final String value;
-  final List<String> options; final ValueChanged<String> onChanged;
-  const _ChoiceTile({required this.icon, required this.iconColor, required this.title,
-      required this.value, required this.options, required this.onChanged});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () {
-        showModalBottomSheet(context: context, backgroundColor: cs.surface,
-          shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusLarge))),
-          builder: (_) => Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 36, height: 4,
-                  decoration: BoxDecoration(color: cs.outline, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 16),
-              Text(title, style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
-              Divider(color: cs.outlineVariant),
-              ...options.map((opt) {
-                final isSelected = opt == value;
-                return InkWell(
-                  onTap: () { onChanged(opt); Navigator.pop(context); },
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    decoration: BoxDecoration(
-                        color: isSelected ? cs.primary.withAlpha(26) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
-                    child: Row(children: [
-                      Expanded(child: Text(opt, style: GoogleFonts.manrope(
-                          fontSize: 14, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, color: cs.onSurface))),
-                      if (isSelected) Icon(Icons.check_rounded, size: 18, color: cs.primary),
-                    ])));
-              }),
-            ])));
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(color: cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-            border: Border.all(color: cs.outlineVariant)),
-        child: Row(children: [
-          Container(width: 36, height: 36,
-              decoration: BoxDecoration(color: iconColor.withAlpha(25), borderRadius: BorderRadius.circular(10)),
-              child: Icon(icon, color: iconColor, size: 18)),
-          const SizedBox(width: 12),
-          Expanded(child: Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface))),
-          Text(value, style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
-          const SizedBox(width: 4),
-          Icon(Icons.chevron_right_rounded, color: cs.outline, size: 20),
-        ])));
-  }
-}

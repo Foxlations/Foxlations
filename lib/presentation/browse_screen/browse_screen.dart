@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../core/providers/beta_provider.dart';
 import '../../core/providers/source_provider.dart';
 import '../../eval/kotlin/jvm_bridge.dart';
 import '../../l10n/app_localizations.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_tokens.dart';
 import 'widgets/sources_tab_widget.dart';
 import 'widgets/extensions_tab_widget.dart';
 import 'widgets/repo_settings_page.dart';
@@ -31,7 +30,10 @@ class _BrowseScreenState extends State<BrowseScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(() => setState(() {}));
+    // The tab index only changes which action buttons the app bar shows, so a
+    // ListenableBuilder around the app bar (see build) repaints just that slice
+    // instead of a global setState rebuilding the whole screen (incl. the
+    // TabBarView) on every tab switch / swipe tick.
     // Warm the embedded JVM in the background so the first Kotlin source call
     // (getPopular) doesn't pay the one-time boot cost. Only when the user actually
     // has Kotlin sources installed, and only on platforms with the JVM channel.
@@ -68,7 +70,10 @@ class _BrowseScreenState extends State<BrowseScreen>
       child: Scaffold(
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(kToolbarHeight + 48),
-          child: _buildAppBar(context, cs),
+          child: ListenableBuilder(
+            listenable: _tabController,
+            builder: (context, _) => _buildAppBar(context, cs),
+          ),
         ),
         body: TabBarView(
           controller: _tabController,
@@ -109,11 +114,13 @@ class _BrowseScreenState extends State<BrowseScreen>
                               alignment: AlignmentDirectional.centerStart,
                               child: Text(
                                 t.browseTitle,
-                                style: GoogleFonts.manrope(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                  color: cs.onSurface,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: cs.onSurface,
+                                    ),
                               ),
                             ),
                     ),
@@ -153,19 +160,6 @@ class _BrowseScreenState extends State<BrowseScreen>
                     },
                     tooltip: t.browseSearch,
                   ),
-                  if (_tabController.index == 1 &&
-                      context.watch<BetaProvider>().enabled)
-                    _buildActionButton(
-                      icon: Icons.auto_fix_high_rounded,
-                      color: cs.primary,
-                      onTap: () async {
-                        final provider = context.read<SourceProvider>();
-                        await Navigator.pushNamed(
-                            context, AppRoutes.repoForgeHub);
-                        provider.refreshRepos();
-                      },
-                      tooltip: t.browseRepoForgeTooltip,
-                    ),
                   if (_tabController.index == 1)
                     _buildActionButton(
                       icon: Icons.add_rounded,
@@ -184,14 +178,13 @@ class _BrowseScreenState extends State<BrowseScreen>
               unselectedLabelColor: cs.outline,
               indicatorColor: cs.primary,
               indicatorSize: TabBarIndicatorSize.label,
-              labelStyle: GoogleFonts.manrope(
-                fontSize: 13,
+              labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
-              unselectedLabelStyle: GoogleFonts.manrope(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+              unselectedLabelStyle:
+                  Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
               dividerColor: cs.surfaceContainerHighest,
               tabs: [
                 Tab(text: t.browseTabSources),
@@ -217,7 +210,7 @@ class _BrowseScreenState extends State<BrowseScreen>
       padding: const EdgeInsets.symmetric(horizontal: 10),
       // The icon is a sibling rather than a `prefixIcon`, and the field is
       // `isCollapsed`, so InputDecorator contributes NO intrinsic height or
-      // padding at all — the Row then centres the text against the fixed 38px
+      // padding at all - the Row then centres the text against the fixed 38px
       // box identically on both platforms. `isDense` alone wasn't enough: it
       // only shrinks the decorator's padding, it keeps a minimum height, which
       // on iOS (taller font metrics) still pushed the text off-centre.
@@ -230,12 +223,17 @@ class _BrowseScreenState extends State<BrowseScreen>
               controller: _searchController,
               autofocus: true,
               onChanged: (v) => setState(() => _searchQuery = v),
-              style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: cs.onSurface),
               textAlignVertical: TextAlignVertical.center,
               decoration: InputDecoration(
                 hintText: t.browseSearchHint,
-                hintStyle:
-                    GoogleFonts.manrope(fontSize: 13, color: cs.outline),
+                hintStyle: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: cs.outline),
                 border: InputBorder.none,
                 isCollapsed: true,
                 contentPadding: EdgeInsets.zero,
@@ -263,7 +261,7 @@ class _BrowseScreenState extends State<BrowseScreen>
           borderRadius: BorderRadius.circular(AppTheme.radiusFull),
           splashColor: Theme.of(context).colorScheme.primary.withAlpha(26),
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             child: Icon(icon, size: 22, color: color),
           ),
         ),

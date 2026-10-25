@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// What the user chose to do with a migration target.
@@ -54,7 +54,7 @@ class MigrationChoice {
 /// candidate first.
 ///
 /// "Show entry" exists because the search result only shows a cover and a
-/// title — not whether the other source actually has the whole series. Opening
+/// title - not whether the other source actually has the whole series. Opening
 /// it first turns migration from a guess into a check.
 ///
 /// "Tracking" re-binds the original entry's per-manga tracker records (MAL /
@@ -81,17 +81,16 @@ Future<MigrationChoice?> showMigrationOptions(
               onTap: () => setState(() => onChanged(!value)),
               borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 child: Row(children: [
                   Checkbox(
                     value: value,
                     activeColor: cs.primary,
                     onChanged: (v) => setState(() => onChanged(v ?? false)),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   Text(label,
-                      style: GoogleFonts.manrope(
-                          fontSize: 14,
+                      style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: cs.onSurface)),
                 ]),
@@ -104,7 +103,7 @@ Future<MigrationChoice?> showMigrationOptions(
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
             title: Text(t.detailMigrateSelectData,
-                style: GoogleFonts.manrope(
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: cs.onSurface)),
@@ -116,15 +115,14 @@ Future<MigrationChoice?> showMigrationOptions(
                     entryCount > 1
                         ? t.detailMigrateEntriesToSource(entryCount, targetSourceName)
                         : t.detailMigrateTitleToSource(targetTitle, targetSourceName),
-                    style: GoogleFonts.manrope(
-                        fontSize: 13,
+                    style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: cs.onSurface)),
                 const SizedBox(height: 6),
                 Text(t.detailMigrateDownloadsNoTransfer,
-                    style: GoogleFonts.manrope(
+                    style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                         fontSize: 12.5, color: cs.outline, height: 1.4)),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 check(t.detailMigrateChapters, opts.chapters,
                     (v) => opts = opts.copyWith(chapters: v)),
                 check(t.detailMigrateCategories, opts.categories,
@@ -143,14 +141,14 @@ Future<MigrationChoice?> showMigrationOptions(
                   onPressed: () => Navigator.pop(
                       ctx, MigrationChoice(MigrationAction.showEntry, opts)),
                   child: Text(t.detailMigrateShowEntry,
-                      style: GoogleFonts.manrope(
+                      style: TextStyle(
                           fontWeight: FontWeight.w600, color: cs.primary)),
                 ),
               TextButton(
                 onPressed: () => Navigator.pop(
                     ctx, MigrationChoice(MigrationAction.copy, opts)),
                 child: Text(t.detailMigrateCopy,
-                    style: GoogleFonts.manrope(
+                    style: TextStyle(
                         fontWeight: FontWeight.w600, color: cs.primary)),
               ),
               FilledButton(
@@ -158,7 +156,8 @@ Future<MigrationChoice?> showMigrationOptions(
                     ctx, MigrationChoice(MigrationAction.migrate, opts)),
                 style: FilledButton.styleFrom(backgroundColor: cs.primary),
                 child: Text(t.detailMigrate,
-                    style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700, color: cs.onPrimary)),
               ),
             ],
           );

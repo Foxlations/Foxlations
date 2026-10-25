@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/models/manga_model.dart';
@@ -16,7 +15,7 @@ import '../../widgets/manga_image.dart';
 /// encrypted vault. A direction toggle switches between moving IN and OUT; titles
 /// can be moved one at a time, multi-selected, all at once, or by category.
 ///
-/// Only reachable once the vault is unlocked — moving requires the vault's Hive
+/// Only reachable once the vault is unlocked - moving requires the vault's Hive
 /// boxes to be open, and the whole point is that locked content is unreadable.
 class VaultContentsPage extends StatefulWidget {
   const VaultContentsPage({super.key});
@@ -114,9 +113,10 @@ class _VaultContentsPageState extends State<VaultContentsPage>
       _selectMode = false;
     });
     if (moved.isEmpty) return;
+    final t = AppLocalizations.of(context);
     final msg = toVault
-        ? 'Moved ${moved.length} to vault'
-        : 'Moved ${moved.length} out of vault';
+        ? t.setdVaultContentsMovedInCount(moved.length)
+        : t.setdVaultContentsMovedOutCount(moved.length);
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(SnackBar(
@@ -124,7 +124,7 @@ class _VaultContentsPageState extends State<VaultContentsPage>
         action: isUndo
             ? null
             : SnackBarAction(
-                label: 'Undo',
+                label: t.setdActionUndo,
                 onPressed: () => _move(moved, !toVault, isUndo: true),
               ),
       ));
@@ -134,24 +134,31 @@ class _VaultContentsPageState extends State<VaultContentsPage>
       {String? destCategory}) async {
     if (items.isEmpty) return;
     final cs = Theme.of(context).colorScheme;
-    final dest = _toVault ? 'the vault' : 'your library';
-    final into = destCategory != null ? ' → "$destCategory"' : '';
+    final t = AppLocalizations.of(context);
+    final dest =
+        _toVault ? t.setdVaultContentsDestVault : t.setdVaultContentsDestLibrary;
+    final into = destCategory != null
+        ? t.setdVaultContentsIntoCategory(destCategory)
+        : '';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cs.surfaceContainerHighest,
-        title: Text('Move $what?',
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        title: Text(t.setdVaultContentsMoveConfirmTitle(what),
+            style: Theme.of(ctx)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w700)),
         content: Text(
-            'Move ${items.length} title${items.length == 1 ? '' : 's'} to $dest$into?',
-            style: GoogleFonts.manrope(fontSize: 13)),
+            t.setdVaultContentsMoveConfirmBody(items.length, dest, into),
+            style: Theme.of(context).textTheme.bodyMedium),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(t.setdActionCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Move')),
+              child: Text(t.setdActionMove)),
         ],
       ),
     );
@@ -163,12 +170,13 @@ class _VaultContentsPageState extends State<VaultContentsPage>
   Future<String?> _pickCategory(String title, List<String> names,
       {Map<String, int>? counts, bool addNone = false}) async {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     return showModalBottomSheet<String>(
       context: context,
       backgroundColor: cs.surface,
       isScrollControlled: true, // let the sheet grow, then the list scrolls
       constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.7),
+          maxHeight: MediaQuery.sizeOf(context).height * 0.7),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
@@ -180,7 +188,7 @@ class _VaultContentsPageState extends State<VaultContentsPage>
               const SizedBox(width: 10),
               Expanded(
                 child: Text(title,
-                    style: GoogleFonts.manrope(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontSize: 15, fontWeight: FontWeight.w800, color: cs.onSurface)),
               ),
             ]),
@@ -189,8 +197,8 @@ class _VaultContentsPageState extends State<VaultContentsPage>
           if (names.isEmpty && !addNone)
             Padding(
               padding: const EdgeInsets.all(20),
-              child: Text('No categories to pick from.',
-                  style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurfaceVariant)),
+              child: Text(t.setdVaultContentsNoCategoriesToPick,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
             )
           else
             Flexible(
@@ -202,22 +210,22 @@ class _VaultContentsPageState extends State<VaultContentsPage>
                     ListTile(
                       leading: Icon(Icons.inbox_rounded,
                           size: 20, color: cs.onSurfaceVariant),
-                      title: Text('No category',
-                          style: GoogleFonts.manrope(
-                              fontSize: 14, fontWeight: FontWeight.w600)),
+                      title: Text(t.setdVaultContentsNoCategory,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600)),
                       onTap: () => Navigator.pop(ctx, ''),
                     ),
                   for (final c in names)
                     ListTile(
                       leading: Icon(Icons.folder_rounded, size: 20, color: cs.primary),
                       title: Text(c,
-                          style: GoogleFonts.manrope(
-                              fontSize: 14, fontWeight: FontWeight.w600)),
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600)),
                       trailing: counts == null
                           ? null
                           : Text('${counts[c] ?? 0}',
-                              style: GoogleFonts.manrope(
-                                  fontSize: 12, color: cs.onSurfaceVariant)),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: cs.onSurfaceVariant)),
                       onTap: () => Navigator.pop(ctx, c),
                     ),
                 ],
@@ -229,8 +237,9 @@ class _VaultContentsPageState extends State<VaultContentsPage>
   }
 
   /// Bulk move every title in a chosen source category, into a chosen destination
-  /// category on the other side (the user picks where it lands — not preserved).
+  /// category on the other side (the user picks where it lands - not preserved).
   Future<void> _moveByCategory(List<LibraryManga> source) async {
+    final t = AppLocalizations.of(context);
     // 1) Which source category to move.
     final srcCats = (_toVault
             ? context.read<LibraryProvider>().categories
@@ -242,13 +251,15 @@ class _VaultContentsPageState extends State<VaultContentsPage>
       for (final c in srcCats) c: source.where((m) => m.categories.contains(c)).length
     };
     final picked = await _pickCategory(
-        _toVault ? 'Move which library category?' : 'Move which vault category?',
+        _toVault
+            ? t.setdVaultContentsPickSourceLibrary
+            : t.setdVaultContentsPickSourceVault,
         srcCats,
         counts: counts);
     if (picked == null || !mounted) return;
     final items = source.where((m) => m.categories.contains(picked)).toList();
     if (items.isEmpty) {
-      AppTheme.showSnackBar(context, 'Nothing in "$picked"');
+      AppTheme.showSnackBar(context, t.setdVaultContentsNothingIn(picked));
       return;
     }
     // 2) Which destination category on the other side to drop them into.
@@ -259,11 +270,13 @@ class _VaultContentsPageState extends State<VaultContentsPage>
         .where((n) => n.isNotEmpty)
         .toList();
     final dest = await _pickCategory(
-        _toVault ? 'Into which vault category?' : 'Into which library category?',
+        _toVault
+            ? t.setdVaultContentsPickDestVault
+            : t.setdVaultContentsPickDestLibrary,
         destCats,
         addNone: true);
     if (dest == null || !mounted) return; // dismissed
-    await _confirmAndMove(items, 'everything in "$picked"',
+    await _confirmAndMove(items, t.setdVaultContentsMoveEverythingIn(picked),
         destCategory: dest.isEmpty ? null : dest);
   }
 
@@ -274,14 +287,14 @@ class _VaultContentsPageState extends State<VaultContentsPage>
     final vault = context.watch<VaultProvider>();
     final lib = context.watch<LibraryProvider>();
 
-    // Guard: if the vault is locked, moving can't work — send the user back.
+    // Guard: if the vault is locked, moving can't work - send the user back.
     if (vault.hasPassword && !vault.isUnlocked) {
       return Scaffold(
         backgroundColor: cs.surface,
         appBar: AppBar(
           backgroundColor: cs.surface,
           title: Text(t.setdVaultContentsTitle,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w700, color: cs.onSurface)),
         ),
         body: Center(
@@ -290,7 +303,7 @@ class _VaultContentsPageState extends State<VaultContentsPage>
             child: Text(
               t.setdVaultContentsLockedMessage,
               textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant),
             ),
           ),
         ),
@@ -319,11 +332,11 @@ class _VaultContentsPageState extends State<VaultContentsPage>
         backgroundColor: cs.surface,
         elevation: 0,
         title: Text(t.setdVaultContentsTitle,
-            style: GoogleFonts.manrope(
-                fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700, color: cs.onSurface)),
         actions: [
           IconButton(
-            tooltip: _selectMode ? 'Done' : 'Select',
+            tooltip: _selectMode ? t.setdVaultContentsDone : t.setdVaultContentsSelect,
             icon: Icon(_selectMode ? Icons.close_rounded : Icons.checklist_rounded),
             onPressed: () => setState(() {
               _selectMode = !_selectMode;
@@ -336,26 +349,28 @@ class _VaultContentsPageState extends State<VaultContentsPage>
           labelColor: cs.primary,
           unselectedLabelColor: cs.onSurfaceVariant,
           indicatorColor: cs.primary,
-          labelStyle:
-              GoogleFonts.manrope(fontSize: 13.5, fontWeight: FontWeight.w700),
+          labelStyle: Theme.of(context)
+              .textTheme
+              .labelLarge
+              ?.copyWith(fontSize: 13.5, fontWeight: FontWeight.w700),
           tabs: [for (final l in labels) Tab(text: l)],
         ),
       ),
       body: Column(
         children: [
-          // Direction toggle — the easy "move in / move out" switch.
+          // Direction toggle - the easy "move in / move out" switch.
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
             child: SegmentedButton<bool>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                     value: true,
-                    icon: Icon(Icons.lock_outline_rounded, size: 18),
-                    label: Text('To Vault')),
+                    icon: const Icon(Icons.lock_outline_rounded, size: 18),
+                    label: Text(t.setdVaultContentsDirToVault)),
                 ButtonSegment(
                     value: false,
-                    icon: Icon(Icons.lock_open_rounded, size: 18),
-                    label: Text('From Vault')),
+                    icon: const Icon(Icons.lock_open_rounded, size: 18),
+                    label: Text(t.setdVaultContentsDirFromVault)),
               ],
               selected: {_toVault},
               showSelectedIcon: false,
@@ -375,12 +390,14 @@ class _VaultContentsPageState extends State<VaultContentsPage>
                   height: 40,
                   child: TextField(
                     onChanged: (v) => setState(() => _query = v),
-                    style: GoogleFonts.manrope(fontSize: 13),
+                    style: Theme.of(context).textTheme.bodyMedium,
                     decoration: InputDecoration(
                       isDense: true,
-                      hintText: 'Search titles',
-                      hintStyle:
-                          GoogleFonts.manrope(fontSize: 13, color: cs.outline),
+                      hintText: t.setdVaultContentsSearchHint,
+                      hintStyle: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: cs.outline),
                       prefixIcon: Icon(Icons.search_rounded, size: 18, color: cs.outline),
                       filled: true,
                       fillColor: cs.surfaceContainerHighest,
@@ -394,16 +411,19 @@ class _VaultContentsPageState extends State<VaultContentsPage>
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
-                tooltip: 'Move a category',
+                tooltip: t.setdVaultContentsMoveCategoryTooltip,
                 icon: const Icon(Icons.category_rounded, size: 20),
                 onPressed: source.isEmpty ? null : () => _moveByCategory(source),
               ),
               IconButton.filledTonal(
-                tooltip: _toVault ? 'Move all to vault' : 'Move all out',
+                tooltip: _toVault
+                    ? t.setdVaultContentsMoveAllToVault
+                    : t.setdVaultContentsMoveAllOut,
                 icon: const Icon(Icons.done_all_rounded, size: 20),
                 onPressed: shown.isEmpty
                     ? null
-                    : () => _confirmAndMove(shown, 'all ${shown.length} shown'),
+                    : () => _confirmAndMove(
+                        shown, t.setdVaultContentsMoveAllShown(shown.length)),
               ),
             ]),
           ),
@@ -411,13 +431,15 @@ class _VaultContentsPageState extends State<VaultContentsPage>
             child: shown.isEmpty
                 ? _empty(cs, source.isEmpty
                     ? (_toVault
-                        ? 'No ${labels[_typeIndex].toLowerCase()} in your library'
-                        : 'No ${labels[_typeIndex].toLowerCase()} in the vault')
-                    : 'No matches')
+                        ? t.setdVaultContentsEmptyLibrary(
+                            labels[_typeIndex].toLowerCase())
+                        : t.setdVaultContentsEmptyVault(
+                            labels[_typeIndex].toLowerCase()))
+                    : t.setdVaultContentsNoMatches)
                 : ListView.builder(
                     padding: EdgeInsets.only(
                         bottom: (_selected.isEmpty ? 24 : 88) +
-                            MediaQuery.of(context).viewPadding.bottom),
+                            MediaQuery.viewPaddingOf(context).bottom),
                     itemCount: shown.length,
                     itemBuilder: (_, i) => _entryRow(cs, shown[i]),
                   ),
@@ -431,10 +453,11 @@ class _VaultContentsPageState extends State<VaultContentsPage>
   }
 
   Widget _selectionBar(ColorScheme cs, List<LibraryManga> shown) {
+    final t = AppLocalizations.of(context);
     final picked = shown.where((m) => _selected.contains(_key(m))).toList();
     return Container(
       padding: EdgeInsets.fromLTRB(
-          16, 10, 16, 10 + MediaQuery.of(context).viewPadding.bottom),
+          16, 10, 16, 10 + MediaQuery.viewPaddingOf(context).bottom),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
         border: Border(top: BorderSide(color: cs.outlineVariant)),
@@ -450,17 +473,21 @@ class _VaultContentsPageState extends State<VaultContentsPage>
                 ..addAll(shown.map(_key));
             }
           }),
-          child: Text(_selected.length == shown.length ? 'None' : 'All'),
+          child: Text(_selected.length == shown.length
+              ? t.setdVaultContentsSelectNone
+              : t.setdVaultContentsSelectAll),
         ),
         const Spacer(),
-        Text('${picked.length} selected',
-            style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurfaceVariant)),
+        Text(t.setdVaultContentsSelectedCount(picked.length),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
         const SizedBox(width: 12),
         FilledButton.icon(
           onPressed: picked.isEmpty ? null : () => _move(picked, _toVault),
           icon: Icon(_toVault ? Icons.lock_outline_rounded : Icons.lock_open_rounded,
               size: 18),
-          label: Text(_toVault ? 'Move to vault' : 'Move out'),
+          label: Text(_toVault
+              ? t.setdVaultContentsMoveToVault
+              : t.setdVaultContentsMoveOut),
         ),
       ]),
     );
@@ -471,7 +498,7 @@ class _VaultContentsPageState extends State<VaultContentsPage>
           padding: const EdgeInsets.all(32),
           child: Text(text,
               textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurfaceVariant)),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
         ),
       );
 
@@ -491,18 +518,21 @@ class _VaultContentsPageState extends State<VaultContentsPage>
       title: Text(m.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.manrope(
-              fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600, color: cs.onSurface)),
       subtitle: Text(
           t.setdVaultContentsReadProgress(m.readChapters, m.totalChapters),
-          style: GoogleFonts.manrope(fontSize: 11.5, color: cs.onSurfaceVariant)),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 11.5, color: cs.onSurfaceVariant)),
       trailing: _selectMode
           ? Checkbox(
               value: selected,
               onChanged: (_) => _toggle(m),
             )
           : IconButton(
-              tooltip: _toVault ? 'Move to vault' : 'Move out',
+              tooltip: _toVault
+                  ? t.setdVaultContentsMoveToVault
+                  : t.setdVaultContentsMoveOut,
               icon: Icon(
                   _toVault ? Icons.lock_outline_rounded : Icons.lock_open_rounded,
                   color: _toVault ? cs.primary : cs.onSurfaceVariant),

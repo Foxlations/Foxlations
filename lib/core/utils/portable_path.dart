@@ -5,7 +5,7 @@ import 'package:path_provider/path_provider.dart';
 /// Keeps persisted filesystem paths valid when the app container moves.
 ///
 /// iOS stores app data under `/var/mobile/Containers/Data/Application/<UUID>/`
-/// and that UUID changes on every install or update — which, for a sideloaded
+/// and that UUID changes on every install or update - which, for a sideloaded
 /// build, means **every 7-day re-sign**. SharedPreferences survives the move,
 /// so any absolute path saved under the documents directory quietly goes stale
 /// and whatever it pointed at looks like it vanished. Android's
@@ -41,7 +41,7 @@ class PortablePath {
       return '$docs${stored.substring(_docsToken.length)}';
     }
 
-    // Legacy absolute path — either written before this class existed, or by a
+    // Legacy absolute path - either written before this class existed, or by a
     // previous container. If it's gone but the same tail exists under today's
     // documents directory, re-root it so the data comes back.
     if (await _exists(stored)) return stored;
@@ -58,7 +58,7 @@ class PortablePath {
     if (path.isEmpty) return false;
     // A `file://` URI is not a valid argument to File()/Directory(). On Windows,
     // File('file://D:/x').exists() throws PathNotFoundException (ERROR_INVALID_NAME,
-    // errno 123) rather than returning false — which is exactly what a stale
+    // errno 123) rather than returning false - which is exactly what a stale
     // local-repo entry saved as `file://D:/…/index.json` did: it crashed every
     // repo resolve, and with it any "Create Source" save. Normalise the scheme
     // off first, and treat any path the OS rejects as simply "not there".

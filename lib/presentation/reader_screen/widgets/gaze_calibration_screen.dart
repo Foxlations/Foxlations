@@ -33,7 +33,7 @@ class _GazeCalibrationScreenState extends State<GazeCalibrationScreen>
   // inset must match the dot mapping below so a fully-deflected gaze (±1) lands
   // exactly on the corner it was calibrated against.
   static const double _inset = 0.10;
-  // A "+" pattern (centre, then pure top/bottom/left/right) — pure-axis gaze is
+  // A "+" pattern (centre, then pure top/bottom/left/right) - pure-axis gaze is
   // cleaner to map than the diagonal corners, which couple up/down with left/right.
   static const List<Offset> _targets = [
     Offset(0.5, 0.5),
@@ -46,7 +46,7 @@ class _GazeCalibrationScreenState extends State<GazeCalibrationScreen>
   final List<Map<String, double>> _samples = [];
 
   /// Set when the eye signal didn't respond to looking around (too dark, or the
-  /// eyes aren't resolving) — we fall back to head-tilt, which works in any light.
+  /// eyes aren't resolving) - we fall back to head-tilt, which works in any light.
   bool _eyesDead = false;
 
   late final AnimationController _ring;
@@ -112,7 +112,7 @@ class _GazeCalibrationScreenState extends State<GazeCalibrationScreen>
     if (i == 0) {
       // Lock the neutral centre once, here, so the corner points are all measured
       // against a stable centre. Every capture uses adopt:false, so nothing else
-      // ever moves the baseline mid-sequence — the five points build one model.
+      // ever moves the baseline mid-sequence - the five points build one model.
       await GazeScroll.applyBaseline(
           sample['v'] ?? 0, sample['h'] ?? 0, sample['p'] ?? 0);
     }
@@ -125,7 +125,7 @@ class _GazeCalibrationScreenState extends State<GazeCalibrationScreen>
 
   Future<Map<String, double>> _captureSample(int ms) {
     final c = Completer<Map<String, double>>();
-    // adopt:false — never let a single point overwrite the neutral baseline.
+    // adopt:false - never let a single point overwrite the neutral baseline.
     GazeScroll.calibrate(
         durationMs: ms,
         adopt: false,
@@ -417,7 +417,7 @@ class _GazeCalibrationScreenState extends State<GazeCalibrationScreen>
                       itemBuilder: (_, i) => Padding(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 24, vertical: 9),
-                        child: Text('Sample line ${i + 1}',
+                        child: Text(t.readerCalibrateSampleLine(i + 1),
                             style: const TextStyle(
                                 color: Colors.white54,
                                 fontSize: 16,

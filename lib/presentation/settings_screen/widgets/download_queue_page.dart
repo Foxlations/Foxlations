@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/providers/download_provider.dart';
@@ -32,7 +31,7 @@ class DownloadQueuePage extends StatelessWidget {
         ),
         title: Text(
           t.dlQueueTitle,
-          style: GoogleFonts.manrope(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: cs.onSurface,
@@ -60,7 +59,7 @@ class DownloadQueuePage extends StatelessWidget {
                     value: 'cancel_all',
                     enabled: hasActive,
                     child: Text(t.dlQueueCancelAll,
-                        style: GoogleFonts.manrope(fontSize: 14)),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 14)),
                   ),
                 ],
               );
@@ -71,7 +70,7 @@ class DownloadQueuePage extends StatelessWidget {
       body: Consumer<DownloadProvider>(
         builder: (_, dl, _) {
           final active = dl.activeDownloads;
-          final bottom = MediaQuery.of(context).viewPadding.bottom;
+          final bottom = MediaQuery.viewPaddingOf(context).bottom;
           return Column(
             children: [
               _RecentRow(count: dl.recentCompleted.length),
@@ -137,8 +136,7 @@ class _RecentRow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     t.dlQueueRecent,
-                    style: GoogleFonts.manrope(
-                        fontSize: 14,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: cs.onSurface),
                   ),
@@ -152,8 +150,7 @@ class _RecentRow extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text('$count',
-                        style: GoogleFonts.manrope(
-                            fontSize: 12,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: cs.primary)),
                   ),
@@ -232,13 +229,13 @@ class _ControlsRow extends StatelessWidget {
               child: Text(
                 AppLocalizations.of(context)
                     .dlQueueConcurrent(provider.simultaneousDownloads),
-                style: GoogleFonts.manrope(
-                    fontSize: 16, fontWeight: FontWeight.w700),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700),
               ),
             ),
             Divider(color: cs.outlineVariant),
             ...choices.map((c) => ListTile(
-                  title: Text(c, style: GoogleFonts.manrope(fontSize: 14)),
+                  title: Text(c, style: Theme.of(context).textTheme.bodyLarge),
                   trailing: c == provider.simultaneousDownloads
                       ? Icon(Icons.check_rounded, color: cs.primary, size: 20)
                       : null,
@@ -287,8 +284,7 @@ class _Pill extends StatelessWidget {
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.manrope(
-                      fontSize: 13,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       height: 1.1,
                       fontWeight: FontWeight.w700,
                       color: cs.primary,
@@ -323,8 +319,7 @@ class _PausedBanner extends StatelessWidget {
               size: 18, color: cs.onSurface),
           const SizedBox(width: 10),
           Text(t.dlQueuePaused,
-              style: GoogleFonts.manrope(
-                  fontSize: 13,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
         ],
@@ -378,8 +373,7 @@ class _DownloadRow extends StatelessWidget {
                   task.mangaTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(
-                      fontSize: 14,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: cs.onSurface),
                 ),
@@ -387,8 +381,8 @@ class _DownloadRow extends StatelessWidget {
                   task.chapterName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(
-                      fontSize: 12, color: cs.outline),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.outline),
                 ),
                 const SizedBox(height: 8),
                 ClipRRect(
@@ -404,8 +398,7 @@ class _DownloadRow extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   _statusText(t),
-                  style: GoogleFonts.manrope(
-                      fontSize: 11,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: downloading ? cs.primary : cs.outline),
                 ),
@@ -453,7 +446,7 @@ class _EmptyState extends StatelessWidget {
         children: [
           Text(
             '(˘•_•˘)',
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.displayLarge?.copyWith(
                 fontSize: 44,
                 fontWeight: FontWeight.w600,
                 color: cs.onSurface.withAlpha(140)),
@@ -461,8 +454,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 18),
           Text(
             t.dlQueueEmpty,
-            style: GoogleFonts.manrope(
-                fontSize: 16,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: cs.onSurface.withAlpha(160)),
           ),
@@ -492,7 +484,7 @@ class RecentDownloadsPage extends StatelessWidget {
         ),
         title: Text(
           t.dlQueueRecentTitle,
-          style: GoogleFonts.manrope(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface),
         ),
         actions: [
@@ -502,8 +494,7 @@ class RecentDownloadsPage extends StatelessWidget {
                 : TextButton(
                     onPressed: dl.clearRecent,
                     child: Text(t.dlQueueRecentClear,
-                        style: GoogleFonts.manrope(
-                            fontSize: 14,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: cs.primary)),
                   ),
@@ -517,12 +508,12 @@ class RecentDownloadsPage extends StatelessWidget {
             return Center(
               child: Text(
                 t.dlQueueRecentEmpty,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontSize: 15, color: cs.onSurface.withAlpha(150)),
               ),
             );
           }
-          final bottom = MediaQuery.of(context).viewPadding.bottom;
+          final bottom = MediaQuery.viewPaddingOf(context).bottom;
           return ListView.builder(
             padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + bottom),
             itemCount: recent.length + 1,
@@ -532,8 +523,8 @@ class RecentDownloadsPage extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 8, left: 2),
                   child: Text(
                     t.dlQueueRecentNote,
-                    style: GoogleFonts.manrope(
-                        fontSize: 12, color: cs.outline),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.outline),
                   ),
                 );
               }
@@ -570,20 +561,19 @@ class RecentDownloadsPage extends StatelessWidget {
                           Text(task.mangaTitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.manrope(
-                                  fontSize: 14,
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: cs.onSurface)),
                           Text(task.chapterName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.manrope(
-                                  fontSize: 12, color: cs.outline)),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: cs.outline)),
                         ],
                       ),
                     ),
                     Icon(Icons.check_circle_rounded,
-                        color: const Color(0xFF4CAF82), size: 20),
+                        color: AppTheme.success, size: 20),
                   ],
                 ),
               );

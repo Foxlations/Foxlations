@@ -96,7 +96,7 @@ class Element {
   }
 
   // getSrc / getHref are GETTERS (property access, no parens) per the Mangayomi
-  // contract — sources use `el.getSrc` / `a.getHref`.
+  // contract - sources use `el.getSrc` / `a.getHref`.
   get getSrc() {
     const attrs = this._data.attributes || {};
     return attrs['data-src'] || attrs['data-lazy-src'] || this._extractSrcSet(attrs) || attrs['src'] || '';

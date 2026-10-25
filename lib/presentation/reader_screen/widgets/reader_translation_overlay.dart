@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/app_theme.dart';
 
 /// A detected speech bubble with translation data. [bounds] is normalized
-/// (0.0–1.0) relative to the source image.
+/// (0.0-1.0) relative to the source image.
 class TranslationBubble {
   final String id;
   final Rect bounds;
@@ -25,7 +25,7 @@ class TranslationBubble {
 ///
 /// It's placed as a `Positioned.fill` child of a Stack wrapping the image, so
 /// its layout box matches the image's box. The bubbles' normalized bounds are
-/// mapped into the *displayed* image rect — for webtoon (fit-width) that's the
+/// mapped into the *displayed* image rect - for webtoon (fit-width) that's the
 /// whole box; for a letterboxed page (fit-contain) it's the centered contained
 /// rect, computed from [imageSize]. This is what makes the boxes land on the
 /// actual text instead of floating in the letterbox margins.

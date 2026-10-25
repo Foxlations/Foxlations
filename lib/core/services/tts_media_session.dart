@@ -132,10 +132,10 @@ class TtsAudioHandler extends BaseAudioHandler {
 }
 
 /// The one media session for the app, or null when audio_service couldn't be
-/// initialised (desktop/unsupported, or a failure) — callers must null-check.
+/// initialised (desktop/unsupported, or a failure) - callers must null-check.
 TtsAudioHandler? ttsMediaSession;
 
-/// Initialise the media session once, before runApp. Android/iOS only — other
+/// Initialise the media session once, before runApp. Android/iOS only - other
 /// platforms keep [ttsMediaSession] null and TTS runs without lock-screen
 /// controls. Never throws: a failure just leaves the session unavailable.
 Future<void> initTtsMediaSession() async {

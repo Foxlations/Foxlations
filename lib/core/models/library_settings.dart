@@ -64,6 +64,20 @@ enum LibraryCardBadges {
   final String label;
 }
 
+/// Where the "continue reading" affordance lives on the library home.
+///
+/// Owned by the Settings > Library page (written under 'lib_continue_mode');
+/// mirrored read-only into [LibrarySettings] so the library screen can act on
+/// it without a second load.
+enum LibraryContinueMode {
+  banner('Banner (top)'),
+  resumeButton('Resume button'),
+  off('Off');
+
+  const LibraryContinueMode(this.label);
+  final String label;
+}
+
 /// How reading progress is drawn on a grid cover card.
 enum LibraryCardProgress {
   line('Line'),
@@ -77,7 +91,7 @@ enum LibraryCardProgress {
 
 /// User-controlled library filter / sort / display state.
 ///
-/// Persisted globally (not per-category) — a single set of preferences applies
+/// Persisted globally (not per-category) - a single set of preferences applies
 /// to every tab, which is the simpler contract and matches how the rest of the
 /// app stores settings. Changing this to per-category later only requires
 /// suffixing the pref keys with the category name.
@@ -108,9 +122,15 @@ class LibrarySettings {
 
   // Read-only mirror of a setting owned by the Settings > Library page (written
   // there under 'lib_hide_empty_cats'). Loaded here so the library screen, which
-  // already consumes this model, can act on it. Not written by [save] — the
+  // already consumes this model, can act on it. Not written by [save] - the
   // settings page is the single writer.
   final bool hideEmptyCategories;
+
+  // Read-only mirror of a Settings > Library page setting (written there under
+  // 'lib_continue_mode'). Chooses the library home's continue-reading
+  // affordance: the top banner (default), a bottom-right Resume FAB, or off.
+  // Not written by [save] - the settings page is the single writer.
+  final LibraryContinueMode continueMode;
 
   const LibrarySettings({
     this.filterUnread = LibraryFilterState.off,
@@ -130,6 +150,7 @@ class LibrarySettings {
     this.cardBadges = LibraryCardBadges.barUnder,
     this.cardProgress = LibraryCardProgress.percent,
     this.hideEmptyCategories = false,
+    this.continueMode = LibraryContinueMode.banner,
   });
 
   bool get hasActiveFilter =>
@@ -162,6 +183,7 @@ class LibrarySettings {
     LibraryCardBadges? cardBadges,
     LibraryCardProgress? cardProgress,
     bool? hideEmptyCategories,
+    LibraryContinueMode? continueMode,
   }) {
     return LibrarySettings(
       filterUnread: filterUnread ?? this.filterUnread,
@@ -181,13 +203,14 @@ class LibrarySettings {
       cardBadges: cardBadges ?? this.cardBadges,
       cardProgress: cardProgress ?? this.cardProgress,
       hideEmptyCategories: hideEmptyCategories ?? this.hideEmptyCategories,
+      continueMode: continueMode ?? this.continueMode,
     );
   }
 
   // ── persistence ───────────────────────────────────────────────────────────
   // Tri-state filters persist as an int (LibraryFilterState.index). New keys so
   // they never collide with the pre-tri-state bool values still under the old
-  // keys — those are migrated once on load.
+  // keys - those are migrated once on load.
   static const _kFilterUnread = 'lib_filter_unread_s';
   static const _kFilterCompleted = 'lib_filter_completed_s';
   static const _kFilterDownloaded = 'lib_filter_downloaded_s';
@@ -247,6 +270,8 @@ class LibrarySettings {
       cardProgress: byName(LibraryCardProgress.values,
           p.getString(_kCardProgress), LibraryCardProgress.percent),
       hideEmptyCategories: p.getBool('lib_hide_empty_cats') ?? false,
+      continueMode: byName(LibraryContinueMode.values,
+          p.getString('lib_continue_mode'), LibraryContinueMode.banner),
     );
   }
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../core/providers/library_type_provider.dart';
 import '../l10n/app_localizations.dart';
@@ -30,8 +29,8 @@ IconData libraryTypeIcon(String type, {bool active = false}) {
 
 const double _kBubbleWidth = 216;
 
-/// Pops up a small bubble — anchored just above the Library tab that was
-/// long-pressed — letting the user switch the library between Manga, Anime and
+/// Pops up a small bubble - anchored just above the Library tab that was
+/// long-pressed - letting the user switch the library between Manga, Anime and
 /// Light Novels. Each acts like its own library; the choice is persisted by
 /// [LibraryTypeProvider]. [anchor] is the Library tab's global rect, used to
 /// position the bubble and its downward pointer over it.
@@ -42,8 +41,8 @@ Future<void> showLibraryTypeBubble(BuildContext context, Rect anchor) {
     barrierLabel: AppLocalizations.of(context).libraryTypeMenuBarrier,
     barrierColor: Colors.black.withAlpha(40),
     transitionDuration: const Duration(milliseconds: 160),
-    pageBuilder: (_, __, ___) => _LibraryTypeBubble(anchor: anchor),
-    transitionBuilder: (_, anim, __, child) {
+    pageBuilder: (_, _, _) => _LibraryTypeBubble(anchor: anchor),
+    transitionBuilder: (_, anim, _, child) {
       final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
       return FadeTransition(
         opacity: anim,
@@ -162,7 +161,7 @@ class _LibraryTypeBubble extends StatelessWidget {
             Expanded(
               child: Text(
                 LibraryTypeProvider.label(type),
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontSize: 14,
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                   color: isActive ? cs.primary : cs.onSurface,

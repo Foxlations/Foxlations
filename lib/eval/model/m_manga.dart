@@ -22,7 +22,7 @@ class MManga {
 
   /// The source's own browsable page URL for this item ("Open in browser").
   /// For Tachiyomi this is `getMangaUrl()`/`getAnimeUrl()`, for LNReader the
-  /// plugin's `resolveUrl()` — which can differ from `baseUrl + link` when a
+  /// plugin's `resolveUrl()` - which can differ from `baseUrl + link` when a
   /// source fetches details from an API. Null when the source didn't provide
   /// one (the app then falls back to joining [link] onto the base URL).
   String? webUrl;

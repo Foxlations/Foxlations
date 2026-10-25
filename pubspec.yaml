@@ -1,7 +1,7 @@
 name: manga_reader
 description: A manga reading app with extension-based sources.
 publish_to: 'none'
-version: 1.2.2+188
+version: 1.3.5+291
 
 environment:
   sdk: ^3.11.3
@@ -30,6 +30,9 @@ dependencies:
   # State
   provider: ^6.1.2
 
+  # Collection idioms (firstWhereOrNull / groupBy / sorted) used across services.
+  collection: ^1.19.1
+
   # Extension runtime
   d4rt: ^0.2.2
   flutter_js: ^0.8.7
@@ -38,6 +41,7 @@ dependencies:
   # used by JS source extensions — cryptoHandler/decryptAESCryptoJS/unpackJs/...)
   crypto: ^3.0.7
   encrypt: ^5.0.3
+  xml: ^6.6.1
   js_packer: ^0.0.6
 
   # PDF export (chapter images -> PDF) + PDF import (rasterize pages to images
@@ -52,10 +56,8 @@ dependencies:
 
   # WebView (with native cookie extraction for Cloudflare bypass)
   flutter_inappwebview: ^6.0.0
-  webview_windows: ^0.4.0
 
   # UI
-  sizer: ^2.0.15
   google_fonts: ^6.1.0
   cached_network_image: ^3.3.1
 
@@ -105,6 +107,7 @@ dependencies:
   share_plus: ^10.1.4
   gal: ^2.3.1
   sherpa_onnx: ^1.13.8
+  hyphenatorx: ^1.5.11
 
 dev_dependencies:
   flutter_test:
@@ -112,6 +115,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.4.8
   flutter_launcher_icons: ^0.14.3
+  # Component gallery for the design system (run: flutter run -t widgetbook/main.dart).
+  # Dev-only — never shipped in the app build. See widgetbook/README.md.
+  widgetbook: ^3.14.2
 
 flutter_launcher_icons:
   android: true

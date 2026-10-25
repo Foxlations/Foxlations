@@ -17,6 +17,8 @@ class MChapterBridge {
         'url': (visitor, instance) => (instance as MChapter).url,
         'dateUpload': (visitor, instance) => (instance as MChapter).dateUpload,
         'scanlator': (visitor, instance) => (instance as MChapter).scanlator,
+        'chapterNumber': (visitor, instance) =>
+            (instance as MChapter).chapterNumber,
       },
       setters: {
         'name': (visitor, instance, value) =>
@@ -27,6 +29,8 @@ class MChapterBridge {
             (instance as MChapter).dateUpload = value?.toString(),
         'scanlator': (visitor, instance, value) =>
             (instance as MChapter).scanlator = value as String?,
+        'chapterNumber': (visitor, instance, value) =>
+            (instance as MChapter).chapterNumber = (value as num?)?.toDouble(),
       },
     );
   }

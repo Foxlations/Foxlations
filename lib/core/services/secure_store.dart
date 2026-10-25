@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -8,8 +7,8 @@ import 'package:hive/hive.dart';
 
 /// Supplies the AES key used to encrypt Hive boxes that hold credentials.
 ///
-/// The key itself lives in the platform keystore — iOS Keychain, Android
-/// EncryptedSharedPreferences backed by the hardware Keystore — not in the
+/// The key itself lives in the platform keystore - iOS Keychain, Android
+/// EncryptedSharedPreferences backed by the hardware Keystore - not in the
 /// app's data directory. So an attacker who copies the app's files (a rooted
 /// device, an unencrypted backup, a stolen sandbox) gets ciphertext with no key.
 ///
@@ -36,7 +35,7 @@ class SecureStore {
 
   /// Loads the key, generating one on first run.
   ///
-  /// Returns false if the platform keystore can't be reached — some Android
+  /// Returns false if the platform keystore can't be reached - some Android
   /// devices have a broken Keystore, and losing access to it would otherwise
   /// make the app unable to open its own boxes. Callers fall back to an
   /// unencrypted box in that case: degraded, but the alternative is an app that
@@ -65,13 +64,16 @@ class SecureStore {
   static Future<void> writeSecret(String key, String value) async {
     try {
       await _storage.write(key: key, value: value);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[SecureStore] writeSecret($key) failed: $e');
+    }
   }
 
   static Future<String?> readSecret(String key) async {
     try {
       return await _storage.read(key: key);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[SecureStore] readSecret($key) failed: $e');
       return null;
     }
   }
@@ -79,6 +81,8 @@ class SecureStore {
   static Future<void> deleteSecret(String key) async {
     try {
       await _storage.delete(key: key);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[SecureStore] deleteSecret($key) failed: $e');
+    }
   }
 }

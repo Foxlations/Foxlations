@@ -11,6 +11,14 @@ class LibraryChapter extends HiveObject {
   bool isRead;
   int lastPageRead;
   DateTime? readAt;
+  /// When this chapter/episode was genuinely read/watched IN-APP (reaching its
+  /// last page in the reader, finishing the episode in the player, or the end
+  /// of a novel chapter) - as opposed to being marked read manually or in bulk.
+  /// Null for a chapter that was only marked read (or cached before this field
+  /// existed). The gamified stats (chapters read, milestones, personality,
+  /// streak, heatmap) count only chapters with this set, so bulk "mark all"
+  /// no longer inflates them. Library progress/unread badges still use [isRead].
+  DateTime? activeReadAt;
   /// Position in the source's chapter list at cache time. Used by
   /// LibraryService to return cached chapters in the same order the source
   /// originally returned them, instead of Hive's key insertion order.
@@ -28,12 +36,13 @@ class LibraryChapter extends HiveObject {
     this.isRead = false,
     this.lastPageRead = 0,
     this.readAt,
+    this.activeReadAt,
     this.sourceIndex,
   });
 
   String get uniqueKey => '${sourceId}_$chapterUrl';
 
-  /// A detached copy (not bound to any Hive box) — see [LibraryManga.clone].
+  /// A detached copy (not bound to any Hive box) - see [LibraryManga.clone].
   LibraryChapter clone() => LibraryChapter(
         sourceId: sourceId,
         mangaUrl: mangaUrl,
@@ -45,6 +54,7 @@ class LibraryChapter extends HiveObject {
         isRead: isRead,
         lastPageRead: lastPageRead,
         readAt: readAt,
+        activeReadAt: activeReadAt,
         sourceIndex: sourceIndex,
       );
 }
@@ -72,13 +82,14 @@ class LibraryChapterAdapter extends TypeAdapter<LibraryChapter> {
       lastPageRead: fields[8] as int? ?? 0,
       readAt: fields[9] as DateTime?,
       sourceIndex: fields[10] as int?,
+      activeReadAt: fields[11] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, LibraryChapter obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.sourceId)
       ..writeByte(1)
@@ -100,6 +111,8 @@ class LibraryChapterAdapter extends TypeAdapter<LibraryChapter> {
       ..writeByte(9)
       ..write(obj.readAt)
       ..writeByte(10)
-      ..write(obj.sourceIndex);
+      ..write(obj.sourceIndex)
+      ..writeByte(11)
+      ..write(obj.activeReadAt);
   }
 }

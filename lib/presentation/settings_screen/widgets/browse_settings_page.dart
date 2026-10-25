@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../core/services/settings_store.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../presentation/webview_screen/webview_screen.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
+import '../../widgets/ds/ds.dart';
 
 class BrowseSettingsPage extends StatefulWidget {
   const BrowseSettingsPage({super.key});
@@ -53,7 +54,7 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
         ),
         title: Text(
           t.browseTitle,
-          style: GoogleFonts.manrope(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: cs.onSurface,
@@ -62,10 +63,11 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
       ),
       body: ListView(
         padding: EdgeInsets.only(
-            top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
+            top: AppSpacing.sm,
+            bottom: AppSpacing.sm + MediaQuery.viewPaddingOf(context).bottom),
         children: [
-          _SectionHeader(title: t.browseSectionSources),
-          _SwitchTile(
+          AppSettingsSectionHeader(title: t.browseSectionSources),
+          AppSettingsSwitchTile(
             icon: Icons.eighteen_up_rating_rounded,
             iconColor: AppTheme.error,
             title: t.browseShowNsfw,
@@ -73,7 +75,7 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
             value: source.showNsfw,
             onChanged: source.setShowNsfw,
           ),
-          _SwitchTile(
+          AppSettingsSwitchTile(
             icon: Icons.push_pin_rounded,
             iconColor: cs.primary,
             title: t.browsePinnedOnly,
@@ -81,9 +83,9 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
             value: source.pinnedOnlyBrowse,
             onChanged: source.setPinnedOnlyBrowse,
           ),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.browseSectionGlobalSearch),
-          _SwitchTile(
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.browseSectionGlobalSearch),
+          AppSettingsSwitchTile(
             icon: Icons.travel_explore_rounded,
             iconColor: cs.primary,
             title: t.browsePinnedOnly,
@@ -91,9 +93,9 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
             value: source.pinnedOnlyGlobalSearch,
             onChanged: source.setPinnedOnlyGlobalSearch,
           ),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.browseSectionWebView),
-          _SwitchTile(
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.browseSectionWebView),
+          AppSettingsSwitchTile(
             icon: Icons.block_rounded,
             iconColor: AppTheme.warning,
             title: t.browseAdBlocker,
@@ -101,9 +103,9 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
             value: _adBlockEnabled,
             onChanged: _setAdBlock,
           ),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.browseSectionExtensions),
-          _SwitchTile(
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.browseSectionExtensions),
+          AppSettingsSwitchTile(
             icon: Icons.system_update_alt_rounded,
             iconColor: AppTheme.secondary,
             title: t.browseAutoUpdate,
@@ -111,96 +113,7 @@ class _BrowseSettingsPageState extends State<BrowseSettingsPage> {
             value: source.autoUpdateExtensions,
             onChanged: source.setAutoUpdateExtensions,
           ),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(
-        title.toUpperCase(),
-        style: GoogleFonts.manrope(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.0,
-          color: cs.primary,
-        ),
-      ),
-    );
-  }
-}
-
-class _SwitchTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SwitchTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: iconColor.withAlpha(25),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: GoogleFonts.manrope(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurface)),
-                Text(subtitle,
-                    style: GoogleFonts.manrope(
-                        fontSize: 12, color: cs.outline)),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: cs.onPrimary,
-            activeTrackColor: cs.primary,
-          ),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );

@@ -11,7 +11,7 @@ String? safeOrigin(String? url) {
   }
 }
 
-/// The path (+query+fragment) of [url] with any scheme/host dropped — mirrors
+/// The path (+query+fragment) of [url] with any scheme/host dropped - mirrors
 /// Tachiyomi/Mihon's `getUrlWithoutDomain`. A relative url returns its own path.
 String urlWithoutDomain(String url) {
   try {
@@ -26,7 +26,7 @@ String urlWithoutDomain(String url) {
 }
 
 /// Re-home an item [url] onto [base]: strip any domain off [url] and append its
-/// path to the source's CURRENT base URL — the way Mihon/Mangayomi build the
+/// path to the source's CURRENT base URL - the way Mihon/Mangayomi build the
 /// "Open in browser" URL. Robust to absolute-vs-relative storage and to a source
 /// whose domain changed since the item was saved.
 String rehomeUrl(String base, String url) {

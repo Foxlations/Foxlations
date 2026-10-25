@@ -57,7 +57,7 @@ class _MangaImageState extends State<MangaImage>
   Uint8List? _bytes;
   bool _loading = true;
   bool _error = false;
-  bool _noImage = false; // blank imageUrl — show a placeholder, not the retry state
+  bool _noImage = false; // blank imageUrl - show a placeholder, not the retry state
 
   // Keep alive so ListView doesn't destroy/rebuild during scroll
   @override
@@ -73,7 +73,7 @@ class _MangaImageState extends State<MangaImage>
   void didUpdateWidget(MangaImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imageUrl != widget.imageUrl) {
-      // Drop the previous image immediately — otherwise gaplessPlayback keeps
+      // Drop the previous image immediately - otherwise gaplessPlayback keeps
       // showing the OLD cover until the new one loads, which (when a widget is
       // reused for a different title) reads as a cover "duping" onto neighbours.
       _bytes = null;
@@ -86,7 +86,7 @@ class _MangaImageState extends State<MangaImage>
   Future<void> _loadImage() async {
     _noImage = false;
     if (widget.imageUrl.isEmpty) {
-      // Blank cover — common for anime sources that only fill the cover on the detail
+      // Blank cover - common for anime sources that only fill the cover on the detail
       // page. Show a neutral "no cover" placeholder, not the retry/error state (there's
       // no URL to retry, and a grid full of Retry buttons looks broken).
       if (mounted) setState(() { _loading = false; _error = false; _noImage = true; });
@@ -114,7 +114,7 @@ class _MangaImageState extends State<MangaImage>
     }
 
     // Build referer: if explicitly provided, use as-is (source knows best).
-    // If falling back to imageUrl, add www. — many CDNs require it.
+    // If falling back to imageUrl, add www. - many CDNs require it.
     var referer = widget.referer ?? widget.imageUrl;
     if (widget.referer == null) {
       final uri = Uri.tryParse(referer);
@@ -194,10 +194,10 @@ class _MangaImageState extends State<MangaImage>
     }
     final displayBytes = widget.translatedBytes ?? _bytes!;
 
-    // Decode covers at their DISPLAY size, not full resolution — a ~1400px cover
+    // Decode covers at their DISPLAY size, not full resolution - a ~1400px cover
     // decoded full-size is ~11 MB of ARGB for a thumbnail a couple hundred px
     // wide; a grid of them blows the image cache and thrashes decode on scroll.
-    final dpr = MediaQuery.of(context).devicePixelRatio;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
     final width = widget.width;
 
     Widget buildImage(int? cacheWidth) => Image.memory(
@@ -207,7 +207,7 @@ class _MangaImageState extends State<MangaImage>
           height: widget.height,
           cacheWidth: cacheWidth,
           gaplessPlayback: true, // Prevents flicker during rebuild
-          errorBuilder: (_, __, ___) =>
+          errorBuilder: (_, _, _) =>
               widget.errorWidget ?? _defaultError(context),
         );
 
@@ -233,7 +233,7 @@ class _MangaImageState extends State<MangaImage>
 
   void _retry() {
     if (!mounted) return;
-    // A user-initiated Retry should genuinely re-request — clear any session
+    // A user-initiated Retry should genuinely re-request - clear any session
     // block on this image's domain (e.g. from an earlier 403) so it isn't a
     // no-op, and so it picks up a Cloudflare clearance solved since.
     ImageLoader().unblockDomainFor(widget.imageUrl);
@@ -244,7 +244,7 @@ class _MangaImageState extends State<MangaImage>
     _loadImage();
   }
 
-  /// Shown when the source gave no cover URL — neutral, not a failed-load/retry state.
+  /// Shown when the source gave no cover URL - neutral, not a failed-load/retry state.
   Widget _noCover(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Container(
@@ -259,11 +259,16 @@ class _MangaImageState extends State<MangaImage>
   }
 
   Widget _defaultPlaceholder(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    // Static tinted tile (matches the empty-cover placeholder) instead of a
+    // spinner - a grid full of spinning rings during a library update looked
+    // busy; covers now just fade in when ready.
     return Container(
       width: widget.width,
       height: widget.height,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      alignment: Alignment.center,
+      color: cs.surfaceContainerHighest,
+      child: Icon(Icons.image_rounded, color: cs.outlineVariant, size: 26),
     );
   }
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/providers/tracking_provider.dart';
@@ -7,6 +6,7 @@ import '../../../core/tracking/tracker.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
 import '../../tracking/tracker_oauth_screen.dart';
+import '../../widgets/ds/ds.dart';
 
 class TrackingSettingsPage extends StatelessWidget {
   const TrackingSettingsPage({super.key});
@@ -26,16 +26,16 @@ class TrackingSettingsPage extends StatelessWidget {
                 color: cs.onSurface, size: 20),
             onPressed: () => Navigator.pop(context)),
         title: Text(t.trackTitle,
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface)),
       ),
       body: ListView(
         padding: EdgeInsets.only(
-            top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
+            top: 8, bottom: 8 + MediaQuery.viewPaddingOf(context).bottom),
         children: [
-          _SectionHeader(title: t.trackServices),
+          AppSettingsSectionHeader(title: t.trackServices),
           for (final t in tracking.trackers) _TrackerTile(tracker: t),
           const SizedBox(height: 16),
           Padding(
@@ -43,8 +43,8 @@ class TrackingSettingsPage extends StatelessWidget {
             child: Text(
               t.trackServicesDescription,
               textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(
-                  fontSize: 12, color: cs.outline, height: 1.5),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.outline, height: 1.5),
             ),
           ),
           const SizedBox(height: 24),
@@ -174,7 +174,8 @@ class _TrackerTile extends StatelessWidget {
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(
             t.trackClientIdDescription(tracker.name),
-            style: GoogleFonts.manrope(fontSize: 12),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w400),
           ),
           const SizedBox(height: 10),
           TextField(
@@ -248,16 +249,15 @@ class _TrackerTile extends StatelessWidget {
         Container(
           width: 44,
           height: 44,
-          decoration: BoxDecoration(
-              color: color.withAlpha(25),
-              borderRadius: BorderRadius.circular(12)),
+          decoration: oledIconChip(context,
+              color: color, fill: color.withAlpha(25)),
           child: Icon(_icon, color: color, size: 22),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(tracker.name,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: cs.onSurface)),
@@ -270,8 +270,7 @@ class _TrackerTile extends StatelessWidget {
                   : (tracker.authType == TrackerAuthType.oauth
                       ? t.trackTapConnectToAuthorize
                       : t.trackSignInWithAccount),
-              style: GoogleFonts.manrope(
-                  fontSize: 12,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: connected ? AppTheme.success : cs.outline),
             ),
           ]),
@@ -298,8 +297,7 @@ class _TrackerTile extends StatelessWidget {
                   color: connected ? AppTheme.error : cs.primary, width: 1),
             ),
             child: Text(connected ? t.trackDisconnect : t.trackConnect,
-                style: GoogleFonts.manrope(
-                    fontSize: 12,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: connected ? AppTheme.error : cs.primary)),
           ),
@@ -309,20 +307,3 @@ class _TrackerTile extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(title.toUpperCase(),
-          style: GoogleFonts.manrope(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
-              color: cs.primary)),
-    );
-  }
-}

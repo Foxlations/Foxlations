@@ -9,13 +9,13 @@ import 'package:hive/hive.dart';
 ///
 /// Replaces a 32-bit FNV checksum that was previously used as a "password
 /// hash". That scheme was unsalted, instant to compute and trivially collided,
-/// and — more importantly — the vault's data boxes were stored in plaintext
+/// and - more importantly - the vault's data boxes were stored in plaintext
 /// regardless, so anyone with the Hive files could read everything without
 /// knowing the password at all.
 ///
 /// Now: PBKDF2-HMAC-SHA256 derives a 256-bit key from the password and a random
 /// per-install salt; that key encrypts the vault's Hive boxes via
-/// [HiveAesCipher]. The key is never stored — only a hash of it, so verifying a
+/// [HiveAesCipher]. The key is never stored - only a hash of it, so verifying a
 /// password doesn't reveal the key, and without the password the boxes cannot
 /// be opened at all.
 class VaultCrypto {

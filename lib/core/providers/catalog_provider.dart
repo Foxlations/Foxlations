@@ -35,15 +35,24 @@ class CatalogProvider extends ChangeNotifier {
   /// Video sources show a "Categories" tab (in place of "Latest").
   bool get showCategoriesTab => source.isAnime;
 
+  // This provider is created per source-catalog screen and auto-disposed when
+  // that screen pops. Loads can finish after that (a slow source + a quick
+  // back), so notifies go through _safeNotify to avoid notifying a dead notifier.
+  bool _disposed = false;
+
   CatalogProvider(this._installedSource) {
     _service = getExtensionService(
         _installedSource.source, _installedSource.sourceCode);
   }
 
+  void _safeNotify() {
+    if (!_disposed) notifyListeners();
+  }
+
   MangaSource get source => _installedSource.source;
   CatalogTab get currentTab => _currentTab;
 
-  // Whether this source exposes a "Latest" listing. Cached — the first read can
+  // Whether this source exposes a "Latest" listing. Cached - the first read can
   // initialize the extension runtime. Drives which browse tabs are shown.
   bool? _supportsLatestCache;
   bool get supportsLatest {
@@ -63,7 +72,7 @@ class CatalogProvider extends ChangeNotifier {
 
   void setTab(CatalogTab tab) {
     _currentTab = tab;
-    notifyListeners();
+    _safeNotify();
     if (tab == CatalogTab.categories) {
       ensureCategories();
       return;
@@ -78,7 +87,7 @@ class CatalogProvider extends ChangeNotifier {
     if (_categoriesRequested) return;
     _categoriesRequested = true;
     _isLoading[CatalogTab.categories] = true;
-    notifyListeners();
+    _safeNotify();
     try {
       _categories = await _service?.getCategories() ?? [];
     } catch (e, s) {
@@ -87,24 +96,24 @@ class CatalogProvider extends ChangeNotifier {
           category: LogCategory.extension, detail: '$e\n$s');
     }
     _isLoading[CatalogTab.categories] = false;
-    notifyListeners();
+    _safeNotify();
   }
 
-  /// Drill into a category — its videos load under the Categories tab.
+  /// Drill into a category - its videos load under the Categories tab.
   Future<void> selectCategory(Map<String, String> category) async {
     _selectedCategory = category;
     _manga[CatalogTab.categories] = [];
     _currentPage[CatalogTab.categories] = 0;
     _hasNextPage[CatalogTab.categories] = true;
     _error = null;
-    notifyListeners();
+    _safeNotify();
     await loadMore();
   }
 
   /// Back out of a category to the category list.
   void clearCategory() {
     _selectedCategory = null;
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> loadMore() async {
@@ -120,7 +129,7 @@ class CatalogProvider extends ChangeNotifier {
 
     _isLoading[_currentTab] = true;
     _error = null;
-    notifyListeners();
+    _safeNotify();
 
     try {
       final page = (_currentPage[_currentTab] ?? 0) + 1;
@@ -161,7 +170,7 @@ class CatalogProvider extends ChangeNotifier {
     }
 
     _isLoading[_currentTab] = false;
-    notifyListeners();
+    _safeNotify();
   }
 
   Future<void> search(String query) async {
@@ -170,7 +179,7 @@ class CatalogProvider extends ChangeNotifier {
     _currentPage[CatalogTab.search] = 0;
     _hasNextPage[CatalogTab.search] = true;
     _currentTab = CatalogTab.search;
-    notifyListeners();
+    _safeNotify();
     await loadMore();
   }
 
@@ -178,12 +187,13 @@ class CatalogProvider extends ChangeNotifier {
     _manga[_currentTab] = [];
     _currentPage[_currentTab] = 0;
     _hasNextPage[_currentTab] = true;
-    notifyListeners();
+    _safeNotify();
     await loadMore();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _service?.dispose();
     super.dispose();
   }

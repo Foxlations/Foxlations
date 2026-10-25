@@ -4,11 +4,18 @@ class MChapter {
   String? dateUpload;
   String? scanlator;
 
+  /// Source-provided chapter number, when the extension supplies one (LNReader
+  /// plugins and Tachiyomi/Aniyomi `SChapter.chapter_number`). This is the
+  /// RELIABLE reading-sequence key the readers order by - far more trustworthy
+  /// than parsing it out of the name/url. Null when the source doesn't give one.
+  double? chapterNumber;
+
   MChapter({
     this.name,
     this.url,
     this.dateUpload,
     this.scanlator,
+    this.chapterNumber,
   });
 
   factory MChapter.fromJson(Map<String, dynamic> json) {
@@ -17,6 +24,7 @@ class MChapter {
       url: json['url'] as String?,
       dateUpload: json['dateUpload']?.toString(),
       scanlator: json['scanlator'] as String?,
+      chapterNumber: (json['chapterNumber'] as num?)?.toDouble(),
     );
   }
 
@@ -25,5 +33,6 @@ class MChapter {
         'url': url,
         'dateUpload': dateUpload,
         'scanlator': scanlator,
+        'chapterNumber': chapterNumber,
       };
 }

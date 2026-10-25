@@ -10,7 +10,7 @@ import '../widgets/manga_image.dart';
 import '../widgets/type_toggle.dart';
 import 'wishlist_page.dart';
 
-/// The Discover tab — a recommendation deck. One card at a time; Next pulls a
+/// The Discover tab - a recommendation deck. One card at a time; Next pulls a
 /// fresh pick. Add to Library when an installed source carries it, otherwise
 /// Save for later. Feeds are per content type (Manga / Anime / Novels).
 class DiscoverScreen extends StatelessWidget {
@@ -30,7 +30,7 @@ class DiscoverScreen extends StatelessWidget {
         title: Text(t.discoverTitle,
             style: const TextStyle(fontWeight: FontWeight.w800)),
         actions: [
-          // Tracker switcher — only when there's a real choice (a second source
+          // Tracker switcher - only when there's a real choice (a second source
           // beyond the always-on public AniList, i.e. the user signed in).
           if (d.canSwitchSource)
             PopupMenuButton<String>(
@@ -247,13 +247,14 @@ class _GenreBarState extends State<_GenreBar> {
   }
 
   Widget _collapsedLabel(ColorScheme cs, int count) {
+    final t = AppLocalizations.of(context);
     return GestureDetector(
       key: const ValueKey('closed'),
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _open = true),
       child: Row(
         children: [
-          Text('Genres',
+          Text(t.discoverGenres,
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -277,10 +278,9 @@ class _GenreBarState extends State<_GenreBar> {
   }
 
   Widget _chips(ColorScheme cs, DiscoverProvider provider) {
-    return ListView(
-      key: const ValueKey('open'),
+    final list = ListView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.only(left: 2, right: 10),
       children: [
         for (final g in provider.availableGenres) ...[
           _chip(cs, g, provider.genreFilter.contains(g),
@@ -303,6 +303,24 @@ class _GenreBarState extends State<_GenreBar> {
             ),
           ),
       ],
+    );
+    // Fade the chips out at both ends instead of hard-cutting them against the
+    // capsule's rounded edges as they scroll.
+    return ShaderMask(
+      key: const ValueKey('open'),
+      shaderCallback: (rect) => const LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          Colors.transparent,
+          Colors.black,
+          Colors.black,
+          Colors.transparent
+        ],
+        stops: [0.0, 0.04, 0.95, 1.0],
+      ).createShader(rect),
+      blendMode: BlendMode.dstIn,
+      child: list,
     );
   }
 

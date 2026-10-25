@@ -4,8 +4,8 @@ import 'package:path_provider/path_provider.dart';
 
 import 'app_logger.dart';
 
-/// Surfaces crashes that happen OUTSIDE Dart — chiefly the embedded JVM aborting
-/// natively — into the in-app error log, so they don't require digging through the
+/// Surfaces crashes that happen OUTSIDE Dart - chiefly the embedded JVM aborting
+/// natively - into the in-app error log, so they don't require digging through the
 /// OS crash reports. The JVM writes `hs_err_<pid>.log` (its fatal-error report) and
 /// mirrors stderr to `jvm_stderr.txt` in the app documents dir; a native abort kills
 /// the process before Dart can log anything, so we detect and report on the NEXT
@@ -27,7 +27,7 @@ class CrashReporter {
         }
       }
 
-      // stderr capture — holds the fatal report even when hs_err wasn't produced.
+      // stderr capture - holds the fatal report even when hs_err wasn't produced.
       final stderr = File('${dir.path}${Platform.pathSeparator}jvm_stderr.txt');
       if (await stderr.exists()) {
         final text = await stderr.readAsString();

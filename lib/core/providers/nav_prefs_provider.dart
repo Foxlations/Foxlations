@@ -6,6 +6,7 @@ import '../services/settings_store.dart';
 /// position), so the app's per-tab behaviour survives any reordering.
 class NavPrefsProvider extends ChangeNotifier {
   static const _key = 'nav_tab_order';
+  static const _startKey = 'nav_start_tab';
 
   /// All tab ids, in their default order. `more` opens Settings; the other four
   /// are the IndexedStack screens.
@@ -20,19 +21,28 @@ class NavPrefsProvider extends ChangeNotifier {
   List<String> _order = List.of(canonical);
   List<String> get order => _order;
 
+  /// Which tab the app opens on at launch. Any of [canonical] - `more` opens
+  /// Settings over the Library screen. Defaults to Library.
+  String _startTabId = 'library';
+  String get startTabId => _startTabId;
+
   Future<void> initialize() async {
     try {
       final saved = SettingsStore.instance.getStringList(_key);
       if (saved != null && _isValid(saved)) {
         _order = saved;
-        notifyListeners();
       }
+      final start = SettingsStore.instance.getString(_startKey);
+      if (start != null && canonical.contains(start)) {
+        _startTabId = start;
+      }
+      notifyListeners();
     } catch (_) {
-      // Keep the default order.
+      // Keep the defaults.
     }
   }
 
-  // A saved order is only trusted if it's exactly the known set of ids — this
+  // A saved order is only trusted if it's exactly the known set of ids - this
   // self-heals if tabs are added/removed in a future version.
   bool _isValid(List<String> o) =>
       o.length == canonical.length && canonical.every(o.contains);
@@ -47,4 +57,13 @@ class NavPrefsProvider extends ChangeNotifier {
   }
 
   Future<void> reset() => setOrder(List.of(canonical));
+
+  Future<void> setStartTab(String id) async {
+    if (!canonical.contains(id) || id == _startTabId) return;
+    _startTabId = id;
+    notifyListeners();
+    try {
+      await SettingsStore.instance.setString(_startKey, id);
+    } catch (_) {}
+  }
 }

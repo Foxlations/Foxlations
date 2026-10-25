@@ -8,7 +8,7 @@ import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/manga_image.dart';
 
-/// "Saved for later" — recommendations kept until an installed source carries
+/// "Saved for later" - recommendations kept until an installed source carries
 /// them. Tap an entry to search your sources; if one is found it moves into the
 /// library. Swipe to remove.
 class WishlistPage extends StatefulWidget {
@@ -116,6 +116,13 @@ class _WishlistPageState extends State<WishlistPage> {
                     entry: entry,
                     busy: busy,
                     onFindSource: () => _findSource(entry),
+                    onRemove: () {
+                      d.removeFromWishlist(entry.uniqueKey);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(t.discoverRemovedFromWishlist),
+                        duration: const Duration(seconds: 2),
+                      ));
+                    },
                   ),
                 );
               },
@@ -128,8 +135,12 @@ class _WishlistTile extends StatelessWidget {
   final LibraryManga entry;
   final bool busy;
   final VoidCallback onFindSource;
+  final VoidCallback onRemove;
   const _WishlistTile(
-      {required this.entry, required this.busy, required this.onFindSource});
+      {required this.entry,
+      required this.busy,
+      required this.onFindSource,
+      required this.onRemove});
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +194,15 @@ class _WishlistTile extends StatelessWidget {
                       onPressed: onFindSource,
                       child: Text(t.discoverFindSource),
                     ),
+              IconButton(
+                onPressed: onRemove,
+                icon: Icon(Icons.bookmark_remove_rounded,
+                    size: 20, color: cs.outline),
+                tooltip: t.discoverRemove,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.all(6),
+                constraints: const BoxConstraints(),
+              ),
             ],
           ),
         ),

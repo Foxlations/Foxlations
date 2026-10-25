@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -118,7 +119,26 @@ class AppLogger {
             .map((e) => LogEntry.fromJson(Map<String, dynamic>.from(e as Map)))
             .toList();
       }
-    } catch (_) {}
+    } catch (e) {
+      // The logger can't log its own failure; a console signal is the best we
+      // can do so a corrupt/unreadable log store isn't completely silent.
+      debugPrint('[AppLogger] load failed: $e');
+    }
+  }
+
+  Timer? _persistTimer;
+
+  /// Coalesce persistence. A burst of log lines (a source survey, a library
+  /// update) would otherwise jsonEncode the whole ~500-entry blob and rewrite it
+  /// to SharedPreferences on EVERY line - a disk-I/O storm. Debounce to one
+  /// write ~1s after the last log; the in-memory list (what the UI reads) is
+  /// always current, so only the on-disk copy lags, and only by a second.
+  void _schedulePersist() {
+    _persistTimer?.cancel();
+    _persistTimer = Timer(const Duration(seconds: 1), () {
+      _persistTimer = null;
+      _persist();
+    });
   }
 
   Future<void> _persist() async {
@@ -127,7 +147,9 @@ class AppLogger {
       final entries = logsNotifier.value;
       await prefs.setString(
           _prefsKey, jsonEncode(entries.map((e) => e.toJson()).toList()));
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[AppLogger] persist failed: $e');
+    }
   }
 
   /// "Verbose logging" (Advanced settings, off by default). When off, debug-level
@@ -166,7 +188,7 @@ class AppLogger {
       updated.removeRange(0, updated.length - _maxEntries);
     }
     logsNotifier.value = updated;
-    await _persist();
+    _schedulePersist();
   }
 
   Future<void> debug(String message,

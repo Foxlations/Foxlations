@@ -52,9 +52,9 @@ class AppRelease {
 /// Checks whether a newer build has been published.
 ///
 /// Platform split is deliberate:
-///  * **Android** — sideloaded APKs have no store to update them, so the app
+///  * **Android** - sideloaded APKs have no store to update them, so the app
 ///    points the user straight at the new APK.
-///  * **iOS** — AltStore/SideStore already poll the source manifest and handle
+///  * **iOS** - AltStore/SideStore already poll the source manifest and handle
 ///    updating, so the app only needs to *tell* the user one exists; offering a
 ///    download would be a dead end, since iOS can't install an IPA from a
 ///    browser.
@@ -67,7 +67,7 @@ class UpdateService {
   static const _lastCheckKey = 'update_last_check_ms';
 
   /// Returns the published release when it is newer than what's running,
-  /// otherwise null. Never throws — a failed check must not disrupt startup.
+  /// otherwise null. Never throws - a failed check must not disrupt startup.
   static Future<AppRelease?> check({bool force = false}) async {
     try {
       if (!force && !await _dueForCheck()) return null;

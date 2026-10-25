@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/models/source_model.dart';
 import '../../../core/providers/source_provider.dart';
@@ -90,19 +89,21 @@ class BrowseSourceDetailSheet extends StatelessWidget {
                       children: [
                         Text(
                           source.name,
-                          style: GoogleFonts.manrope(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: cs.onSurface,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: cs.onSurface,
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${source.lang.toUpperCase()} • v${source.version}',
-                          style: GoogleFonts.manrope(
-                            fontSize: 12,
-                            color: cs.outline,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: cs.outline),
                         ),
                         if (isInstalled) ...[
                           const SizedBox(height: 6),
@@ -118,11 +119,13 @@ class BrowseSourceDetailSheet extends StatelessWidget {
                             ),
                             child: Text(
                               t.browseInstalledBadge,
-                              style: GoogleFonts.manrope(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.success,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.success,
+                                  ),
                             ),
                           ),
                         ],
@@ -160,12 +163,11 @@ class BrowseSourceDetailSheet extends StatelessWidget {
               // About section
               Text(
                 t.browseAbout,
-                style: GoogleFonts.manrope(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: cs.outline,
-                  letterSpacing: 0.8,
-                ),
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: cs.outline,
+                      letterSpacing: 0.8,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -173,11 +175,10 @@ class BrowseSourceDetailSheet extends StatelessWidget {
                 '${t.browseLanguageLabel(source.sourceCodeLanguage.toUpperCase())}\n'
                 '${source.hasCloudflare ? t.browseUsesCloudflare : t.browseNoCloudflare}\n'
                 '${source.isNsfw ? t.browseAdultContent : t.browseSafeForWork}',
-                style: GoogleFonts.manrope(
-                  fontSize: 13,
-                  color: cs.onSurface,
-                  height: 1.6,
-                ),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: cs.onSurface,
+                      height: 1.6,
+                    ),
               ),
 
               const SizedBox(height: 24),
@@ -185,12 +186,11 @@ class BrowseSourceDetailSheet extends StatelessWidget {
               // Features section
               Text(
                 t.browseFeatures,
-                style: GoogleFonts.manrope(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: cs.outline,
-                  letterSpacing: 0.8,
-                ),
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: cs.outline,
+                      letterSpacing: 0.8,
+                    ),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -286,11 +286,10 @@ class _StatChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: GoogleFonts.manrope(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
           ),
         ],
       ),
@@ -321,11 +320,9 @@ class _FeaturePill extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: GoogleFonts.manrope(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: color,
-        ),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: color,
+            ),
       ),
     );
   }
@@ -436,11 +433,10 @@ class _UpdateButtonState extends State<_UpdateButton> {
             : Icon(Icons.refresh_rounded, size: 18, color: cs.primary),
         label: Text(
           _loading ? t.browseUpdating : t.browseUpdateExtensionCode,
-          style: GoogleFonts.manrope(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: cs.primary,
-          ),
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: cs.primary,
+              ),
         ),
         style: TextButton.styleFrom(
           minimumSize: const Size(0, 40),

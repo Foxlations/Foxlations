@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' show Size;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:path_provider/path_provider.dart';
@@ -9,6 +10,30 @@ import 'image_loader.dart';
 
 /// Global WebViewEnvironment for Windows (must be initialized before use).
 WebViewEnvironment? webViewEnvironment;
+
+/// Shared Cloudflare-challenge page detection: true if the page currently loaded
+/// in [c] is a CF interstitial, by its title or its challenge DOM elements. Used
+/// by both the headless solver here and the interactive CfChallengeScreen so the
+/// heuristic lives in one place.
+Future<bool> isCloudflareChallengePage(InAppWebViewController c) async {
+  try {
+    final title =
+        (await c.evaluateJavascript(source: 'document.title'))?.toString().toLowerCase() ?? '';
+    if (title.contains('just a moment') ||
+        title.contains('checking your browser') ||
+        title.contains('please wait')) {
+      return true;
+    }
+    final hasEl = await c.evaluateJavascript(
+        source: "!!(document.getElementById('challenge-form') || "
+            "document.getElementById('cf-please-wait') || "
+            "document.querySelector('#challenge-stage') || "
+            "document.querySelector('[class*=\"cf-\"]'))");
+    return hasEl == true;
+  } catch (_) {
+    return false;
+  }
+}
 
 /// Initialize WebViewEnvironment for Windows desktop.
 /// Call this once from main() before runApp().
@@ -48,7 +73,7 @@ class WebViewService {
 
   // Bumped to abort in-flight Cloudflare solves. Each running resolveCloudflare
   // captures the value at start and bails (stops polling, disposes its headless
-  // WebView) the moment it changes — e.g. the user backed out of global search
+  // WebView) the moment it changes - e.g. the user backed out of global search
   // while a batch of sources were still churning through CF challenges.
   int _cancelGeneration = 0;
 
@@ -91,6 +116,9 @@ class WebViewService {
 
     try {
       headlessWebView = HeadlessInAppWebView(
+        // 0×0 so iOS never flashes the WKWebView full-screen (the blank grey
+        // overlay) while it solves/loads in the background.
+        initialSize: const Size(0, 0),
         webViewEnvironment: webViewEnvironment,
         initialUrlRequest: URLRequest(url: WebUri(url)),
         initialSettings: InAppWebViewSettings(
@@ -101,40 +129,13 @@ class WebViewService {
           sharedCookiesEnabled: true,
         ),
         onLoadStop: (controller, loadedUrl) async {
-          // Check if still on Cloudflare challenge page.
-          // CF challenge pages have title "Just a moment..." or similar.
-          Future<bool> isCfChallenge() async {
-            try {
-              final title = await controller.evaluateJavascript(
-                    source: "document.title",
-                  ) ??
-                  '';
-              final titleStr = title.toString().toLowerCase();
-              if (titleStr.contains('just a moment') ||
-                  titleStr.contains('checking your browser') ||
-                  titleStr.contains('please wait')) {
-                return true;
-              }
-              // Also check for CF challenge elements
-              final hasCfEl = await controller.evaluateJavascript(
-                    source:
-                        "!!(document.getElementById('challenge-form') || "
-                        "document.getElementById('cf-please-wait') || "
-                        "document.querySelector('[class*=\"cf-\"]'))",
-                  ) ??
-                  false;
-              return hasCfEl == true;
-            } catch (_) {
-              return false;
-            }
-          }
-
-          isCloudflare = await isCfChallenge();
+          // Check if still on a Cloudflare challenge page (shared heuristic).
+          isCloudflare = await isCloudflareChallengePage(controller);
 
           // Poll until challenge is resolved (or cancelled / timed out)
           while (isCloudflare && !timedOut && !cancelled()) {
             await Future.delayed(const Duration(milliseconds: 500));
-            isCloudflare = await isCfChallenge();
+            isCloudflare = await isCloudflareChallengePage(controller);
           }
 
           if (!timedOut && !cancelled() && !isCloudflare) {
@@ -144,7 +145,7 @@ class WebViewService {
                 '';
             await _extractAndStoreCookies(
                 loadedUrl?.toString() ?? url, ua, controller);
-            // Store the WebView's User-Agent — Cloudflare requires matching UA
+            // Store the WebView's User-Agent - Cloudflare requires matching UA
             if (ua is String && ua.isNotEmpty) {
               await CookieStore().setUserAgent(ua);
             }
@@ -336,6 +337,7 @@ class WebViewService {
 
     try {
       webView = HeadlessInAppWebView(
+        initialSize: const Size(0, 0),
         webViewEnvironment: webViewEnvironment,
         initialUrlRequest: URLRequest(url: WebUri(url)),
         initialSettings: InAppWebViewSettings(
@@ -459,6 +461,7 @@ class WebViewService {
           captureJs.replaceAll('__PATJSON__', jsonEncode(pattern));
 
       webView = HeadlessInAppWebView(
+        initialSize: const Size(0, 0),
         webViewEnvironment: webViewEnvironment,
         initialUrlRequest: URLRequest(url: WebUri(url)),
         initialSettings: InAppWebViewSettings(
@@ -468,7 +471,7 @@ class WebViewService {
         ),
         onWebViewCreated: (controller) {
           // Inject into ALL frames (including iframes) as early as possible.
-          // Many video players embed in an iframe — forMainFrameOnly: false ensures
+          // Many video players embed in an iframe - forMainFrameOnly: false ensures
           // the XHR/fetch intercept fires inside the player iframe too.
           controller.addUserScript(userScript: UserScript(
             source: jsToInject,

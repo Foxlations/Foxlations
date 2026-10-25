@@ -30,7 +30,7 @@ class LibraryManga extends HiveObject {
   // stays as manga's page index AND that legacy fallback.
 
   /// 'manga' | 'anime' | 'novel'. The durable per-entry type, set when the entry
-  /// is added to the library. Null on pre-migration records — resolve from the
+  /// is added to the library. Null on pre-migration records - resolve from the
   /// source's itemType when null (see [LibraryManga] callers / contentTypeOr).
   String? contentType;
 
@@ -44,7 +44,7 @@ class LibraryManga extends HiveObject {
   /// about the layout changed.
   int novelProgressOffset;
 
-  /// Novel: 0.0–1.0 fraction through the chapter — reflow-safe resume that
+  /// Novel: 0.0-1.0 fraction through the chapter - reflow-safe resume that
   /// survives font-size / reader-width changes (offset alone drifts when the
   /// text reflows).
   double novelProgressFraction;
@@ -53,6 +53,12 @@ class LibraryManga extends HiveObject {
   /// getDetail so a cold-start "Open in WebView" is instant instead of waiting
   /// for the embedded JVM to boot + re-resolve it (see MManga.webUrl).
   String? webUrl;
+
+  /// Cumulative ACTIVE time read/watched for this entry, in whole seconds.
+  /// Seeded once from chapters-read × a per-type estimate (historical), then
+  /// accumulated live by the reader/player while actively reading. Drives the
+  /// Reading Insights total-time + per-title breakdown.
+  int timeSpentSeconds;
 
   LibraryManga({
     required this.sourceId,
@@ -77,6 +83,7 @@ class LibraryManga extends HiveObject {
     this.novelProgressOffset = 0,
     this.novelProgressFraction = 0.0,
     this.webUrl,
+    this.timeSpentSeconds = 0,
   }) : addedAt = addedAt ?? DateTime.now();
 
   String get uniqueKey => '${sourceId}_$url';
@@ -119,6 +126,8 @@ class LibraryManga extends HiveObject {
         totalSeconds: totalSeconds,
         novelProgressOffset: novelProgressOffset,
         novelProgressFraction: novelProgressFraction,
+        webUrl: webUrl,
+        timeSpentSeconds: timeSpentSeconds,
       );
 }
 
@@ -149,7 +158,7 @@ class LibraryMangaAdapter extends TypeAdapter<LibraryManga> {
       totalChapters: fields[12] as int? ?? 0,
       readChapters: fields[13] as int? ?? 0,
       categories: (fields[14] as List?)?.cast<String>() ?? [],
-      // Field 15 was added later — absent on older records, hence null-safe.
+      // Field 15 was added later - absent on older records, hence null-safe.
       lastChapterFetchAt: fields[15] as DateTime?,
       // Fields 16-20: content-type split (post-v1). Absent on older records.
       contentType: fields[16] as String?,
@@ -157,15 +166,17 @@ class LibraryMangaAdapter extends TypeAdapter<LibraryManga> {
       totalSeconds: fields[18] as int? ?? 0,
       novelProgressOffset: fields[19] as int? ?? 0,
       novelProgressFraction: (fields[20] as num?)?.toDouble() ?? 0.0,
-      // Field 21 — cached browsable URL (post-1.2). Absent on older records.
+      // Field 21 - cached browsable URL (post-1.2). Absent on older records.
       webUrl: fields[21] as String?,
+      // Field 22 - cumulative read/watch seconds (Reading Insights). Absent on older records.
+      timeSpentSeconds: fields[22] as int? ?? 0,
     );
   }
 
   @override
   void write(BinaryWriter writer, LibraryManga obj) {
     writer
-      ..writeByte(22)
+      ..writeByte(23)
       ..writeByte(0)
       ..write(obj.sourceId)
       ..writeByte(1)
@@ -209,6 +220,8 @@ class LibraryMangaAdapter extends TypeAdapter<LibraryManga> {
       ..writeByte(20)
       ..write(obj.novelProgressFraction)
       ..writeByte(21)
-      ..write(obj.webUrl);
+      ..write(obj.webUrl)
+      ..writeByte(22)
+      ..write(obj.timeSpentSeconds);
   }
 }

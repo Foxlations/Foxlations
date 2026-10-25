@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'tracker.dart';
 import 'tracker_models.dart';
 
-/// Kitsu (kitsu.io) — OAuth password grant, so it needs no app registration:
+/// Kitsu (kitsu.io) - OAuth password grant, so it needs no app registration:
 /// the user just enters their Kitsu email + password.
 class KitsuTracker extends Tracker {
   static const _oauth = 'https://kitsu.io/api/oauth/token';

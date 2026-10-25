@@ -31,7 +31,7 @@ Uint8List? cropImageBorders(Uint8List bytes) {
   bool isBorder(img.Pixel p) =>
       (p.r - br).abs() < tol && (p.g - bg).abs() < tol && (p.b - bb).abs() < tol;
 
-  // Subsample across the scan line — full per-pixel scans are needlessly heavy.
+  // Subsample across the scan line - full per-pixel scans are needlessly heavy.
   final stepX = (w / 180).ceil().clamp(1, 20);
   final stepY = (h / 180).ceil().clamp(1, 20);
 

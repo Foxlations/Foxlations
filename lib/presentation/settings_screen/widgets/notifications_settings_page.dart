@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/settings_store.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
+import '../../widgets/ds/ds.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// Notification preference keys. Delivered via [NotificationService]
@@ -79,105 +80,64 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context)),
         title: Text(t.setxNotifTitle,
-            style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: ListView(
         padding: EdgeInsets.only(
-            top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
+            top: AppSpacing.sm,
+            bottom: AppSpacing.sm + MediaQuery.viewPaddingOf(context).bottom),
         children: [
-          _SectionHeader(title: t.setxNotifSectionChapterUpdates),
-          _SwitchTile(icon: Icons.new_releases_rounded, iconColor: cs.primary,
+          AppSettingsSectionHeader(title: t.setxNotifSectionChapterUpdates),
+          AppSettingsSwitchTile(icon: Icons.new_releases_rounded, iconColor: cs.primary,
               title: t.setxNotifNewChaptersTitle, subtitle: t.setxNotifNewChaptersSubtitle,
               value: _newChapters, onChanged: (v) {
                 setState(() => _newChapters = v);
                 _setBool(NotificationPrefs.newChapters, v);
               }),
-          _SwitchTile(icon: Icons.update_rounded, iconColor: cs.primary,
+          AppSettingsSwitchTile(icon: Icons.update_rounded, iconColor: cs.primary,
               title: t.setxNotifLibraryUpdatesTitle, subtitle: t.setxNotifLibraryUpdatesSubtitle,
               value: _libraryUpdate, onChanged: (v) {
                 setState(() => _libraryUpdate = v);
                 _setBool(NotificationPrefs.libraryUpdate, v);
               }),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setxNotifSectionDownloads),
-          _SwitchTile(icon: Icons.download_done_rounded, iconColor: AppTheme.success,
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setxNotifSectionDownloads),
+          AppSettingsSwitchTile(icon: Icons.download_done_rounded, iconColor: AppTheme.success,
               title: t.setxNotifDownloadCompleteTitle, subtitle: t.setxNotifDownloadCompleteSubtitle,
               value: _downloadComplete, onChanged: (v) {
                 setState(() => _downloadComplete = v);
                 _setBool(NotificationPrefs.downloadComplete, v);
               }),
-          _SwitchTile(icon: Icons.error_outline_rounded, iconColor: AppTheme.error,
+          AppSettingsSwitchTile(icon: Icons.error_outline_rounded, iconColor: AppTheme.error,
               title: t.setxNotifDownloadErrorTitle, subtitle: t.setxNotifDownloadErrorSubtitle,
               value: _downloadError, onChanged: (v) {
                 setState(() => _downloadError = v);
                 _setBool(NotificationPrefs.downloadError, v);
               }),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setxNotifSectionBehavior),
-          _SwitchTile(icon: Icons.volume_up_rounded, iconColor: AppTheme.secondary,
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setxNotifSectionBehavior),
+          AppSettingsSwitchTile(icon: Icons.volume_up_rounded, iconColor: AppTheme.secondary,
               title: t.setxNotifSoundTitle, subtitle: t.setxNotifSoundSubtitle,
               value: _sound, onChanged: (v) {
                 setState(() => _sound = v);
                 _setBool(NotificationPrefs.sound, v);
               }),
-          _SwitchTile(icon: Icons.vibration_rounded, iconColor: AppTheme.secondary,
+          AppSettingsSwitchTile(icon: Icons.vibration_rounded, iconColor: AppTheme.secondary,
               title: t.setxNotifVibrationTitle, subtitle: t.setxNotifVibrationSubtitle,
               value: _vibration, onChanged: (v) {
                 setState(() => _vibration = v);
                 _setBool(NotificationPrefs.vibration, v);
               }),
-          _SwitchTile(icon: Icons.groups_rounded, iconColor: AppTheme.secondary,
+          AppSettingsSwitchTile(icon: Icons.groups_rounded, iconColor: AppTheme.secondary,
               title: t.setxNotifGroupTitle, subtitle: t.setxNotifGroupSubtitle,
               value: _groupNotifications, onChanged: (v) {
                 setState(() => _groupNotifications = v);
                 _setBool(NotificationPrefs.groupNotifications, v);
               }),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(title.toUpperCase(),
-          style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: cs.primary)),
-    );
-  }
-}
-
-class _SwitchTile extends StatelessWidget {
-  final IconData icon; final Color iconColor; final String title; final String subtitle;
-  final bool value; final ValueChanged<bool> onChanged;
-  const _SwitchTile({required this.icon, required this.iconColor, required this.title,
-      required this.subtitle, required this.value, required this.onChanged});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: cs.outlineVariant)),
-      child: Row(children: [
-        Container(width: 36, height: 36,
-            decoration: BoxDecoration(color: iconColor.withAlpha(25), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: iconColor, size: 18)),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
-          Text(subtitle, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
-        ])),
-        Switch(value: value, onChanged: onChanged, activeThumbColor: cs.onPrimary, activeTrackColor: cs.primary),
-      ]),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'app_tokens.dart';
 
 class AppTheme {
   AppTheme._();
@@ -35,7 +36,7 @@ class AppTheme {
 
   /// Secondary text on dark surfaces.
   ///
-  /// `mutedDark` (#6B6B8A) is a *border* tone — as text it only reaches 2.73:1
+  /// `mutedDark` (#6B6B8A) is a *border* tone - as text it only reaches 2.73:1
   /// on #2A2A3E and 3.19:1 on #1E1E2E, both under the 4.5:1 AA floor. This
   /// clears AA on every surface the app uses (4.6:1 on #2A2A3E, 5.7:1 on
   /// #1E1E2E) while still reading as clearly secondary.
@@ -53,7 +54,7 @@ class AppTheme {
     final cs = Theme.of(context).colorScheme;
 
     // The default used to be `cs.surfaceContainerHighest`, which sits a hair
-    // above `cs.surface` — so the toast barely separated from the page behind
+    // above `cs.surface` - so the toast barely separated from the page behind
     // it and read as unstyled grey text floating on the UI. Use a deliberately
     // distinct panel plus a visible border and shadow instead.
     final bg = backgroundColor ??
@@ -63,7 +64,7 @@ class AppTheme {
 
     // Derive the text colour from whatever background we actually ended up
     // with. Callers pass red for errors and green for success, and previously
-    // the label stayed `onSurface` regardless — which is what made a light
+    // the label stayed `onSurface` regardless - which is what made a light
     // success toast unreadable.
     final fg = ThemeData.estimateBrightnessForColor(bg) == Brightness.dark
         ? Colors.white
@@ -108,26 +109,46 @@ class AppTheme {
   static const Color _onSurfaceDark = Color(0xFFE8E8F0);
   static const Color _onSurfaceLight = Color(0xFF1A1A2E);
 
-  static ThemeData darkTheme({Color? primaryColor, bool oled = false}) {
+  // The [background]/[surface]/[surfaceHighest]/[onSurface] overrides let the
+  // theme take on a palette-flip tint or a fully custom palette (see
+  // ThemeProvider.surfacesFor); null falls back to the neutral defaults.
+  static ThemeData darkTheme({
+    Color? primaryColor,
+    bool oled = false,
+    Color? background,
+    Color? surface,
+    Color? surfaceHighest,
+    Color? onSurface,
+  }) {
     return _buildTheme(
       brightness: Brightness.dark,
       primary: primaryColor ?? const Color(0xFFFF7A5C),
-      // OLED: pure-black background + near-black surface so unlit pixels stay off.
-      background: oled ? const Color(0xFF000000) : _backgroundDark,
-      surface: oled ? const Color(0xFF0A0A0A) : _surfaceDark,
-      onSurface: _onSurfaceDark,
+      // OLED: pure-black background AND surface, so app bars / cards / sheets
+      // go fully black too; structure is kept with hairline borders + dividers
+      // (set below), not lighter fills.
+      background: oled ? const Color(0xFF000000) : (background ?? _backgroundDark),
+      surface: oled ? const Color(0xFF000000) : (surface ?? _surfaceDark),
+      surfaceHighest: oled ? const Color(0xFF000000) : surfaceHighest,
+      onSurface: onSurface ?? _onSurfaceDark,
       muted: mutedDark,
       oled: oled,
     );
   }
 
-  static ThemeData lightTheme({Color? primaryColor}) {
+  static ThemeData lightTheme({
+    Color? primaryColor,
+    Color? background,
+    Color? surface,
+    Color? surfaceHighest,
+    Color? onSurface,
+  }) {
     return _buildTheme(
       brightness: Brightness.light,
       primary: primaryColor ?? const Color(0xFFE85D4A),
-      background: _backgroundLight,
-      surface: _surfaceLight,
-      onSurface: _onSurfaceLight,
+      background: background ?? _backgroundLight,
+      surface: surface ?? _surfaceLight,
+      surfaceHighest: surfaceHighest,
+      onSurface: onSurface ?? _onSurfaceLight,
       muted: mutedLight,
     );
   }
@@ -139,13 +160,14 @@ class AppTheme {
     required Color surface,
     required Color onSurface,
     required Color muted,
+    Color? surfaceHighest,
     bool oled = false,
   }) {
     final isDark = brightness == Brightness.dark;
     final colorScheme = ColorScheme(
       brightness: brightness,
       primary: primary,
-      // White on the default coral (#FF7A5C) is only 2.56:1 — and the primary
+      // White on the default coral (#FF7A5C) is only 2.56:1 - and the primary
       // is user-configurable, including near-white presets that would make a
       // white label invisible. Derive the label from the actual primary so it
       // stays readable whatever the user picks.
@@ -164,16 +186,20 @@ class AppTheme {
       onSurfaceVariant: isDark ? secondaryTextDark : secondaryTextLight,
       // `outline` is Material's *border* token, but this app uses it for
       // secondary text in ~250 places, where `muted` (#6B6B8A) is only 2.73:1
-      // on #2A2A3E. Raising it here fixes every one of those at once — and it
-      // also makes borders and dividers visible, which at 1.2–1.5:1 they
+      // on #2A2A3E. Raising it here fixes every one of those at once - and it
+      // also makes borders and dividers visible, which at 1.2-1.5:1 they
       // effectively weren't. Border-only tones stay on `outlineVariant`.
       outline: isDark ? secondaryTextDark : secondaryTextLight,
       outlineVariant: isDark
           ? const Color(0xFF3A3A4E)
           : const Color(0xFFD8D8DC),
-      surfaceContainerHighest: isDark
-          ? (oled ? const Color(0xFF17171F) : const Color(0xFF2A2A3E))
-          : const Color(0xFFE8E8EC),
+      // OLED: the "highest" container is pure black too (no elevation tinting);
+      // cards/tiles that use it stay distinct via their hairline border, not a
+      // lighter fill. This is the app's standard card pattern.
+      surfaceContainerHighest: surfaceHighest ??
+          (isDark
+              ? (oled ? const Color(0xFF000000) : const Color(0xFF2A2A3E))
+              : const Color(0xFFE8E8EC)),
     );
 
     // `muted` is the outline/border tone. Using it for small text is what put
@@ -185,6 +211,12 @@ class AppTheme {
       TextTheme(
         displayLarge: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: onSurface),
         displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: onSurface),
+        // Headline slots (Manrope). The base TextTheme omitted these, so dialog
+        // titles (M3 uses headlineSmall) fell back to the platform default font;
+        // defining them keeps dialog titles on-brand and on the type scale.
+        headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: onSurface),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: onSurface),
+        headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: onSurface),
         titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: onSurface),
         titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: onSurface),
         titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: onSurface),
@@ -202,6 +234,13 @@ class AppTheme {
       brightness: brightness,
       colorScheme: colorScheme,
       textTheme: textTheme,
+      // Named surface roles (see the design audit). Additive - screens opt in
+      // via AppSurfaces.of(context); nothing changes until each is migrated.
+      extensions: <ThemeExtension<dynamic>>[
+        isDark
+            ? (oled ? AppSurfaces.oledDark : AppSurfaces.dark)
+            : AppSurfaces.light,
+      ],
       scaffoldBackgroundColor: background,
       appBarTheme: AppBarTheme(
         backgroundColor: surface,
@@ -215,6 +254,11 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
+          // On pure-black OLED a card shares the background, so a hairline
+          // border keeps it legible as a distinct surface.
+          side: oled
+              ? BorderSide(color: colorScheme.outlineVariant)
+              : BorderSide.none,
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
@@ -224,10 +268,16 @@ class AppTheme {
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFE8E8EC),
+        backgroundColor: isDark
+            ? (oled ? const Color(0xFF000000) : const Color(0xFF2A2A3E))
+            : const Color(0xFFE8E8EC),
         selectedColor: primary.withAlpha(51),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusFull),
+          // Pure-black OLED chips need an outline to read.
+          side: oled
+              ? BorderSide(color: colorScheme.outlineVariant)
+              : BorderSide.none,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -235,15 +285,18 @@ class AppTheme {
         fillColor: isDark ? const Color(0xFF2A2A3E) : const Color(0xFFE8E8EC),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          borderSide: BorderSide.none,
+          // A pure-black field on a pure-black page needs an outline to read.
+          borderSide: oled
+              ? BorderSide(color: colorScheme.outlineVariant)
+              : BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        // Placeholders were `outline` on the fill colour — 2.73:1, well under
+        // Placeholders were `outline` on the fill colour - 2.73:1, well under
         // AA. Setting it once here covers every field in the app.
         hintStyle: TextStyle(color: secondaryText),
       ),
       dividerTheme: DividerThemeData(
-        // muted.withAlpha(51) composites to 1.22:1 — every Divider was
+        // muted.withAlpha(51) composites to 1.22:1 - every Divider was
         // effectively invisible. outlineVariant is the intended divider tone.
         color: isDark ? const Color(0xFF3A3A4E) : muted.withAlpha(90),
         thickness: 1,

@@ -22,14 +22,14 @@ typedef Track = MTrack;
 /// a few hosts (Doodstream, Streamlare) rely on.
 http.Client extractorClient() => http.Client();
 
-/// The directory portion of a URL path — a tiny stand-in for `path.dirname`,
+/// The directory portion of a URL path - a tiny stand-in for `path.dirname`,
 /// used when a host gives m3u8 segment names relative to the playlist.
 String urlDirname(String p) {
   final i = p.lastIndexOf('/');
   return i <= 0 ? '' : p.substring(0, i);
 }
 
-/// XPath over an HTML string — Mangayomi's `xpathSelector` helper, used by the
+/// XPath over an HTML string - Mangayomi's `xpathSelector` helper, used by the
 /// extractors that pull data out of inline `<script>` text. Returns an
 /// [HtmlXPath] whose `queryXPath(expr).attrs` yields the matched values.
 HtmlXPath xpathSelector(String html) {

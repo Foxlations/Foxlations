@@ -7,8 +7,6 @@ on:
         description: 'Also scp the zip home over Tailscale? (true/false)'
         required: false
         default: 'false'
-  push:
-    tags: ['v*']
 
 jobs:
   # Build the platform-independent extension-host jars once (on Linux).

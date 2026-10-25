@@ -42,7 +42,7 @@ class ReaderTranslationProviderSheet extends StatefulWidget {
     'ar': 'Arabic', 'tr': 'Turkish', 'pl': 'Polish',
   };
 
-  /// Source languages for OCR — only scripts ML Kit can detect.
+  /// Source languages for OCR - only scripts ML Kit can detect.
   static const _sourceLanguages = {
     'ja': 'Japanese',
     'ko': 'Korean',
@@ -183,7 +183,8 @@ class _State extends State<ReaderTranslationProviderSheet> {
               const SizedBox(width: 10),
               Expanded(child: Row(children: [
                 Text(p['name'] as String,
-                    style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                         color: isSelected ? cs.primary : cs.onSurface)),
                 if (p.containsKey('badge')) ...[
                   const SizedBox(width: 6),
@@ -193,7 +194,8 @@ class _State extends State<ReaderTranslationProviderSheet> {
                       color: AppTheme.success.withAlpha(40),
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
                     child: Text(p['badge'] as String,
-                        style: GoogleFonts.manrope(fontSize: 9, fontWeight: FontWeight.w800,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontSize: 9, fontWeight: FontWeight.w800,
                             color: AppTheme.success)),
                   ),
                 ],
@@ -218,7 +220,7 @@ class _State extends State<ReaderTranslationProviderSheet> {
         final isSelected = _selectedFont == id;
         final sampleStyle = id == 'bangers'
             ? GoogleFonts.bangers(fontSize: 18, letterSpacing: 0.5, color: isSelected ? cs.primary : cs.onSurface)
-            : GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: isSelected ? cs.primary : cs.onSurface);
+            : Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: isSelected ? cs.primary : cs.onSurface);
         return GestureDetector(
           onTap: () { setState(() => _selectedFont = id); _save(); },
           child: AnimatedContainer(
@@ -233,11 +235,13 @@ class _State extends State<ReaderTranslationProviderSheet> {
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(f['name'] as String,
-                    style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
                         color: isSelected ? cs.primary : cs.onSurface)),
                 const SizedBox(height: 2),
                 Text(f['desc'] as String,
-                    style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w400, color: cs.outline)),
                 const SizedBox(height: 6),
                 Text(f['sample'] as String, style: sampleStyle),
               ])),
@@ -267,7 +271,7 @@ class _State extends State<ReaderTranslationProviderSheet> {
             ),
             child: Row(children: [
               Expanded(child: Text(e.value,
-                  style: GoogleFonts.manrope(fontSize: 14,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                       color: isSelected ? cs.primary : cs.onSurface))),
               if (isSelected) Icon(Icons.check_circle_rounded, size: 18, color: cs.primary),
@@ -300,7 +304,7 @@ class _TabChip extends StatelessWidget {
           border: Border.all(color: isSelected ? cs.primary : Colors.transparent, width: 1.5),
         ),
         child: Text(label, textAlign: TextAlign.center,
-            style: GoogleFonts.manrope(fontSize: 12,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected ? cs.primary : cs.outline)),
       ),

@@ -13,7 +13,7 @@ class RepoIndexResult {
   final String repoVersion;
   final List<MangaSource> sources;
   /// Optional repo metadata parsed from the index when present (not in standard
-  /// Tachiyomi indexes, but some custom repos include them) — used by the repo
+  /// Tachiyomi indexes, but some custom repos include them) - used by the repo
   /// options menu for "Open website" / "Open Discord".
   final String website;
   final String discord;
@@ -66,7 +66,7 @@ class RepoService {
   /// Saved repos, with local paths resolved for the current app container.
   ///
   /// RepoForge stores its own `index.json` path here alongside remote URLs, and
-  /// the iOS container is re-created on every re-sign — see [PortablePath].
+  /// the iOS container is re-created on every re-sign - see [PortablePath].
   /// Without this, every RepoForge-authored source disappears about weekly.
   Future<List<String>> getSavedRepos() async {
     final prefs = await SharedPreferences.getInstance();
@@ -119,7 +119,7 @@ class RepoService {
   /// Keiyoushi (and forks) moved their real index to `index.pb` (gzipped protobuf
   /// this app can't parse) and left `index.min.json` as a 2-entry "Outdated App"
   /// deprecation stub. The full JSON index is still served as `index.json` in the
-  /// same directory — rewrite a pasted `.pb` URL to it. (A `.min.json` stub is
+  /// same directory - rewrite a pasted `.pb` URL to it. (A `.min.json` stub is
   /// handled AFTER parsing, since for other repos `.min.json` is the real index.)
   String _asJsonIndexUrl(String url) {
     final q = url.indexOf('?');
@@ -145,8 +145,8 @@ class RepoService {
   }
 
   // A format-1.6 deprecation stub (keiyoushi / NovelSourcery / Tsundoku forks):
-  // index.min.json holds only nag entries — "Outdated App" plus one or more
-  // "Update to <app> x.y+" — while the real catalogue lives in index.json.
+  // index.min.json holds only nag entries - "Outdated App" plus one or more
+  // "Update to <app> x.y+" - while the real catalogue lives in index.json.
   bool _isStubName(String name) {
     final n = name.trim().toLowerCase();
     return n == 'outdated app' ||
@@ -171,7 +171,7 @@ class RepoService {
     final slash = path.lastIndexOf('/');
     if (slash <= 0) return null;
     final last = path.substring(slash + 1);
-    // Only when the URL is a standard repo index filename — otherwise
+    // Only when the URL is a standard repo index filename - otherwise
     // "$dir/index.pb" could point at an unrelated file.
     if (last != 'index.pb' &&
         last != 'index.json' &&
@@ -264,7 +264,10 @@ class RepoService {
                   'Upgraded deprecation stub → $full (${upgraded.sources.length} sources)',
                   category: LogCategory.repo);
             }
-          } catch (_) {}
+          } catch (e) {
+            await logger.warning('Deprecation-stub upgrade failed for $full',
+                category: LogCategory.repo, detail: e.toString());
+          }
         }
       }
       final allSources = List<MangaSource>.from(result.sources);
@@ -274,7 +277,7 @@ class RepoService {
       // was a bare JSON array, on the assumption that the object-shaped
       // Foxlations format never has siblings. That assumption was wrong:
       // Foxtensions is object-shaped AND ships anime-index.min.json, so all of
-      // its anime sources were unreachable — the app never asked for the file.
+      // its anime sources were unreachable - the app never asked for the file.
       // Shape tells us nothing about whether siblings exist, so always look.
       if (!_isLocalPath(repoUrl)) {
         final base = _effectiveUrl(repoUrl);
@@ -286,7 +289,7 @@ class RepoService {
               final parsed = _parseIndex(resp.data, sib, defaultType: kind);
               if (parsed.sources.isEmpty) continue;
               // A repo may publish both spellings, and a source could already
-              // be listed in the main index — keep the first of each id.
+              // be listed in the main index - keep the first of each id.
               final fresh =
                   parsed.sources.where((s) => seen.add(s.id)).toList();
               allSources.addAll(fresh);
@@ -295,7 +298,7 @@ class RepoService {
                   category: LogCategory.repo);
               break; // this kind resolved; don't try the other spelling
             } catch (_) {
-              // Not present under this spelling — try the next, then give up.
+              // Not present under this spelling - try the next, then give up.
             }
           }
         }
@@ -358,7 +361,7 @@ class RepoService {
   /// Candidate URLs for a repo's `kind` (anime/novel) sibling index.
   ///
   /// Neither the separator nor the `.min` suffix is standardised, and a repo's
-  /// sibling need not match the spelling of its own main index — Foxtensions
+  /// sibling need not match the spelling of its own main index - Foxtensions
   /// serves `index.json` alongside `anime-index.min.json`. Only
   /// `anime_index.json` was tried before, so those siblings were never found
   /// and every source inside them was invisible to the app.
@@ -393,7 +396,7 @@ class RepoService {
   ///
   /// Mangayomi/keiyoushi-style indexes are a bare array with no `repoName`
   /// field, so every source installed from one had an empty repoName and the
-  /// browse list fell back to showing its framework — which is "custom" for
+  /// browse list fell back to showing its framework - which is "custom" for
   /// anything unrecognised. Git hosts name the repo after its owner (yuzono,
   /// keiyoushi, NovelSourcery), which is what users actually recognise;
   /// anything else falls back to the bare host.
@@ -511,7 +514,7 @@ class RepoService {
 
     // Fallback: bare array (Mangayomi / yuzono index.min.json is a top-level array)
     if (data is List) {
-      // No repoName in this format — derive one so installed sources are
+      // No repoName in this format - derive one so installed sources are
       // labelled by where they came from rather than by their framework.
       final name = _repoNameFromUrl(repoUrl);
       final sources = data

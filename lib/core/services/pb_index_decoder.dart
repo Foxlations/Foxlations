@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 
 /// Decodes a keiyoushi/Mihon "ExtensionStore" `index.pb` (gzip-compressed
-/// protobuf — the compact index, ~13x smaller than index.json) into the SAME
+/// protobuf - the compact index, ~13x smaller than index.json) into the SAME
 /// Map that `jsonDecode(index.json)` yields, so the existing repo-index parser
 /// (RepoService._parseIndex → MangaSource.fromJson) consumes it unchanged.
 ///
@@ -21,13 +21,13 @@ import 'package:archive/archive.dart';
 ///   Source        { id=1 (int64), name=2, language=3, homeUrl=4,
 ///                   mirrorUrls=5 (repeated), message=7 }
 ///   ContentWarning enum: 0 UNSPECIFIED, 1 SAFE, 2 MIXED, 3 NSFW
-/// int64 fields are surfaced as strings and the enum as its name — matching
-/// protobuf-JSON — so the output is byte-compatible with index.json. NOTE:
+/// int64 fields are surfaced as strings and the enum as its name - matching
+/// protobuf-JSON - so the output is byte-compatible with index.json. NOTE:
 /// jarUrl lives at the unusual field 501 (Mihon's own model omits it; we need
 /// it for JVM `.jar` extensions).
 ///
 /// Returns null (so the caller falls back to index.json) if the bytes aren't a
-/// usable index — bad gzip/protobuf, or the `extensionListUrl` form (a pointer
+/// usable index - bad gzip/protobuf, or the `extensionListUrl` form (a pointer
 /// to a separate list) rather than an embedded, non-empty `extensionList`.
 Map<String, dynamic>? decodePbIndex(List<int> raw) {
   try {

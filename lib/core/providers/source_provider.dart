@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:collection/collection.dart';
 import '../models/source_model.dart';
 import '../models/installed_source_model.dart';
 import '../models/source_settings.dart';
@@ -15,7 +16,7 @@ class SourceProvider extends ChangeNotifier {
   static const _pinnedOnlyBrowseKey = 'browse_pinned_only';
   static const _pinnedOnlyGlobalSearchKey = 'browse_global_search_pinned_only';
   static const _autoUpdateExtKey = 'browse_auto_update_extensions';
-  // The single pinned-source list — shared by the Sources tab, global search,
+  // The single pinned-source list - shared by the Sources tab, global search,
   // and each source's settings. Centralised here so a pin made in one place is
   // reflected everywhere immediately (the old per-widget cache went stale).
   static const _pinnedSourceIdsKey = 'pinned_source_ids';
@@ -26,7 +27,7 @@ class SourceProvider extends ChangeNotifier {
   List<String> _repoUrls = [];
   final Map<String, RepoIndexResult> _repoIndexes = {};
   List<InstalledSource> _installedSources = [];
-  // Ids with an install in flight — guards against a double-tap racing two
+  // Ids with an install in flight - guards against a double-tap racing two
   // concurrent installs of the same source into duplicate entries.
   final Set<String> _installing = {};
   bool _isLoading = false;
@@ -78,7 +79,7 @@ class SourceProvider extends ChangeNotifier {
   Set<String> get pinnedSourceIds => _pinnedSourceIds;
   bool isSourcePinned(String id) => _pinnedSourceIds.contains(id);
 
-  /// Pin/unpin a source — persists and notifies so every view updates at once.
+  /// Pin/unpin a source - persists and notifies so every view updates at once.
   Future<void> toggleSourcePin(String id) async {
     if (!_pinnedSourceIds.remove(id)) _pinnedSourceIds.add(id);
     notifyListeners();
@@ -86,7 +87,10 @@ class SourceProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(
           _pinnedSourceIdsKey, _pinnedSourceIds.toList());
-    } catch (_) {/* best effort */}
+    } catch (e) {
+      await logger.warning('Failed to persist pinned sources',
+          category: LogCategory.general, detail: e.toString());
+    }
   }
 
   /// Re-read pins from disk (e.g. after a source-settings page changed them)
@@ -97,7 +101,10 @@ class SourceProvider extends ChangeNotifier {
       _pinnedSourceIds =
           (prefs.getStringList(_pinnedSourceIdsKey) ?? const []).toSet();
       notifyListeners();
-    } catch (_) {/* best effort */}
+    } catch (e) {
+      await logger.warning('Failed to reload pinned sources',
+          category: LogCategory.general, detail: e.toString());
+    }
   }
 
   /// All available sources across all repos.
@@ -123,7 +130,10 @@ class SourceProvider extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         _pinnedSourceIds =
             (prefs.getStringList(_pinnedSourceIdsKey) ?? const []).toSet();
-      } catch (_) {}
+      } catch (e) {
+        await logger.warning('Failed to load pinned sources',
+            category: LogCategory.general, detail: e.toString());
+      }
 
       _repoUrls = await _repoService.getSavedRepos();
       _installedSources = await _sourceManager.getInstalledSources();
@@ -143,6 +153,8 @@ class SourceProvider extends ChangeNotifier {
       }
     } catch (e) {
       _error = e.toString();
+      await logger.error('Source initialization failed',
+          category: LogCategory.extension, detail: e.toString());
     }
 
     _isLoading = false;
@@ -211,8 +223,9 @@ class SourceProvider extends ChangeNotifier {
         try {
           _repoIndexes[url] = await _repoService.fetchRepoIndex(url);
         } catch (e) {
-          // Keep cached version on failure
-          debugPrint('Failed to refresh $url: $e');
+          // Keep the cached index on failure, but surface it in the log.
+          await logger.warning('Repo index refresh failed, keeping cached',
+              category: LogCategory.repo, detail: '$url: $e');
         }
       }
     } catch (e) {
@@ -289,11 +302,9 @@ class SourceProvider extends ChangeNotifier {
     for (final inst in installedFromRepo) {
       // Prefer the fresh index entry (latest version/urls); fall back to the
       // installed source's own config.
-      final src = fresh?.sources
-              .where((s) => s.id == inst.source.id)
-              .cast<MangaSource?>()
-              .firstWhere((_) => true, orElse: () => null) ??
-          inst.source;
+      final src =
+          fresh?.sources.firstWhereOrNull((s) => s.id == inst.source.id) ??
+              inst.source;
       try {
         await _sourceManager.installSource(src);
         done++;
@@ -391,7 +402,7 @@ class SourceProvider extends ChangeNotifier {
   }
 
   /// Sources with updates that belong to the CURRENT space: only vaulted sources
-  /// when the vault is open, only non-vault sources otherwise — so a vaulted
+  /// when the vault is open, only non-vault sources otherwise - so a vaulted
   /// source's update never surfaces in the normal Browse view (and vice-versa).
   List<InstalledSource> updatesForContext({
     required bool vaultActive,
@@ -431,7 +442,10 @@ class SourceProvider extends ChangeNotifier {
     for (final id in ids) {
       try {
         if (await updateSource(id)) n++;
-      } catch (_) {}
+      } catch (e) {
+        await logger.warning('Update failed for source $id',
+            category: LogCategory.extension, detail: e.toString());
+      }
     }
     return n;
   }
@@ -451,7 +465,7 @@ class SourceProvider extends ChangeNotifier {
   ///
   /// A Tachiyomi/Mihon restore that ran before the matching source was installed
   /// saves each entry's source as the backup's source NAME (e.g. "Asura Scans"),
-  /// not an installed id — so once the source is installed, a plain id lookup
+  /// not an installed id - so once the source is installed, a plain id lookup
   /// still misses and the library wrongly reports "source not installed". This
   /// falls back to matching that stored value against installed source names so
   /// the entry opens against the real source.
@@ -475,7 +489,7 @@ class SourceProvider extends ChangeNotifier {
     return null;
   }
 
-  /// Human name for a source id — the installed extension's name if present,
+  /// Human name for a source id - the installed extension's name if present,
   /// otherwise a repo entry's name if the source is known but not installed
   /// (e.g. a title restored from a backup before its source was reinstalled),
   /// and finally the raw id so the detail page always shows *something*.
@@ -489,11 +503,6 @@ class SourceProvider extends ChangeNotifier {
 
   bool isInstalled(String sourceId) => _sourceManager.isInstalled(sourceId);
 
-  InstalledSource? getInstalledSource(String sourceId) {
-    try {
-      return _installedSources.firstWhere((s) => s.source.id == sourceId);
-    } catch (_) {
-      return null;
-    }
-  }
+  InstalledSource? getInstalledSource(String sourceId) =>
+      _installedSources.firstWhereOrNull((s) => s.source.id == sourceId);
 }

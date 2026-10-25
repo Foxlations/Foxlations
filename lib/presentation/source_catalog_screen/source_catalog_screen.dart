@@ -84,7 +84,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
     final t = AppLocalizations.of(context);
 
     return Consumer<CatalogProvider>(
-      builder: (_, catalog, __) {
+      builder: (_, catalog, _) {
         return Scaffold(
           appBar: AppBar(
             title: Text(widget.sourceName),
@@ -204,7 +204,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
         Icons.sync_problem_rounded,
         'This source needs an update',
         'The site appears to have changed, so the source can’t read it. The fix '
-            'has to come from the source/repository — check for a source update. '
+            'has to come from the source/repository - check for a source update. '
             '(Full error in More → Debug logs.)',
       );
     }
@@ -282,7 +282,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
     }
 
     if (catalog.currentManga.isEmpty) {
-      // Match the wording to the source's content type — an anime or novel
+      // Match the wording to the source's content type - an anime or novel
       // source shouldn't say "no manga".
       final noun = switch (catalog.source.itemType) {
         'anime' => t.browseContentAnime,
@@ -304,7 +304,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
         },
         child: GridView.builder(
           padding: EdgeInsets.fromLTRB(
-              12, 12, 12, 12 + MediaQuery.of(context).viewPadding.bottom),
+              12, 12, 12, 12 + MediaQuery.viewPaddingOf(context).bottom),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: _getColumnCount(context),
             childAspectRatio: 0.65,
@@ -383,7 +383,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
     }
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
-          12, 12, 12, 12 + MediaQuery.of(context).viewPadding.bottom),
+          12, 12, 12, 12 + MediaQuery.viewPaddingOf(context).bottom),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -401,7 +401,7 @@ class _CatalogBodyState extends State<_CatalogBody> {
   }
 
   int _getColumnCount(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final width = MediaQuery.sizeOf(context).width;
     if (width >= 840) return 5;
     if (width >= 600) return 4;
     return 3;

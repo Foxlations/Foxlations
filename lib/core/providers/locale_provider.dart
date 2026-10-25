@@ -3,7 +3,7 @@ import '../services/settings_store.dart';
 
 /// Holds the user-selected app UI language.
 ///
-/// A `null` [locale] means "follow the system language" — the app then resolves
+/// A `null` [locale] means "follow the system language" - the app then resolves
 /// against [MaterialApp.supportedLocales]. The choice is persisted so it survives
 /// restarts. Sibling of [ThemeProvider]: initialized once in the root MultiProvider
 /// and read by the MaterialApp's `locale`.

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/providers/source_provider.dart';
 import '../../../core/services/repo_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
+import '../../widgets/ds/ds.dart';
 
 class RepoSettingsPage extends StatefulWidget {
   const RepoSettingsPage({super.key});
@@ -30,7 +30,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
     final cs = Theme.of(context).colorScheme;
     final t = AppLocalizations.of(context);
 
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
     final isKeyboardOpen = keyboardHeight > 0;
 
     return DraggableScrollableSheet(
@@ -73,22 +73,19 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                       Container(
                         width: 36,
                         height: 36,
-                        decoration: BoxDecoration(
-                          color: cs.primary.withAlpha(31),
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusMedium),
-                        ),
+                        decoration: oledIconChip(context,
+                            color: cs.primary,
+                            fill: cs.primary.withAlpha(31)),
                         child: Icon(Icons.folder_special_rounded,
                             size: 18, color: cs.primary),
                       ),
                       const SizedBox(width: 12),
                       Text(
                         t.miscExtensionRepositories,
-                        style: GoogleFonts.manrope(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: cs.onSurface,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.onSurface,
+                            ),
                       ),
                     ],
                   ),
@@ -115,12 +112,16 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                         Expanded(
                           child: TextField(
                             controller: _urlController,
-                            style: GoogleFonts.manrope(
-                                fontSize: 13, color: cs.onSurface),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: cs.onSurface),
                             decoration: InputDecoration(
                               hintText: t.miscRepositoryUrlHint,
-                              hintStyle: GoogleFonts.manrope(
-                                  fontSize: 13, color: cs.outline),
+                              hintStyle: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(color: cs.outline),
                               border: InputBorder.none,
                               contentPadding:
                                   const EdgeInsets.symmetric(vertical: 12),
@@ -152,11 +153,13 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                                   )
                                 : Text(
                                     t.miscAdd,
-                                    style: GoogleFonts.manrope(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.white,
+                                        ),
                                   ),
                           ),
                         ),
@@ -176,16 +179,15 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                     children: [
                       Text(
                         t.miscRepositoriesHeader,
-                        style: GoogleFonts.manrope(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: cs.outline,
-                          letterSpacing: 1.2,
-                        ),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: cs.outline,
+                              letterSpacing: 1.2,
+                            ),
                       ),
                       const SizedBox(width: 8),
                       Consumer<SourceProvider>(
-                        builder: (_, p, __) => Container(
+                        builder: (_, p, _) => Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
@@ -195,11 +197,14 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                           ),
                           child: Text(
                             '${p.repoUrls.length}',
-                            style: GoogleFonts.manrope(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: cs.outline,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: cs.outline,
+                                ),
                           ),
                         ),
                       ),
@@ -210,7 +215,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                 // Repo list
                 Expanded(
                   child: Consumer<SourceProvider>(
-                    builder: (_, provider, __) {
+                    builder: (_, provider, _) {
                       final repos = provider.repoUrls;
                       if (repos.isEmpty) {
                         return Center(
@@ -222,10 +227,10 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                               const SizedBox(height: 8),
                               Text(
                                 t.miscNoReposYet,
-                                style: GoogleFonts.manrope(
-                                  fontSize: 13,
-                                  color: cs.outline,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: cs.outline),
                               ),
                             ],
                           ),
@@ -278,6 +283,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
 
   void _showRepoOptions(String url, RepoIndexResult? index) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final name = (index?.repoName.isNotEmpty ?? false)
         ? index!.repoName
         : (Uri.tryParse(url)?.host ?? url);
@@ -295,10 +301,10 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
             ListTile(
               leading: Icon(icon, size: 20, color: color ?? cs.onSurface),
               title: Text(label,
-                  style: GoogleFonts.manrope(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: color ?? cs.onSurface)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(color: color ?? cs.onSurface)),
               onTap: () {
                 Navigator.pop(ctx);
                 onTap();
@@ -315,7 +321,7 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
                   child: Text(name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: cs.onSurface)),
@@ -323,17 +329,17 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
               ]),
             ),
             Divider(height: 1, color: cs.surfaceContainerHighest),
-            tile(Icons.refresh_rounded, 'Reinstall sources',
+            tile(Icons.refresh_rounded, t.repoReinstallSources,
                 () => _reinstallRepo(url)),
-            tile(Icons.copy_rounded, 'Copy repo URL', () => _copyUrl(url)),
+            tile(Icons.copy_rounded, t.repoCopyUrl, () => _copyUrl(url)),
             if (gh != null)
-              tile(Icons.open_in_new_rounded, 'Open GitHub page',
+              tile(Icons.open_in_new_rounded, t.repoOpenGithubPage,
                   () => _open(gh)),
             if (website.isNotEmpty && website != gh)
-              tile(Icons.language_rounded, 'Open website', () => _open(website)),
+              tile(Icons.language_rounded, t.repoOpenWebsite, () => _open(website)),
             if (discord.isNotEmpty)
-              tile(Icons.forum_rounded, 'Open Discord', () => _open(discord)),
-            tile(Icons.delete_outline_rounded, 'Delete repo',
+              tile(Icons.forum_rounded, t.repoOpenDiscord, () => _open(discord)),
+            tile(Icons.delete_outline_rounded, t.repoDeleteRepo,
                 () => _confirmDelete(url, name),
                 color: AppTheme.error),
             const SizedBox(height: 8),
@@ -362,16 +368,17 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
   }
 
   Future<void> _open(String url) async {
+    final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     try {
       final ok =
           await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       if (!ok && mounted) {
-        messenger.showSnackBar(SnackBar(content: Text('Couldn\'t open $url')));
+        messenger.showSnackBar(SnackBar(content: Text(t.repoCouldNotOpen(url))));
       }
     } catch (_) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text('Couldn\'t open $url')));
+        messenger.showSnackBar(SnackBar(content: Text(t.repoCouldNotOpen(url))));
       }
     }
   }
@@ -386,41 +393,44 @@ class _RepoSettingsPageState extends State<RepoSettingsPage> {
   }
 
   Future<void> _reinstallRepo(String url) async {
+    final t = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     messenger
-        .showSnackBar(const SnackBar(content: Text('Reinstalling sources…')));
+        .showSnackBar(SnackBar(content: Text(t.repoReinstalling)));
     try {
       final n = await context.read<SourceProvider>().reinstallRepo(url);
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(
           content: Text(n == 0
-              ? 'Repo refreshed'
-              : 'Reinstalled $n source${n == 1 ? '' : 's'}')));
+              ? t.repoRefreshed
+              : t.repoReinstalledCount(n))));
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text('Reinstall failed: $e')));
+        messenger.showSnackBar(
+            SnackBar(content: Text(t.repoReinstallFailed(e.toString()))));
       }
     }
   }
 
   Future<void> _confirmDelete(String url, String name) async {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cs.surfaceContainerHighest,
-        title: Text('Delete repo?',
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
-        content: Text('Remove "$name" and uninstall its sources?',
-            style: GoogleFonts.manrope(fontSize: 13)),
+        title: Text(t.repoDeleteTitle,
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(t.repoDeleteBody(name),
+            style: Theme.of(context).textTheme.bodyMedium),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(t.repoCancel)),
           FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
-              child: const Text('Delete')),
+              child: Text(t.repoDeleteConfirm)),
         ],
       ),
     );
@@ -446,6 +456,7 @@ class _RepoItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final displayName =
         name?.isNotEmpty == true ? name! : Uri.tryParse(url)?.host ?? url;
 
@@ -461,11 +472,10 @@ class _RepoItem extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(
-                  color: cs.primary.withAlpha(20),
-                  borderRadius:
-                      BorderRadius.circular(AppTheme.radiusSmall),
-                ),
+                decoration: oledIconChip(context,
+                    color: cs.primary,
+                    fill: cs.primary.withAlpha(20),
+                    radius: AppTheme.radiusSmall),
                 child: Icon(Icons.folder_rounded,
                     size: 20, color: cs.primary),
               ),
@@ -478,19 +488,16 @@ class _RepoItem extends StatelessWidget {
                       displayName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurface,
-                      ),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: cs.onSurface,
+                          ),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '$sourceCount source${sourceCount == 1 ? '' : 's'}',
-                      style: GoogleFonts.manrope(
-                        fontSize: 11,
-                        color: cs.outline,
-                      ),
+                      t.repoSourceCount(sourceCount),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: cs.outline,
+                          ),
                     ),
                   ],
                 ),

@@ -11,7 +11,7 @@ import 'http.dart';
 /// Synchronous source-preference cache.
 ///
 /// Mangayomi-format sources call `getPreferenceValue(sourceId, key)` inline
-/// while building a request, so the read has to be synchronous — but the store
+/// while building a request, so the read has to be synchronous - but the store
 /// (SharedPreferences) is async. DartExtensionService loads a source's prefs
 /// into here before invoking it; the bridge function then reads them without
 /// awaiting. Keyed `<sourceId>::<key>` to match the on-disk
@@ -27,7 +27,7 @@ class SourcePrefCache {
     prefs.forEach((k, v) => _values['$sourceId::$k'] = v);
   }
 
-  /// Returns the stored value, or empty string when unset — sources treat a
+  /// Returns the stored value, or empty string when unset - sources treat a
   /// missing string pref as "".
   static dynamic get(int sourceId, String key) =>
       _values['$sourceId::$key'] ?? '';
@@ -165,7 +165,7 @@ class MProviderUtilities {
       sourceUri: lib,
     );
 
-    // print — forward extension print() calls to Flutter's debugPrint with
+    // print - forward extension print() calls to Flutter's debugPrint with
     // an [Ext] tag so source authors can trace runtime behavior.
     interpreter.registertopLevelFunction(
       'print',
@@ -289,7 +289,7 @@ class MProviderUtilities {
     // that Foxlations didn't previously provide. Signatures match Mangayomi's
     // bridge so those sources run unchanged.
 
-    // xpath(html, expr) — evaluate an XPath expression over an HTML string,
+    // xpath(html, expr) - evaluate an XPath expression over an HTML string,
     // returning the matched text/attribute values. Multiple nodes -> their
     // attrs; a single node -> its attr (or text). Errors yield an empty list so
     // a bad expression degrades gracefully instead of throwing.
@@ -317,7 +317,7 @@ class MProviderUtilities {
       sourceUri: lib,
     );
 
-    // getPreferenceValue(sourceId, key) — read a stored source preference,
+    // getPreferenceValue(sourceId, key) - read a stored source preference,
     // synchronously, from the cache DartExtensionService preloads.
     interpreter.registertopLevelFunction(
       'getPreferenceValue',
@@ -329,7 +329,7 @@ class MProviderUtilities {
       sourceUri: lib,
     );
 
-    // regExp(input, pattern, replace, type, group) — type 0 replaces all
+    // regExp(input, pattern, replace, type, group) - type 0 replaces all
     // matches, type 1 returns the given capture group of the first match.
     interpreter.registertopLevelFunction(
       'regExp',

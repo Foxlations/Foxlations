@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_js/flutter_js.dart';
 import 'dom_selector.dart';
 import 'http.dart';
+import 'js_promise_decode.dart';
 import 'preferences.dart';
 import 'utils.dart';
 import '../model/filter.dart';
@@ -47,7 +48,7 @@ class MProvider {
         // The value is embedded as a JS object LITERAL, not inside a quoted
         // string. jsonEncode output is already valid JS, so there is no
         // surrounding quote for source-controlled metadata (name/baseUrl/…) to
-        // break out of — the previous JSON.parse('…') wrapper put it inside a
+        // break out of - the previous JSON.parse('…') wrapper put it inside a
         // single-quoted string that jsonEncode does not escape ' for, making
         // the source's own index.json metadata an arbitrary-code vector.
         return ${jsonEncode(_mSource.toJson())};
@@ -304,46 +305,11 @@ var extention = new DefaultExtension();
   @override
   Future<void> setSourcePreference(String key, dynamic value) async {}
 
-  /// Decodes a JSON payload coming back from the JS engine.
-  ///
-  /// flutter_js uses a different engine per platform — QuickJS on Android,
-  /// JavaScriptCore on iOS — and they resolve promises differently. QuickJS
-  /// hands the resolved value back as a Dart Future and stringifies it once
-  /// (`"$res"`), but JSC reports `[object Promise]` and takes the branch in
-  /// flutter_js `handle_promises.dart` that runs `JSON.stringify()` over the
-  /// value a SECOND time. Since `jsonStringify()` already returns a string,
-  /// iOS payloads arrive double-encoded and a single decode yields a String
-  /// instead of the Map/List the caller expects.
-  ///
-  /// Detect that structurally: only a re-encoded payload decodes to a string
-  /// that itself starts with a JSON delimiter. Real string results (page HTML)
-  /// start with `<` or plain text, so they're left alone on both platforms.
-  T _decodeJsResult<T>(String raw) {
-    dynamic value = jsonDecode(raw);
-    if (value is String) {
-      // Re-decode when the caller wants something other than a String (the
-      // string is clearly a wrapper), or — when T is dynamic, as it is for
-      // getHtmlContent — when the payload still looks like encoded JSON.
-      final trimmed = value.trimLeft();
-      final looksEncoded = trimmed.startsWith('{') ||
-          trimmed.startsWith('[') ||
-          trimmed.startsWith('"');
-      if (value is! T || looksEncoded) {
-        try {
-          value = jsonDecode(value);
-        } catch (_) {
-          // Not double-encoded after all — keep the string as-is.
-        }
-      }
-    }
-    return value as T;
-  }
-
   T _extensionCall<T>(String call, T defaultValue) {
     _init();
     try {
       final res = runtime.evaluate('JSON.stringify(extention.$call)');
-      return _decodeJsResult<T>(res.stringResult);
+      return decodeJsPromiseResult<T>(res.stringResult);
     } catch (_) {
       return defaultValue;
     }
@@ -355,7 +321,7 @@ var extention = new DefaultExtension();
       'jsonStringify(() => extention.$call)',
     );
     final promised = await runtime.handlePromise(jsResult);
-    return _decodeJsResult<T>(promised.stringResult);
+    return decodeJsPromiseResult<T>(promised.stringResult);
   }
 
   /// Invokes an extension method by passing [args] as a JSON array and calling
@@ -373,7 +339,7 @@ var extention = new DefaultExtension();
     _init();
     try {
       final res = runtime.evaluate('JSON.stringify(${_applyExpr(method, args)})');
-      return _decodeJsResult<T>(res.stringResult);
+      return decodeJsPromiseResult<T>(res.stringResult);
     } catch (_) {
       return defaultValue;
     }
@@ -385,6 +351,6 @@ var extention = new DefaultExtension();
       'jsonStringify(() => ${_applyExpr(method, args)})',
     );
     final promised = await runtime.handlePromise(jsResult);
-    return _decodeJsResult<T>(promised.stringResult);
+    return decodeJsPromiseResult<T>(promised.stringResult);
   }
 }

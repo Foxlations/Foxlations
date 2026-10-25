@@ -127,6 +127,23 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
     // ── Misc ─────────────────────────────────────────────────────────────────
     override fun getFilterList(): AnimeFilterList = AnimeFilterList()
 
-    open fun setUrlWithoutDomain(anime: SAnime, url: String) { anime.url = url }
-    open fun setUrlWithoutDomain(episode: SEpisode, url: String) { episode.url = url }
+    open fun setUrlWithoutDomain(anime: SAnime, url: String) { anime.url = getUrlWithoutDomain(url) }
+    open fun setUrlWithoutDomain(episode: SEpisode, url: String) { episode.url = getUrlWithoutDomain(url) }
+
+    // Strip scheme + authority so only the path (+ query/fragment) is stored — the
+    // Tachiyomi/Aniyomi contract extensions rely on. This mirror previously stored
+    // the url VERBATIM, so a source that passed an absolute url (the common case)
+    // made the default requests (GET(baseUrl + anime.url)) build a doubled url like
+    // "https://host" + "https://host/..." -> host parses as "hosthttps" ->
+    // "DoH: no A record". Matches the manga HttpSource behaviour. Space-encode first
+    // because java.net.URI throws on a raw space; on any other parse failure fall
+    // back to the original (the host-side relativize is the final net).
+    private fun getUrlWithoutDomain(orig: String): String = try {
+        val u = java.net.URI(orig.replace(" ", "%20"))
+        (u.rawPath ?: "") +
+            (u.rawQuery?.let { "?$it" } ?: "") +
+            (u.rawFragment?.let { "#$it" } ?: "")
+    } catch (e: Exception) {
+        orig
+    }
 }

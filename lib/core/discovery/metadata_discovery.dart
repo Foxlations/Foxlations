@@ -2,7 +2,7 @@ import 'discovery_models.dart';
 
 /// A metadata service that can power the Discover feed (trending / by-genre /
 /// personalized recommendations). Implemented by the trackers that have a
-/// browsable catalog (AniList, MyAnimeList) — kept separate from the [Tracker]
+/// browsable catalog (AniList, MyAnimeList) - kept separate from the [Tracker]
 /// contract so a tracker that only syncs progress doesn't have to pretend to
 /// recommend.
 ///
@@ -31,7 +31,7 @@ abstract class MetadataDiscovery {
 
   /// Recommendations seeded from the signed-in user's list ("because you read
   /// X"). Each returned item's [DiscoverItem.reason] names the seed title.
-  /// Returns empty when unsupported or not signed in — the feed then stays
+  /// Returns empty when unsupported or not signed in - the feed then stays
   /// trending/popular only.
   Future<List<DiscoverItem>> personalized({
     required DiscoverKind kind,
@@ -45,7 +45,7 @@ abstract class MetadataDiscovery {
 
   /// A page of recommendations for [kind], optionally constrained to [genres]
   /// (AND-ed) and ordered by [sort]. Pages are 1-based. Returns an empty list on
-  /// any failure — Discover degrades to another source rather than erroring.
+  /// any failure - Discover degrades to another source rather than erroring.
   Future<List<DiscoverItem>> feed({
     required DiscoverKind kind,
     List<String> genres = const [],

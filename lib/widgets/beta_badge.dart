@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 
@@ -18,7 +17,7 @@ class BetaBadge extends StatelessWidget {
       ),
       child: Text(
         AppLocalizations.of(context).commonBeta,
-        style: GoogleFonts.manrope(
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           fontSize: 9,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.5,

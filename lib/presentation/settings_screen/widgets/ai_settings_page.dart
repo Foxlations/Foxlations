@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
+import '../../widgets/ds/ds.dart';
 
 /// AI & Translation settings page.
 /// Manages translation provider selection, API keys, and translation options.
@@ -31,13 +31,16 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
   final Map<String, bool> _keyVisible = {};
   final _koharuUrlController = TextEditingController();
 
+  // `badge` holds a stable token (not a display string); the shown badge label
+  // and each provider's blurb are resolved from l10n in the card builder, so
+  // translators reach them without the card logic depending on display text.
   static const _providers = [
-    {'id': 'claude', 'name': 'Claude (Anthropic)', 'desc': 'Best for nuanced translation', 'icon': '🤖', 'badge': 'Recommended', 'hint': 'sk-ant-api03-...'},
-    {'id': 'openai', 'name': 'OpenAI GPT-4o', 'desc': 'Fast & accurate', 'icon': '⚡', 'hint': 'sk-proj-...'},
-    {'id': 'gemini', 'name': 'Google Gemini', 'desc': 'Multilingual specialist', 'icon': '💎', 'hint': 'AIza...'},
-    {'id': 'deepl', 'name': 'DeepL', 'desc': 'High-quality European languages', 'icon': '🌐', 'hint': 'xxxxxxxx-xxxx-...'},
-    {'id': 'huggingface', 'name': 'Hugging Face', 'desc': 'Open-source — Offline capable', 'icon': '🤗', 'badge': 'Offline', 'hint': 'hf_...'},
-    {'id': 'openrouter', 'name': 'OpenRouter', 'desc': 'One key, many models — free tier available', 'icon': '🧭', 'badge': 'Free models', 'hint': 'sk-or-v1-...'},
+    {'id': 'claude', 'name': 'Claude (Anthropic)', 'icon': '🤖', 'badge': 'recommended', 'hint': 'sk-ant-api03-...'},
+    {'id': 'openai', 'name': 'OpenAI GPT-4o', 'icon': '⚡', 'hint': 'sk-proj-...'},
+    {'id': 'gemini', 'name': 'Google Gemini', 'icon': '💎', 'hint': 'AIza...'},
+    {'id': 'deepl', 'name': 'DeepL', 'icon': '🌐', 'hint': 'xxxxxxxx-xxxx-...'},
+    {'id': 'huggingface', 'name': 'Hugging Face', 'icon': '🤗', 'badge': 'offline', 'hint': 'hf_...'},
+    {'id': 'openrouter', 'name': 'OpenRouter', 'icon': '🧭', 'badge': 'free', 'hint': 'sk-or-v1-...'},
   ];
 
   static const _languages = {
@@ -94,6 +97,40 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
     await prefs.setString('api_key_$providerId', key);
   }
 
+  // Resolve the localized provider blurb from its stable id.
+  String _providerDesc(AppLocalizations t, String id) {
+    switch (id) {
+      case 'claude':
+        return t.trackProviderClaudeDesc;
+      case 'openai':
+        return t.trackProviderOpenaiDesc;
+      case 'gemini':
+        return t.trackProviderGeminiDesc;
+      case 'deepl':
+        return t.trackProviderDeeplDesc;
+      case 'huggingface':
+        return t.trackProviderHuggingfaceDesc;
+      case 'openrouter':
+        return t.trackProviderOpenrouterDesc;
+      default:
+        return '';
+    }
+  }
+
+  // Resolve the localized badge label from its stable token.
+  String _badgeLabel(AppLocalizations t, String badge) {
+    switch (badge) {
+      case 'recommended':
+        return t.trackBadgeRecommended;
+      case 'offline':
+        return t.trackBadgeOffline;
+      case 'free':
+        return t.trackBadgeFree;
+      default:
+        return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -111,7 +148,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
         title: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.translate_rounded, size: 20, color: cs.primary),
           const SizedBox(width: 8),
-          Text(t.trackAiTitle, style: GoogleFonts.manrope(
+          Text(t.trackAiTitle, style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
         ]),
         bottom: TabBar(
@@ -119,7 +156,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           labelColor: cs.primary,
           unselectedLabelColor: cs.outline,
           indicatorColor: cs.primary,
-          labelStyle: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700),
+          labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
           tabs: [
             Tab(text: t.trackTabTranslation),
             Tab(text: t.trackTabApiKeys),
@@ -148,7 +185,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _SwitchTile(
+          child: AppSettingsSwitchTile(
             icon: Icons.translate_rounded, iconColor: cs.primary,
             title: t.trackEnableAiTranslation, subtitle: t.trackEnableAiTranslationDesc,
             value: _translationEnabled,
@@ -156,20 +193,20 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           ),
         ),
         const SizedBox(height: 8),
-        _SectionHeader(title: t.trackProvider),
+        AppSettingsSectionHeader(title: t.trackProvider),
         ..._providers.map((p) => _buildProviderCard(cs, p)),
         const SizedBox(height: 8),
         if (_selectedProvider == 'huggingface')
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: _SwitchTile(
+            child: AppSettingsSwitchTile(
               icon: Icons.wifi_off_rounded, iconColor: AppTheme.secondary,
               title: t.trackOfflineMode, subtitle: t.trackOfflineModeDesc,
               value: _offlineMode,
               onChanged: (v) { setState(() => _offlineMode = v); _saveSetting('offline_translation', v); },
             ),
           ),
-        _SectionHeader(title: t.trackTranslationSettings),
+        AppSettingsSectionHeader(title: t.trackTranslationSettings),
         // Target language
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -182,17 +219,17 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
             ),
             child: Row(children: [
               Container(width: 36, height: 36,
-                decoration: BoxDecoration(color: cs.primary.withAlpha(25), borderRadius: BorderRadius.circular(10)),
+                decoration: oledIconChip(context, color: cs.primary, fill: cs.primary.withAlpha(25), radius: 10),
                 child: Icon(Icons.language_rounded, color: cs.primary, size: 18)),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(t.trackTargetLanguage, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
-                Text(t.trackTargetLanguageDesc, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+                Text(t.trackTargetLanguage, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
+                Text(t.trackTargetLanguageDesc, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline)),
               ])),
               DropdownButton<String>(
                 value: _targetLanguage,
                 underline: const SizedBox(),
-                style: GoogleFonts.manrope(fontSize: 12, color: cs.primary, fontWeight: FontWeight.w600),
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(color: cs.primary, fontWeight: FontWeight.w600),
                 items: _languages.entries.map((e) =>
                     DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
                 onChanged: (v) { if (v != null) { setState(() => _targetLanguage = v); _saveSetting('ai_target_language', v); } },
@@ -203,7 +240,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
         const SizedBox(height: 4),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _SwitchTile(
+          child: AppSettingsSwitchTile(
             icon: Icons.chat_bubble_outline_rounded, iconColor: cs.primary,
             title: t.trackBubbleDetection, subtitle: t.trackBubbleDetectionDesc,
             value: _bubbleDetection,
@@ -211,7 +248,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           ),
         ),
         const SizedBox(height: 8),
-        _SectionHeader(title: t.trackQuality),
+        AppSettingsSectionHeader(title: t.trackQuality),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(children: ['fast', 'balanced', 'high'].map((q) {
@@ -230,7 +267,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
                     border: Border.all(color: isSelected ? cs.primary : Colors.transparent, width: 1.5),
                   ),
                   child: Text(label, textAlign: TextAlign.center,
-                      style: GoogleFonts.manrope(fontSize: 12,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
                           fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                           color: isSelected ? cs.primary : cs.outline)),
                 ),
@@ -239,7 +276,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           }).toList()),
         ),
         const SizedBox(height: 8),
-        _SectionHeader(title: t.trackKoharuServer),
+        AppSettingsSectionHeader(title: t.trackKoharuServer),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Container(
@@ -253,20 +290,20 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
               Row(children: [
                 const Text('🖥️', style: TextStyle(fontSize: 18)),
                 const SizedBox(width: 8),
-                Text(t.trackServerUrl, style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                Text(t.trackServerUrl, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
               ]),
               const SizedBox(height: 4),
               Text(t.trackKoharuServerDesc,
-                  style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w400, color: cs.outline)),
               const SizedBox(height: 8),
               TextField(
                 controller: _koharuUrlController,
-                style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurface),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface),
                 decoration: InputDecoration(
                   hintText: 'http://localhost:4000',
-                  hintStyle: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
+                  hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline),
                   helperText: 'docker run -p 4000:4000 mayocream/koharu:latest',
-                  helperStyle: GoogleFonts.manrope(fontSize: 10, color: cs.outline),
+                  helperStyle: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10, fontWeight: FontWeight.w400, color: cs.outline),
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   filled: true,
@@ -308,30 +345,30 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
             const SizedBox(width: 12),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text(provider['name']!, style: GoogleFonts.manrope(
-                    fontSize: 13, fontWeight: FontWeight.w700,
+                Text(provider['name']!, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
                     color: isSelected ? cs.primary : cs.onSurface)),
                 if (provider['badge'] != null) ...[
                   const SizedBox(width: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: (provider['badge'] == 'Offline' ? AppTheme.secondary : AppTheme.success).withAlpha(51),
+                      color: (provider['badge'] == 'offline' ? AppTheme.secondary : AppTheme.success).withAlpha(51),
                       borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
-                    child: Text(provider['badge']!, style: GoogleFonts.manrope(
+                    child: Text(_badgeLabel(t, provider['badge']!), style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         fontSize: 9, fontWeight: FontWeight.w800,
-                        color: provider['badge'] == 'Offline' ? AppTheme.secondary : AppTheme.success)),
+                        color: provider['badge'] == 'offline' ? AppTheme.secondary : AppTheme.success)),
                   ),
                 ],
               ]),
               const SizedBox(height: 2),
-              Text(provider['desc']!, style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+              Text(_providerDesc(t, provider['id']!), style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w400, color: cs.outline)),
               if (provider['id'] != 'huggingface') ...[
                 const SizedBox(height: 4),
                 Row(children: [
                   const Icon(Icons.key_rounded, size: 10, color: AppTheme.warning),
                   const SizedBox(width: 3),
-                  Text(t.trackApiKeyRequired, style: GoogleFonts.manrope(
+                  Text(t.trackApiKeyRequired, style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontSize: 10, color: AppTheme.warning, fontWeight: FontWeight.w500)),
                 ]),
               ],
@@ -363,7 +400,7 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
               const SizedBox(width: 8),
               Expanded(child: Text(
                 t.trackApiKeysNotice,
-                style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurface, height: 1.4),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface, height: 1.4),
               )),
             ]),
           ),
@@ -391,16 +428,16 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
           Row(children: [
             Text(icon, style: const TextStyle(fontSize: 18)),
             const SizedBox(width: 8),
-            Text(name, style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
+            Text(name, style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
           ]),
           const SizedBox(height: 8),
           TextField(
             controller: controller,
             obscureText: !visible,
-            style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurface),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
+              hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline),
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               filled: true,
@@ -428,14 +465,14 @@ class _AiSettingsPageState extends State<AiSettingsPage> with SingleTickerProvid
   }
 }
 
-/// Manages Google ML Kit's on-device translation models — the packs the
+/// Manages Google ML Kit's on-device translation models - the packs the
 /// on-device translator (and "Offline Mode") actually use. Each language is a
 /// standalone ~30 MB download that then works with no connection. ML Kit only
 /// exists on Android/iOS, so elsewhere this explains that instead of offering
 /// downloads that can't happen.
 ///
 /// This replaced a mock catalogue of Hugging Face models whose only action was
-/// a "coming soon" toast — those models have no on-device runtime here, so they
+/// a "coming soon" toast - those models have no on-device runtime here, so they
 /// could never have been downloaded or run.
 class _OfflineModelManager extends StatefulWidget {
   final ColorScheme cs;
@@ -545,7 +582,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
               Text(
                 t.trackModelsPlatformOnly,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline),
               ),
             ],
           ),
@@ -567,13 +604,13 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(
             t.trackModelsDescription,
-            style: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline),
           ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: Text(t.trackTranslationLanguages,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   color: cs.primary,
@@ -602,10 +639,10 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(name,
-                  style: GoogleFonts.manrope(
-                      fontSize: 13, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700, color: cs.onSurface)),
               Text(installed ? t.trackDownloaded : t.trackNotDownloaded,
-                  style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w400, color: cs.outline)),
             ]),
           ),
           const SizedBox(width: 8),
@@ -632,8 +669,7 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
                   Icon(Icons.download_rounded, size: 14, color: cs.primary),
                   const SizedBox(width: 4),
                   Text(t.trackDownload,
-                      style: GoogleFonts.manrope(
-                          fontSize: 11,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: cs.primary)),
                 ]),
@@ -645,58 +681,3 @@ class _OfflineModelManagerState extends State<_OfflineModelManager> {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(title.toUpperCase(), style: GoogleFonts.manrope(
-          fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: cs.primary)),
-    );
-  }
-}
-
-class _SwitchTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SwitchTile({
-    required this.icon, required this.iconColor,
-    required this.title, required this.subtitle,
-    required this.value, required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Row(children: [
-        Container(width: 36, height: 36,
-          decoration: BoxDecoration(color: iconColor.withAlpha(25), borderRadius: BorderRadius.circular(10)),
-          child: Icon(icon, color: iconColor, size: 18)),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
-          Text(subtitle, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
-        ])),
-        Switch(value: value, onChanged: onChanged,
-            activeThumbColor: cs.onPrimary, activeTrackColor: cs.primary),
-      ]),
-    );
-  }
-}

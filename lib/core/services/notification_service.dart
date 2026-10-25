@@ -71,7 +71,7 @@ class NotificationService {
   }
 
   /// Ask the OS for notification permission (Android 13+, iOS/macOS). Safe to
-  /// call repeatedly — the OS only prompts once.
+  /// call repeatedly - the OS only prompts once.
   Future<void> requestPermission() async {
     if (!_supported) return;
     try {
@@ -143,7 +143,7 @@ class NotificationService {
     }
   }
 
-  /// Live library-update progress — a single ongoing notification updated in
+  /// Live library-update progress - a single ongoing notification updated in
   /// place (fixed id). Android shows a progress bar; iOS just refreshes the body.
   Future<void> updateProgress(int current, int total, String? title) async {
     if (!_supported || !_on('notif_new_chapters')) return;
@@ -240,7 +240,7 @@ class NotificationService {
     );
   }
 
-  /// One summary notification fired when the whole download queue drains — not
+  /// One summary notification fired when the whole download queue drains - not
   /// one per chapter/episode. Gated on the same `notif_download_complete` toggle;
   /// if everything failed it uses the "failed" title instead.
   Future<void> downloadsFinished(
@@ -265,7 +265,7 @@ class NotificationService {
   }
 
   /// "New chapters found" after a library update (gated on notif_new_chapters).
-  /// One grouped notification per run — single title shows the title + count,
+  /// One grouped notification per run - single title shows the title + count,
   /// multiple shows "N new chapters across M titles" (no per-title spam).
   Future<void> newChaptersFound({
     required int totalNew,

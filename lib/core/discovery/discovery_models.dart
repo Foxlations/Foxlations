@@ -1,4 +1,4 @@
-// Shared types for the Discover feature — the recommendation feed that suggests
+// Shared types for the Discover feature - the recommendation feed that suggests
 // new series to add or save for later. Kept separate from the tracker models so
 // the discovery layer doesn't drag reading-status vocabulary into itself.
 
@@ -37,7 +37,7 @@ enum DiscoverKind {
 /// How a feed is ordered.
 enum DiscoverSort { trending, popular }
 
-/// One recommendation card. It carries only metadata — a match to an installed
+/// One recommendation card. It carries only metadata - a match to an installed
 /// source (so it can actually be read) is resolved separately and lazily, since
 /// not every recommended title exists in the user's sources.
 class DiscoverItem {
@@ -45,7 +45,7 @@ class DiscoverItem {
   /// no-tracker fallback feed, `source:<sourceId>`.
   final String origin;
 
-  /// The origin's own id — a tracker media id, or the source manga URL.
+  /// The origin's own id - a tracker media id, or the source manga URL.
   final String id;
 
   final String title;
@@ -53,7 +53,7 @@ class DiscoverItem {
   final String summary;
   final List<String> genres;
 
-  /// Normalized 0–10 (0 = unknown).
+  /// Normalized 0-10 (0 = unknown).
   final double score;
 
   /// Public link to the entry (AniList/MAL page), for "open in browser".

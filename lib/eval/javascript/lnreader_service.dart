@@ -14,6 +14,7 @@ import '../model/m_video.dart';
 import '../model/page_url.dart';
 import '../model/source_preference.dart';
 import 'http.dart';
+import 'js_promise_decode.dart';
 
 /// Runs LNReader novel plugins (compiled CommonJS JS) in the flutter_js runtime.
 ///
@@ -52,13 +53,13 @@ class LnrExtensionService implements ExtensionService {
 
   Future<void> _ensureInit() async {
     if (_initialized) return;
-    // xhr:false — do NOT enable flutter_js's built-in fetch/XHR. That extension
+    // xhr:false - do NOT enable flutter_js's built-in fetch/XHR. That extension
     // talks to the network with package:http directly, bypassing our
     // Cloudflare-aware bridge (no CF solve, no cookies/UA/DoH) AND throwing
     // UNCAUGHT ClientExceptions that crash the app when a request fails. It also
     // async-loads a fetch.js polyfill that could race-overwrite our own fetch.
     // Our preamble is self-contained (fetch/Headers/Response/URL/XHR), so we
-    // need none of it — every request goes through the bridge below.
+    // need none of it - every request goes through the bridge below.
     runtime = getJavascriptRuntime(xhr: false);
     // Reuse the Cloudflare-aware HTTP bridge: registers onMessage HttpGet/HttpPost.
     JsHttpClient(runtime).init();
@@ -90,7 +91,10 @@ JSON.stringify({ loaded: !!globalThis.__lnrPlugin, error: globalThis.__lnrLoadEr
         logger.error('LNReader plugin failed to load: ${info['error']}',
             category: LogCategory.extension);
       }
-    } catch (_) {}
+    } catch (e) {
+      logger.warning('LNReader plugin load status unreadable: $e',
+          category: LogCategory.extension);
+    }
     _initialized = true;
   }
 
@@ -99,15 +103,16 @@ JSON.stringify({ loaded: !!globalThis.__lnrPlugin, error: globalThis.__lnrLoadEr
 
   /// Decode the `{ok, data|error}` envelope. Some flutter_js engines (notably
   /// iOS's JavaScriptCore) return a resolved promise's value ALREADY JSON-encoded,
-  /// so the envelope arrives double-encoded — decode once, and if that yields a
+  /// so the envelope arrives double-encoded - decode once, and if that yields a
   /// String, decode again. Android's engine single-encodes, so the guard is a
   /// no-op there. Without this, every LNReader call throws "String is not a
   /// subtype of Map" on iOS and the whole lane is dead.
-  static Map<String, dynamic> _decodeEnvelope(String s) {
-    dynamic d = jsonDecode(s);
-    if (d is String) d = jsonDecode(d);
-    return (d as Map).cast<String, dynamic>();
-  }
+  ///
+  /// The double-decode rule lives in [decodeJsPromiseResult], shared with the
+  /// manga lane; requesting a Map here makes a bare String (the once-encoded
+  /// envelope) re-decode exactly as before.
+  static Map<String, dynamic> _decodeEnvelope(String s) =>
+      decodeJsPromiseResult<Map<String, dynamic>>(s);
 
   /// Run an async plugin call and return its JSON. Args are JSON-encoded so a
   /// source-controlled path/query can't break out of the expression.
@@ -213,6 +218,11 @@ JSON.stringify({ loaded: !!globalThis.__lnrPlugin, error: globalThis.__lnrLoadEr
           scanlator: c['scanlator'] is List
               ? (c['scanlator'] as List).join(', ')
               : c['scanlator']?.toString(),
+          // LNReader plugins supply a monotonic `chapterNumber` (reading-order
+          // position). Keep it - the readers order next/prev by it instead of
+          // guessing from the name, which fixes sources whose chapter names/urls
+          // carry no usable number.
+          chapterNumber: (c['chapterNumber'] as num?)?.toDouble(),
         );
     final chapters = <MChapter>[
       for (final c in (data['chapters'] is List
@@ -221,35 +231,77 @@ JSON.stringify({ loaded: !!globalThis.__lnrPlugin, error: globalThis.__lnrLoadEr
           .whereType<Map>())
         toChapter(c),
     ];
-    // LNReader paginates long chapter lists: parseNovel returns only page 1 plus
-    // a `totalPages` count, and the rest come from parsePage(novelPath, page).
-    // Walk the remaining pages so a novel like Shadow Slave (3000+ chapters at
-    // ~100/page) loads its FULL list instead of only the first 100. Best-effort:
-    // a page that errors (parsePage unimplemented / network) is skipped, and
-    // chapters are de-duplicated by url.
+    // parseNovel returns the first page of chapters (sometimes ALL of them,
+    // depending on the plugin's mode) plus a `totalPages` hint; the rest come
+    // from parsePage(novelPath, page). Two robustness guards, both from real
+    // Novel Phoenix (novelfire) failures:
+    //   1. parsePage THROWS on the plugin side for a 404 / rate-limit. Without a
+    //      try/catch a late failure aborted getDetail and lost the WHOLE list,
+    //      so a title would intermittently fail or come back short.
+    //   2. `totalPages` is UNDER-reported when the site's chapter-count text has
+    //      a thousands separator: novelfire computes ceil(parseInt("2,196")/100)
+    //      and parseInt stops at the comma -> 2 -> totalPages 1 -> only the first
+    //      100 chapters (exactly the "sometimes only 100" report, which kicks in
+    //      once a novel crosses 1,000 chapters). So we do NOT treat totalPages as
+    //      the end: we keep paging while pages still add NEW chapters, probing
+    //      past totalPages whenever the gathered count lands exactly on a page
+    //      boundary (the signature of that truncation). Single-request "all
+    //      chapters" modes return a non-boundary count and are left untouched, so
+    //      they aren't re-fetched needlessly.
     final totalPages =
-        ((data['totalPages'] as num?)?.toInt() ?? 1).clamp(1, 500);
-    if (totalPages > 1) {
-      final seen = <String>{
-        for (final ch in chapters)
-          if (ch.url != null) ch.url!
-      };
-      // Full list = every page; a lightweight update check ([fullChapters]
-      // false) only needs the LAST page — the newest chapters on an
-      // ascending-paginated source like Novel Phoenix — so it's ~2 requests
-      // instead of ~32.
-      final pages = fullChapters
-          ? [for (var p = 2; p <= totalPages; p++) p]
-          : <int>[totalPages];
-      for (final page in pages) {
-        final pageData = await _call('parsePage', [url, '$page']);
-        final list = (pageData is Map && pageData['chapters'] is List)
-            ? pageData['chapters'] as List
-            : const [];
-        for (final c in list.whereType<Map>()) {
-          final ch = toChapter(c);
-          if (ch.url != null && seen.add(ch.url!)) chapters.add(ch);
+        ((data['totalPages'] as num?)?.toInt() ?? 1).clamp(1, 1000);
+    final seen = <String>{
+      for (final ch in chapters)
+        if (ch.url != null) ch.url!
+    };
+    // Fetch one more page; append its NEW (deduped) chapters; return how many.
+    Future<int> appendPage(int page) async {
+      final pageData = await _call('parsePage', [url, '$page']);
+      final list = (pageData is Map && pageData['chapters'] is List)
+          ? pageData['chapters'] as List
+          : const [];
+      var added = 0;
+      for (final c in list.whereType<Map>()) {
+        final ch = toChapter(c);
+        if (ch.url != null && seen.add(ch.url!)) {
+          chapters.add(ch);
+          added++;
         }
+      }
+      return added;
+    }
+
+    if (!fullChapters) {
+      // Lightweight update check: the newest chapters sit on the LAST page of an
+      // ascending-paginated source, so fetch just that one.
+      if (totalPages > 1) {
+        try {
+          await appendPage(totalPages);
+        } catch (e) {
+          logger.warning('LNReader parsePage $totalPages failed: $e',
+              category: LogCategory.extension);
+        }
+      }
+    } else {
+      const pageSize = 100;
+      const hardCap = 1000;
+      var page = chapters.isEmpty ? 1 : 2;
+      while (page <= hardCap &&
+          (chapters.isEmpty ||
+              page <= totalPages ||
+              chapters.length % pageSize == 0)) {
+        final int added;
+        try {
+          added = await appendPage(page);
+        } catch (e) {
+          logger.warning(
+              'LNReader parsePage $page failed; keeping ${chapters.length} '
+              'chapters: $e',
+              category: LogCategory.extension);
+          break;
+        }
+        if (added == 0) break;
+        page++;
       }
     }
     final novelPath = (data['path'] ?? url).toString();
@@ -277,7 +329,7 @@ JSON.stringify({ loaded: !!globalThis.__lnrPlugin, error: globalThis.__lnrLoadEr
   /// `resolveUrl(path, isNovel)` that maps an internal path to the public web
   /// page (some sites fetch details from a different path than the readable one,
   /// so `site + path` 404s); without it the convention is `site + path`. The
-  /// call is synchronous JS — string ops, no regex, to keep escaping simple.
+  /// call is synchronous JS - string ops, no regex, to keep escaping simple.
   Future<String?> _resolveWebUrl(String path) async {
     await _ensureInit();
     final expr = '''(function(){
@@ -402,7 +454,7 @@ const String _preamble = r'''
     });
   };
 
-  // Minimal XMLHttpRequest over the SAME bridge as fetch — plugins/libs that use
+  // Minimal XMLHttpRequest over the SAME bridge as fetch - plugins/libs that use
   // XHR (or a transport that falls back to it) go through our Cloudflare-aware
   // path too, instead of flutter_js's package:http XHR (which bypasses CF and
   // crashes uncaught on a failed request). Async only (no sync open(...,false)).
@@ -610,7 +662,7 @@ const String _preamble = r'''
   // Wrap a plugin call: resolve opts markers, run, and report {ok,data|error}.
   G.__lnrRun = function (fn) {
     return Promise.resolve().then(function () {
-      // second arg of popularNovels is our opts marker — patch in place
+      // second arg of popularNovels is our opts marker - patch in place
       return fn.call(null);
     }).then(function (data) {
       return JSON.stringify({ ok: true, data: data });

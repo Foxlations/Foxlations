@@ -88,6 +88,22 @@ android {
         }
     }
 
+    // Compress the bundled native libraries (.so) inside the APK. They default
+    // to uncompressed + page-aligned (useLegacyPackaging = false), which is the
+    // right call for a Play Store app bundle (mmap in place → smaller install),
+    // but wrong for how we actually ship: a full APK downloaded from GitHub
+    // Releases / AltStore on every update. Uncompressed, the ~98 MB of .so
+    // (onnxruntime, mpv, ML Kit, Flutter, translate…) is the bulk of that
+    // download; compressing them cuts it to ~40 MB. The trade is a slightly
+    // larger install (the libs are extracted on first launch) and a marginally
+    // slower cold start — worth it for a sideloaded app judged by its download
+    // size. (No effect on iOS, which packages frameworks separately.)
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     // The eu.kanade.tachiyomi.* extension-API runtime is vendored (from ApkBridge,
     // Apache-2.0) into src/main/ext-runtime by scripts/vendor_ext_runtime.sh / CI. It's
     // gitignored (not our code), so populate it before building.

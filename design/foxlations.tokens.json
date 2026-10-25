@@ -1,0 +1,63 @@
+{
+  "$description": "Foxlations design tokens — the single source of truth shared between the Flutter theme (lib/theme/app_theme.dart + app_tokens.dart) and Figma. Import into Figma with the Tokens Studio plugin (Tokens -> Import). Keep this in sync when the Flutter tokens change.",
+  "global": {
+    "color": {
+      "bg":            { "value": "#12121C", "type": "color" },
+      "surface":       { "value": "#1E1E2E", "type": "color" },
+      "surfaceRaised": { "value": "#252538", "type": "color" },
+      "surfaceSunken": { "value": "#15141B", "type": "color" },
+      "panel":         { "value": "#201E28", "type": "color" },
+      "chip":          { "value": "#2A2A3E", "type": "color" },
+      "hairline":      { "value": "#3A3A4E", "type": "color" },
+      "text":          { "value": "#E8E8F0", "type": "color" },
+      "textDim":       { "value": "#9A9AB8", "type": "color" },
+      "textMuted":     { "value": "#6B6B8A", "type": "color" },
+      "accent":        { "value": "#FF7A5C", "type": "color", "description": "User-configurable primary; coral is the default." },
+      "accentAlt":     { "value": "#7C6FF7", "type": "color" },
+      "success":       { "value": "#4CAF82", "type": "color" },
+      "warning":       { "value": "#F59E0B", "type": "color" },
+      "danger":        { "value": "#EF4444", "type": "color" },
+      "discord":       { "value": "#5865F2", "type": "color", "description": "Brand colour, used only for Discord affordances." }
+    },
+    "spacing": {
+      "xs":  { "value": "4",  "type": "spacing" },
+      "sm":  { "value": "8",  "type": "spacing" },
+      "md":  { "value": "12", "type": "spacing" },
+      "lg":  { "value": "16", "type": "spacing" },
+      "xl":  { "value": "24", "type": "spacing" },
+      "2xl": { "value": "32", "type": "spacing" }
+    },
+    "radius": {
+      "sm":   { "value": "6",   "type": "borderRadius" },
+      "md":   { "value": "12",  "type": "borderRadius" },
+      "lg":   { "value": "20",  "type": "borderRadius" },
+      "full": { "value": "100", "type": "borderRadius" }
+    },
+    "motionMs": {
+      "fast":     { "value": "120", "type": "other", "description": "fastMicro" },
+      "standard": { "value": "220", "type": "other" },
+      "entrance": { "value": "320", "type": "other" }
+    },
+    "fontFamilies": {
+      "sans": { "value": "Manrope", "type": "fontFamilies" }
+    },
+    "fontWeights": {
+      "regular":   { "value": "400", "type": "fontWeights" },
+      "medium":    { "value": "500", "type": "fontWeights" },
+      "semibold":  { "value": "600", "type": "fontWeights" },
+      "bold":      { "value": "700", "type": "fontWeights" },
+      "extrabold": { "value": "800", "type": "fontWeights" }
+    },
+    "fontSizes": {
+      "displayLarge":  { "value": "36", "type": "fontSizes" },
+      "displayMedium": { "value": "28", "type": "fontSizes" },
+      "titleLarge":    { "value": "20", "type": "fontSizes" },
+      "titleMedium":   { "value": "16", "type": "fontSizes" },
+      "titleSmall":    { "value": "14", "type": "fontSizes" },
+      "body":          { "value": "14", "type": "fontSizes" },
+      "bodySmall":     { "value": "13", "type": "fontSizes" },
+      "label":         { "value": "12", "type": "fontSizes" },
+      "caption":       { "value": "11", "type": "fontSizes" }
+    }
+  }
+}

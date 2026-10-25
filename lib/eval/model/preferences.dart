@@ -3,7 +3,7 @@ import 'source_preference.dart';
 /// The preference types Mangayomi/m2k3a sources construct inside their
 /// `getSourcePreferences()`. Each carries its own `key` (m2k3a style) and knows
 /// how to collapse into a Foxlations [SourcePreference] whose `defaultValue`
-/// seeds the pref cache — so a source's declared defaults (base-URL overrides,
+/// seeds the pref cache - so a source's declared defaults (base-URL overrides,
 /// preferred quality/server, the enabled-hosts multi-select) take effect
 /// without the user opening settings.
 List<SourcePreferenceEntry>? _entries(

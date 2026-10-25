@@ -100,11 +100,57 @@ import UserNotifications
     // bookmark. iOS-only; Android/Windows use the plain directory picker.
     FolderAccess.register(messenger: messenger)
 
+    // Background downloads: ask iOS for extra background time while a download
+    // is active, so it keeps going for the few minutes the OS grants after the
+    // app is backgrounded (iOS can't run our segment-fetch pipeline once the
+    // app is fully suspended; Dart persists + resumes the queue for the rest).
+    BackgroundRunner.register(messenger: messenger)
+
     #if FOXLATIONS_JVM
     // Embedded-JVM channel for Kotlin extensions. Only present in the JVM build
     // (the -DFOXLATIONS_JVM configuration); a no-op in the normal production build.
     registerFoxJvmChannel(engineBridge.pluginRegistry)
     #endif
+  }
+}
+
+/// Background downloads. iOS suspends the app shortly after it's backgrounded,
+/// which would stop an in-progress download. `beginBackgroundTask` asks for the
+/// finite extra time the OS grants (seconds to a few minutes) so the current
+/// download(s) can finish; the Dart side (DownloadProvider) persists the queue
+/// and resumes anything left when the app returns. Dart drives it over
+/// foxlations/background: `begin` when a download starts, `end` when the queue
+/// drains. Idempotent. Kept in AppDelegate.swift (already in the Runner target)
+/// to avoid a new project.pbxproj entry — same rationale as SecureScreen.
+enum BackgroundRunner {
+  private static var taskId: UIBackgroundTaskIdentifier = .invalid
+
+  static func register(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "foxlations/background", binaryMessenger: messenger)
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "begin": begin(); result(nil)
+      case "end": end(); result(nil)
+      default: result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private static func begin() {
+    DispatchQueue.main.async {
+      guard taskId == .invalid else { return }
+      taskId = UIApplication.shared.beginBackgroundTask(withName: "foxlations.downloads") {
+        end()  // expiration handler — release before iOS force-ends us
+      }
+    }
+  }
+
+  private static func end() {
+    DispatchQueue.main.async {
+      guard taskId != .invalid else { return }
+      UIApplication.shared.endBackgroundTask(taskId)
+      taskId = .invalid
+    }
   }
 }
 

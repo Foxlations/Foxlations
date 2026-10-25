@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/providers/app_lock_provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -53,7 +52,7 @@ class _AppLockGateState extends State<AppLockGate> {
               const SizedBox(height: 18),
               Text(
                 t.securityLockedTitle,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: cs.onSurface),

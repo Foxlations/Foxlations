@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/library_provider.dart';
 import '../../../core/providers/source_provider.dart';
+import '../../../core/models/library_settings.dart';
 import '../../../core/services/library_update_service.dart';
 import '../../../core/services/settings_store.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
+import '../../widgets/ds/ds.dart';
 import 'source_migrate_screen.dart';
 
 class LibrarySettingsPage extends StatefulWidget {
@@ -18,6 +20,7 @@ class LibrarySettingsPage extends StatefulWidget {
 
 class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
   bool _hideEmptyCategories = false;
+  LibraryContinueMode _continueMode = LibraryContinueMode.banner;
   String _defaultCategory = '';
   bool _wifiOnly = true;
   bool _chargingOnly = false;
@@ -37,6 +40,10 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
     setState(() {
       _hideEmptyCategories =
           SettingsStore.instance.getBool('lib_hide_empty_cats') ?? false;
+      _continueMode = LibraryContinueMode.values.firstWhere(
+        (m) => m.name == SettingsStore.instance.getString('lib_continue_mode'),
+        orElse: () => LibraryContinueMode.banner,
+      );
       _defaultCategory =
           SettingsStore.instance.getString('lib_default_category') ?? '';
       _wifiOnly = SettingsStore.instance.getBool('lib_update_wifi_only') ?? true;
@@ -66,10 +73,11 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
     final lib = context.read<LibraryProvider>();
     final src = context.read<SourceProvider>();
     final messenger = ScaffoldMessenger.of(context);
+    final t = AppLocalizations.of(context);
     final total = lib.manga.length;
     if (total == 0) {
       messenger.showSnackBar(
-          const SnackBar(content: Text('No library items to refresh')));
+          SnackBar(content: Text(t.setdLibraryNoItemsToRefresh)));
       return;
     }
 
@@ -84,7 +92,7 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
         final cs = Theme.of(ctx).colorScheme;
         return AlertDialog(
           backgroundColor: cs.surface,
-          title: const Text('Refreshing covers'),
+          title: Text(t.setdLibraryRefreshingCovers),
           content: ValueListenableBuilder<int>(
             valueListenable: progress,
             builder: (_, done, _) => Column(
@@ -100,7 +108,7 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
                     backgroundColor: cs.onSurface.withAlpha(38),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Text('$done / $total', textAlign: TextAlign.center),
               ],
             ),
@@ -111,7 +119,7 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
                 cancelled = true;
                 Navigator.of(ctx).pop();
               },
-              child: const Text('Stop'),
+              child: Text(t.readerTtsStop),
             ),
           ],
         );
@@ -132,8 +140,8 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
     }
     messenger.showSnackBar(SnackBar(
       content: Text(cancelled
-          ? 'Cover refresh stopped'
-          : 'Refreshed $changed ${changed == 1 ? 'cover' : 'covers'}'),
+          ? t.setdLibraryCoverRefreshStopped
+          : t.setdLibraryCoversRefreshed(changed)),
     ));
   }
 
@@ -145,8 +153,9 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
     // Default-category chooser: "Always ask" plus every existing category.
     final categoryNames =
         context.watch<LibraryProvider>().categories.map((c) => c.name).toList();
-    final defaultCategoryDisplay =
-        categoryNames.contains(_defaultCategory) ? _defaultCategory : 'Always ask';
+    final defaultCategoryDisplay = categoryNames.contains(_defaultCategory)
+        ? _defaultCategory
+        : t.setdLibraryAlwaysAsk;
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -160,7 +169,7 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
         ),
         title: Text(
           t.setdLibraryTitle,
-          style: GoogleFonts.manrope(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: cs.onSurface,
@@ -169,10 +178,28 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
       ),
       body: ListView(
         padding: EdgeInsets.only(
-            top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
+            top: AppSpacing.sm,
+            bottom: AppSpacing.sm + MediaQuery.viewPaddingOf(context).bottom),
         children: [
-          _SectionHeader(title: t.setdLibrarySectionCategories),
-          _NavTile(
+          AppSettingsSectionHeader(title: t.setdLibrarySectionContinueReading),
+          AppSettingsChoiceTile(
+            icon: Icons.play_circle_outline_rounded,
+            iconColor: cs.primary,
+            title: t.setdLibraryContinueShowAs,
+            value: _continueMode.label,
+            options: LibraryContinueMode.values.map((m) => m.label).toList(),
+            onChanged: (v) {
+              final mode = LibraryContinueMode.values.firstWhere(
+                (m) => m.label == v,
+                orElse: () => LibraryContinueMode.banner,
+              );
+              setState(() => _continueMode = mode);
+              _save('lib_continue_mode', mode.name);
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setdLibrarySectionCategories),
+          AppSettingsNavTile(
             icon: Icons.category_rounded,
             iconColor: cs.primary,
             title: t.setdLibraryEditCategories,
@@ -182,7 +209,7 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
               MaterialPageRoute(builder: (_) => const _EditCategoriesPage()),
             ),
           ),
-          _SwitchTile(
+          AppSettingsSwitchTile(
             icon: Icons.folder_off_rounded,
             iconColor: cs.primary,
             title: t.setdLibraryHideEmpty,
@@ -190,21 +217,21 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
             value: _hideEmptyCategories,
             onChanged: (v) { setState(() => _hideEmptyCategories = v); _save('lib_hide_empty_cats', v); },
           ),
-          _ChoiceTile(
+          AppSettingsChoiceTile(
             icon: Icons.label_rounded,
             iconColor: cs.primary,
-            title: 'Default category',
+            title: t.setdLibraryDefaultCategory,
             value: defaultCategoryDisplay,
-            options: ['Always ask', ...categoryNames],
+            options: [t.setdLibraryAlwaysAsk, ...categoryNames],
             onChanged: (v) {
-              final name = v == 'Always ask' ? '' : v;
+              final name = v == t.setdLibraryAlwaysAsk ? '' : v;
               setState(() => _defaultCategory = name);
               _save('lib_default_category', name);
             },
           ),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setdLibrarySectionGlobalUpdate),
-          _ChoiceTile(
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setdLibrarySectionGlobalUpdate),
+          AppSettingsChoiceTile(
             icon: Icons.schedule_rounded,
             iconColor: AppTheme.success,
             title: t.setdLibraryUpdateFrequency,
@@ -218,7 +245,7 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
             ],
             onChanged: (v) { setState(() => _updateFrequency = v); _save('lib_update_frequency', v); },
           ),
-          _SwitchTile(
+          AppSettingsSwitchTile(
             icon: Icons.wifi_rounded,
             iconColor: AppTheme.success,
             title: t.setdLibraryWifiOnly,
@@ -226,7 +253,7 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
             value: _wifiOnly,
             onChanged: (v) { setState(() => _wifiOnly = v); _save('lib_update_wifi_only', v); },
           ),
-          _SwitchTile(
+          AppSettingsSwitchTile(
             icon: Icons.battery_charging_full_rounded,
             iconColor: AppTheme.success,
             title: t.setdLibraryChargingOnly,
@@ -234,9 +261,9 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
             value: _chargingOnly,
             onChanged: (v) { setState(() => _chargingOnly = v); _save('lib_update_charging_only', v); },
           ),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setdLibrarySectionRestrictions),
-          _SwitchTile(
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setdLibrarySectionRestrictions),
+          AppSettingsSwitchTile(
             icon: Icons.visibility_off_rounded,
             iconColor: AppTheme.warning,
             title: t.setdLibrarySkipNotStarted,
@@ -244,23 +271,23 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
             value: _skipNotStarted,
             onChanged: (v) { setState(() => _skipNotStarted = v); _save('lib_skip_not_started', v); },
           ),
-          _SwitchTile(
+          AppSettingsSwitchTile(
             icon: Icons.mark_email_unread_rounded,
             iconColor: AppTheme.warning,
-            title: 'Skip titles with unread chapters',
-            subtitle: 'Don\'t check titles you haven\'t caught up on yet',
+            title: t.setdLibrarySkipHasUnread,
+            subtitle: t.setdLibrarySkipHasUnreadDesc,
             value: _skipHasUnread,
             onChanged: (v) { setState(() => _skipHasUnread = v); _save('lib_skip_has_unread', v); },
           ),
-          _SwitchTile(
+          AppSettingsSwitchTile(
             icon: Icons.check_circle_outline_rounded,
             iconColor: AppTheme.warning,
-            title: 'Skip completed series',
-            subtitle: 'Finished series won\'t get new chapters',
+            title: t.setdLibrarySkipCompleted,
+            subtitle: t.setdLibrarySkipCompletedDesc,
             value: _skipCompleted,
             onChanged: (v) { setState(() => _skipCompleted = v); _save('lib_skip_completed', v); },
           ),
-          _SwitchTile(
+          AppSettingsSwitchTile(
             icon: Icons.notifications_active_rounded,
             iconColor: AppTheme.warning,
             title: t.setdLibraryShowUpdateCount,
@@ -268,9 +295,9 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
             value: _showUpdateCount,
             onChanged: (v) { setState(() => _showUpdateCount = v); _save('lib_show_update_count', v); },
           ),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setdLibrarySectionData),
-          _NavTile(
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setdLibrarySectionData),
+          AppSettingsNavTile(
             icon: Icons.swap_horiz_rounded,
             iconColor: cs.primary,
             title: t.setdLibraryMigrateSource,
@@ -280,79 +307,15 @@ class _LibrarySettingsPageState extends State<LibrarySettingsPage> {
               MaterialPageRoute(builder: (_) => const SourceMigrateScreen()),
             ),
           ),
-          _NavTile(
+          AppSettingsNavTile(
             icon: Icons.image_search_rounded,
             iconColor: cs.primary,
-            title: 'Refresh library covers',
-            subtitle: 'Fetch covers again from source',
+            title: t.setdLibraryRefreshCovers,
+            subtitle: t.setdLibraryRefreshCoversDesc,
             onTap: _refreshCovers,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
         ],
-      ),
-    );
-  }
-}
-
-// ── Nav Tile (click to navigate) ────────────────────────────
-class _NavTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _NavTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: cs.outlineVariant),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: iconColor.withAlpha(25),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: GoogleFonts.manrope(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurface)),
-                  Text(subtitle,
-                      style:
-                          GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded, color: cs.outline, size: 20),
-          ],
-        ),
       ),
     );
   }
@@ -378,7 +341,7 @@ class _EditCategoriesPage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(t.setdLibraryEditCategories,
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface)),
@@ -400,23 +363,25 @@ class _EditCategoriesPage extends StatelessWidget {
                 children: [
                   Icon(Icons.category_outlined,
                       size: 64, color: cs.outline.withAlpha(128)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   Text(t.setdLibraryNoCategories,
-                      style: GoogleFonts.manrope(
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: cs.onSurface)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(t.setdTapToAddCategory,
-                      style:
-                          GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: cs.outline)),
                 ],
               ),
             );
           }
 
           return ReorderableListView.builder(
-            padding: const EdgeInsets.fromLTRB(0, 8, 0, 80),
+            padding: const EdgeInsets.fromLTRB(0, AppSpacing.sm, 0, 80),
             buildDefaultDragHandles: false,
             itemCount: categories.length,
             proxyDecorator: (child, index, animation) {
@@ -465,17 +430,22 @@ class _EditCategoriesPage extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
         title: Text(t.setdNewCategory,
-            style: GoogleFonts.manrope(
-                fontSize: 16,
+            style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
+          style: Theme.of(ctx)
+              .textTheme
+              .bodyLarge
+              ?.copyWith(color: cs.onSurface),
           decoration: InputDecoration(
             hintText: t.setdCategoryNameHint,
-            hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
+            hintStyle: Theme.of(ctx)
+                .textTheme
+                .bodyLarge
+                ?.copyWith(color: cs.outline),
             filled: true,
             fillColor: cs.surfaceContainerHighest,
             border: OutlineInputBorder(
@@ -494,7 +464,7 @@ class _EditCategoriesPage extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(t.setdActionCancel,
-                style: GoogleFonts.manrope(
+                style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600, color: cs.outline)),
           ),
           TextButton(
@@ -506,7 +476,7 @@ class _EditCategoriesPage extends StatelessWidget {
               }
             },
             child: Text(t.setdActionAdd,
-                style: GoogleFonts.manrope(
+                style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w700, color: cs.primary)),
           ),
         ],
@@ -527,17 +497,22 @@ class _EditCategoriesPage extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
         title: Text(t.setdRenameCategory,
-            style: GoogleFonts.manrope(
-                fontSize: 16,
+            style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface)),
         content: TextField(
           controller: controller,
           autofocus: true,
-          style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
+          style: Theme.of(ctx)
+              .textTheme
+              .bodyLarge
+              ?.copyWith(color: cs.onSurface),
           decoration: InputDecoration(
             hintText: t.setdCategoryNameHint,
-            hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
+            hintStyle: Theme.of(ctx)
+                .textTheme
+                .bodyLarge
+                ?.copyWith(color: cs.outline),
             filled: true,
             fillColor: cs.surfaceContainerHighest,
             border: OutlineInputBorder(
@@ -556,7 +531,7 @@ class _EditCategoriesPage extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(t.setdActionCancel,
-                style: GoogleFonts.manrope(
+                style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600, color: cs.outline)),
           ),
           TextButton(
@@ -568,7 +543,7 @@ class _EditCategoriesPage extends StatelessWidget {
               }
             },
             child: Text(t.setdActionSave,
-                style: GoogleFonts.manrope(
+                style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w700, color: cs.primary)),
           ),
         ],
@@ -588,18 +563,20 @@ class _EditCategoriesPage extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
         title: Text(t.setdDeleteCategory,
-            style: GoogleFonts.manrope(
-                fontSize: 16,
+            style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface)),
         content: Text(
             t.setdLibraryDeleteCategoryConfirm(name),
-            style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface)),
+            style: Theme.of(ctx)
+                .textTheme
+                .bodyLarge
+                ?.copyWith(color: cs.onSurface)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(t.setdActionCancel,
-                style: GoogleFonts.manrope(
+                style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600, color: cs.outline)),
           ),
           TextButton(
@@ -608,7 +585,7 @@ class _EditCategoriesPage extends StatelessWidget {
               Navigator.pop(ctx);
             },
             child: Text(t.setdActionDelete,
-                style: GoogleFonts.manrope(
+                style: Theme.of(ctx).textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w700, color: AppTheme.error)),
           ),
         ],
@@ -637,22 +614,22 @@ class _CategoryTile extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Container(
       color: cs.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
       child: Row(
         children: [
           ReorderableDragStartListener(
             index: index,
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               child: Icon(Icons.drag_handle_rounded,
                   size: 20, color: cs.outline),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(name,
-                style: GoogleFonts.manrope(
-                    fontSize: 14,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: cs.onSurface)),
           ),
@@ -675,250 +652,3 @@ class _CategoryTile extends StatelessWidget {
   }
 }
 
-// ── Shared Widgets ───────────────────────────────────────────
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(
-        title.toUpperCase(),
-        style: GoogleFonts.manrope(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.0,
-          color: cs.primary,
-        ),
-      ),
-    );
-  }
-}
-
-class _SwitchTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SwitchTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: iconColor.withAlpha(25),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.manrope(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.manrope(
-                    fontSize: 12,
-                    color: cs.outline,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: cs.onPrimary,
-            activeTrackColor: cs.primary,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChoiceTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String value;
-  final List<String> options;
-  final ValueChanged<String> onChanged;
-
-  const _ChoiceTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () => _showPicker(context),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: cs.outlineVariant),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: iconColor.withAlpha(25),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: GoogleFonts.manrope(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: cs.onSurface,
-                ),
-              ),
-            ),
-            Text(
-              value,
-              style: GoogleFonts.manrope(
-                fontSize: 13,
-                color: cs.outline,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded,
-                color: cs.outline, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showPicker(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cs.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppTheme.radiusLarge),
-        ),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: cs.outline,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: GoogleFonts.manrope(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: cs.onSurface,
-              ),
-            ),
-            Divider(color: cs.outlineVariant),
-            ...options.map((opt) {
-              final isSelected = opt == value;
-              return InkWell(
-                onTap: () {
-                  onChanged(opt);
-                  Navigator.pop(context);
-                },
-                borderRadius:
-                    BorderRadius.circular(AppTheme.radiusMedium),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? cs.primary.withAlpha(26)
-                        : Colors.transparent,
-                    borderRadius:
-                        BorderRadius.circular(AppTheme.radiusMedium),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          opt,
-                          style: GoogleFonts.manrope(
-                            fontSize: 14,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: cs.onSurface,
-                          ),
-                        ),
-                      ),
-                      if (isSelected)
-                        Icon(Icons.check_rounded,
-                            size: 18, color: cs.primary),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/models/player_settings.dart';
 import '../../../l10n/app_localizations.dart';
 
-/// Video-player options — feeds media_kit's controls theme (double-tap seek
+/// Video-player options - feeds media_kit's controls theme (double-tap seek
 /// distances, gestures, long-press speed, autoplay, default speed).
 class PlayerSettingsPage extends StatefulWidget {
   const PlayerSettingsPage({super.key});
@@ -38,7 +37,7 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(t.setdPlayerTitle,
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: SafeArea(
@@ -129,11 +128,10 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
 
   Widget _header(ColorScheme cs, String text) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-        child: Text(text,
-            style: GoogleFonts.manrope(
-                fontSize: 11,
-                letterSpacing: 1.1,
-                fontWeight: FontWeight.w700,
+        child: Text(text.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                letterSpacing: 0.8,
+                fontWeight: FontWeight.w800,
                 color: cs.primary)),
       );
 
@@ -145,10 +143,11 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
         activeThumbColor: cs.primary,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20),
         title: Text(title,
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface)),
         subtitle: Text(subtitle,
-            style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontSize: 12.5, color: cs.outline)),
       );
 
   Widget _pick(ColorScheme cs, String title, String value, VoidCallback onTap) =>
@@ -156,18 +155,19 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 20),
         onTap: onTap,
         title: Text(title,
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface)),
         trailing: Text(value,
-            style: GoogleFonts.manrope(
-                fontSize: 14, fontWeight: FontWeight.w600, color: cs.primary)),
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600, color: cs.primary)),
       );
 
   Future<int?> _pickSeconds(int current) => showDialog<int>(
         context: context,
         builder: (ctx) => SimpleDialog(
           title: Text(AppLocalizations.of(context).setdPlayerSkipAmountTitle,
-              style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 15, fontWeight: FontWeight.w700)),
           children: [
             for (final s in const [5, 10, 15, 30, 60, 90])
               _dialogRow(ctx, '${s}s', s, s == current),
@@ -179,7 +179,8 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
         context: context,
         builder: (ctx) => SimpleDialog(
           title: Text(AppLocalizations.of(context).setdPlayerSpeedTitle,
-              style: GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 15, fontWeight: FontWeight.w700)),
           children: [
             for (final s in options) _dialogRow(ctx, '${s}x', s, s == current),
           ],
@@ -195,7 +196,7 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
           Icon(selected ? Icons.radio_button_checked_rounded : Icons.radio_button_unchecked_rounded,
               size: 18, color: selected ? cs.primary : cs.outline),
           const SizedBox(width: 12),
-          Text(label, style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface)),
+          Text(label, style: Theme.of(ctx).textTheme.bodyLarge?.copyWith(color: cs.onSurface)),
         ],
       ),
     );
@@ -232,8 +233,8 @@ class _PlayerSettingsPageState extends State<PlayerSettingsPage> {
         context: context,
         builder: (ctx) => SimpleDialog(
           title: Text(AppLocalizations.of(context).setdPlayerSkipAmountTitle,
-              style:
-                  GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 15, fontWeight: FontWeight.w700)),
           children: [
             for (final s in const [30, 60, 75, 85, 90, 120])
               _dialogRow(ctx, '${s}s', s, s == current),

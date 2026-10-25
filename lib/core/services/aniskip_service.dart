@@ -7,7 +7,7 @@ import 'app_logger.dart';
 
 /// Fetches crowd-sourced intro/outro (opening/ending) skip times from the
 /// AniSkip API (api.aniskip.com) and maps them to the player's [MTimeStamp]
-/// model, so Skip Intro / Skip Outro works on essentially any tracked anime —
+/// model, so Skip Intro / Skip Outro works on essentially any tracked anime - 
 /// not just the rare source that ships its own timestamps.
 ///
 /// Keyed off the MyAnimeList id (from the anime's MAL tracker binding) + the

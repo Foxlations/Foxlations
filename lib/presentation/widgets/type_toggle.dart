@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-/// One item in a [TypeToggle] — an id, its label, and an optional badge count
+/// One item in a [TypeToggle] - an id, its label, and an optional badge count
 /// (e.g. pending updates for that content type).
 class TypeToggleItem {
   final String id;
@@ -36,20 +35,6 @@ class _TypeToggleState extends State<TypeToggle> {
 
   GlobalKey _keyFor(String id) => _segKeys.putIfAbsent(id, () => GlobalKey());
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
-  }
-
-  @override
-  void didUpdateWidget(covariant TypeToggle old) {
-    super.didUpdateWidget(old);
-    if (old.selectedId != widget.selectedId || old.items.length != widget.items.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
-    }
-  }
-
   void _measure() {
     if (!mounted) return;
     final stackBox = _stackKey.currentContext?.findRenderObject() as RenderBox?;
@@ -64,6 +49,14 @@ class _TypeToggleState extends State<TypeToggle> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // Depend on the system text scale so a font-size change rebuilds (then
+    // re-measures) us even without a parent rebuild.
+    MediaQuery.textScalerOf(context);
+    // Re-measure after layout so the sliding highlight follows the selected
+    // segment after ANY change that moves or resizes it (selection, badge count,
+    // rotation, text scale, locale label widths, theme). _measure only calls
+    // setState on a real change, so this settles in a frame and never loops.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -114,43 +107,43 @@ class _TypeToggleState extends State<TypeToggle> {
       behavior: HitTestBehavior.opaque,
       onTap: () => widget.onChanged(it.id),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-        child: Stack(
-          clipBehavior: Clip.none,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        // Inline label + badge (was a floating Positioned badge that clipped the
+        // pill edge and clashed in colour). The badge sits after the label, flips
+        // to an inverted chip when selected, and rides inside the pill cleanly.
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 220),
-              style: GoogleFonts.manrope(
-                fontSize: 13,
+              style: Theme.of(context).textTheme.labelLarge!.copyWith(
                 fontWeight: FontWeight.w700,
                 color: selected ? Colors.white : cs.onSurfaceVariant,
               ),
               child: Text(it.label),
             ),
-            if (it.badge > 0)
-              Positioned(
-                top: -6,
-                right: -10,
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: 15),
-                  height: 15,
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: cs.error,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: cs.surfaceContainerHighest, width: 2),
-                  ),
-                  child: Text(
-                    it.badge > 99 ? '99+' : '${it.badge}',
-                    style: GoogleFonts.manrope(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
+            if (it.badge > 0) ...[
+              const SizedBox(width: 7),
+              Container(
+                constraints: const BoxConstraints(minWidth: 18),
+                height: 18,
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white : cs.primary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  it.badge > 99 ? '99+' : '${it.badge}',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    height: 1.0,
+                    color: selected ? cs.primary : cs.onPrimary,
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),

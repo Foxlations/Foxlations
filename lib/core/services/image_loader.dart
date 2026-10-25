@@ -24,7 +24,7 @@ class ImageLoader {
   /// concurrency slot on a duplicate GET.
   final Map<String, Future<Uint8List?>> _inFlight = {};
 
-  /// Encoded-image cache budget. Bytes are the real constraint — entry count
+  /// Encoded-image cache budget. Bytes are the real constraint - entry count
   /// is kept only as a secondary guard against pathologically tiny images.
   static const int _maxCacheBytes = 64 * 1024 * 1024;
   static const int _maxCacheEntries = 200;
@@ -35,7 +35,7 @@ class ImageLoader {
     // Don't verify TLS certs for image fetches. Manga image CDNs (e.g.
     // static.mfcdn.cc) routinely serve incomplete/unknown-issuer chains that a
     // browser papers over by fetching the missing intermediate, but reqwest
-    // (rhttp) does not — so covers and reader pages failed with
+    // (rhttp) does not - so covers and reader pages failed with
     // InvalidCertificate(UnknownIssuer) even though the DOWNLOAD client already
     // fetches the same images with verification off. Match it so on-screen
     // display works too. (Public manga images; integrity risk is low, and
@@ -84,7 +84,7 @@ class ImageLoader {
     final imageDomain = Uri.tryParse(url)?.host ?? '';
     if (_blockedDomains.contains(imageDomain)) return null;
 
-    // Build headers — include Sec-Fetch-* so Cloudflare's bot detection treats
+    // Build headers - include Sec-Fetch-* so Cloudflare's bot detection treats
     // this as a legitimate cross-origin image request from a browser.
     final refererForSite = headers?['Referer'];
     final isCrossOrigin = refererForSite != null &&
@@ -95,7 +95,7 @@ class ImageLoader {
       'sec-fetch-dest': 'image',
       'sec-fetch-mode': 'no-cors',
       'sec-fetch-site': isCrossOrigin ? 'cross-site' : 'same-site',
-      // Client Hints are Chromium-only — Safari never sends them. On iOS the
+      // Client Hints are Chromium-only - Safari never sends them. On iOS the
       // stored UA is iOS Safari, so advertising Chromium *and* desktop Windows
       // from an iPhone is a strong bot signal. A 403 here is unrecoverable:
       // the domain gets added to _blockedDomains for the rest of the session.
@@ -113,7 +113,7 @@ class ImageLoader {
     mergedHeaders.putIfAbsent('User-Agent', () => storedUA);
 
     // Only send cookies that belong to the image domain.
-    // Do NOT send the Referer domain's cookies here — that leaks source-site
+    // Do NOT send the Referer domain's cookies here - that leaks source-site
     // session tokens (e.g. missav.ai cookies) to third-party CDNs.
     final imageCookies = await CookieStore().getCookieHeader(url);
     if (imageCookies != null) {
@@ -158,7 +158,7 @@ class ImageLoader {
           return bytes;
         }
         if (code == 200) {
-          // 200 with an empty body — usually a hotlink/CF block served as a
+          // 200 with an empty body - usually a hotlink/CF block served as a
           // blank response.
           await logger.warning('Image load: empty response (HTTP 200)',
               category: LogCategory.network, detail: url);
@@ -166,7 +166,7 @@ class ImageLoader {
         }
         if (code == 403) {
           await logger.warning(
-              'Image blocked by the server (HTTP 403) — $domain',
+              'Image blocked by the server (HTTP 403) - $domain',
               category: LogCategory.network,
               detail:
                   '$url\nHotlink protection or Cloudflare. This image domain is '
@@ -236,7 +236,7 @@ class ImageLoader {
     }
     final c = Completer<void>();
     _slotWaiters.add(c);
-    await c.future; // slot handed over on release — the count stays with us
+    await c.future; // slot handed over on release - the count stays with us
   }
 
   void _releaseSlot() {
@@ -278,7 +278,7 @@ class ImageLoader {
     _client = null;
   }
 
-  /// Drop the cached HTTP client so the next request rebuilds it — used when the
+  /// Drop the cached HTTP client so the next request rebuilds it - used when the
   /// DNS-over-HTTPS setting changes, so it takes effect without an app restart.
   void resetHttpClient() {
     _client?.dispose();

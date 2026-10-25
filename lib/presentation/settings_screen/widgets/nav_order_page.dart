@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/nav_prefs_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../theme/app_tokens.dart';
 
 /// Drag-to-reorder the bottom navigation tabs. Bound to [NavPrefsProvider] so
 /// the bar updates live as the user reorders.
@@ -34,7 +34,10 @@ class NavOrderPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(t.setdAppearanceNavOrder,
-            style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700)),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700)),
         actions: [
           TextButton(
             onPressed: nav.reset,
@@ -46,13 +49,18 @@ class NavOrderPage extends StatelessWidget {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xs),
               child: Text(t.setdAppearanceNavOrderDesc,
-                  style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(color: cs.outline)),
             ),
             Expanded(
               child: ReorderableListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                 itemCount: order.length,
                 onReorder: (oldIndex, newIndex) {
                   final list = List<String>.of(order);
@@ -65,9 +73,9 @@ class NavOrderPage extends StatelessWidget {
                   final m = _meta(id, t);
                   return Container(
                     key: ValueKey(id),
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    margin: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: AppSpacing.md),
                     decoration: BoxDecoration(
                       color: cs.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(12),
@@ -79,7 +87,7 @@ class NavOrderPage extends StatelessWidget {
                         const SizedBox(width: 14),
                         Expanded(
                           child: Text(m.label,
-                              style: GoogleFonts.manrope(
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
                                   color: cs.onSurface)),

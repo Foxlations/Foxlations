@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../widgets/type_toggle.dart';
+import '../widgets/ds/ds.dart';
 import '../../core/models/installed_source_model.dart';
 import '../../core/models/source_settings.dart';
 import '../../core/providers/source_provider.dart';
@@ -71,7 +71,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   @override
   void dispose() {
     // Backing out of a global search should stop the sources still grinding
-    // through Cloudflare challenges — don't leave a batch of headless solvers
+    // through Cloudflare challenges - don't leave a batch of headless solvers
     // running for 30s each after the screen is gone.
     WebViewService().cancelPending();
     _searchController.dispose();
@@ -189,42 +189,87 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       appBar: AppBar(
         backgroundColor: cs.surface,
         elevation: 0,
-        leading: IconButton(
-            icon: Icon(Icons.arrow_back_rounded, color: cs.onSurface, size: 22),
-            onPressed: () => Navigator.pop(context)),
-        title: Container(
-          height: 40,
-          decoration: BoxDecoration(
-              color: cs.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(AppTheme.radiusFull)),
-          child: TextField(
-            controller: _searchController,
-            focusNode: _focusNode,
-            onSubmitted: _search,
-            textInputAction: TextInputAction.search,
-            textAlignVertical: TextAlignVertical.center,
-            style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface),
-            decoration: InputDecoration(
-                isDense: true,
-                hintText: t.browseSearchAllSourcesHint,
-                hintStyle: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
-                prefixIcon: Icon(Icons.travel_explore_rounded,
-                    size: 18, color: cs.primary),
-                prefixIconConstraints:
-                    const BoxConstraints(minWidth: 40, minHeight: 40),
-                suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                    valueListenable: _searchController,
-                    builder: (_, val, _) => val.text.isNotEmpty
-                        ? GestureDetector(
-                            onTap: _clear,
-                            child: Icon(Icons.close_rounded,
-                                size: 16, color: cs.outline))
-                        : const SizedBox.shrink()),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 4))),
+        automaticallyImplyLeading: false,
+        titleSpacing: 16,
+        title: Row(
+          children: [
+            // Back - a bordered rounded-square cell, matching the filter cells.
+            InkWell(
+              onTap: () => Navigator.pop(context),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: cs.outlineVariant),
+                ),
+                child: Icon(Icons.arrow_back_rounded,
+                    color: cs.onSurface, size: 20),
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Search field - the InputDecorator draws BOTH the fill and the
+            // rounded border, so they are always the exact same shape (the fill
+            // can't clip out of the pill like it did when a Container drew the
+            // border around a differently-sized TextField). Height comes from the
+            // content padding, tuned to the 42px back cell; the focus border
+            // animates on its own, so no wrapping Container/AnimatedBuilder.
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                focusNode: _focusNode,
+                onSubmitted: _search,
+                textInputAction: TextInputAction.search,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(fontSize: 13.5, color: cs.onSurface),
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest,
+                  hintText: t.browseSearchAllSourcesHint,
+                  hintStyle: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(fontSize: 13.5, color: cs.outline),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.only(left: 12, right: 8),
+                    child: Icon(Icons.travel_explore_rounded,
+                        size: 19, color: cs.primary),
+                  ),
+                  prefixIconConstraints:
+                      const BoxConstraints(minWidth: 0, minHeight: 0),
+                  suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _searchController,
+                      builder: (_, val, _) => val.text.isNotEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.only(left: 6, right: 10),
+                              child: GestureDetector(
+                                  onTap: _clear,
+                                  child: Icon(Icons.close_rounded,
+                                      size: 18, color: cs.outline)),
+                            )
+                          : const SizedBox.shrink()),
+                  suffixIconConstraints:
+                      const BoxConstraints(minWidth: 0, minHeight: 0),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: cs.outlineVariant),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: cs.primary, width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+          ],
         ),
-        titleSpacing: 0,
-        actions: const [SizedBox(width: 8)],
+        actions: const [SizedBox(width: 12)],
         bottom: _buildTypeFilterBar(cs),
       ),
       body: _buildBody(context, cs, sourceCount),
@@ -280,21 +325,25 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
             Container(
                 width: 72,
                 height: 72,
-                decoration: BoxDecoration(
-                    color: cs.primary.withAlpha(20),
-                    borderRadius: BorderRadius.circular(20)),
+                decoration: oledIconChip(context,
+                    color: cs.primary,
+                    fill: cs.primary.withAlpha(20),
+                    radius: 20),
                 child: Icon(Icons.travel_explore_rounded,
                     size: 36, color: cs.primary)),
             const SizedBox(height: 20),
             Text(t.browseSearchAllSources,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
                     color: cs.onSurface)),
             const SizedBox(height: 8),
             Text(t.browseSearchSourcesAtOnce(sourceCount),
                 textAlign: TextAlign.center,
-                style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: cs.outline)),
           ]),
         ),
       );
@@ -302,7 +351,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
 
     return ListView(
       padding:
-          EdgeInsets.only(bottom: 80 + MediaQuery.of(context).viewPadding.bottom),
+          EdgeInsets.only(bottom: 80 + MediaQuery.viewPaddingOf(context).bottom),
       children: [
         for (final installed in _sources)
           _buildSourceSection(context, cs, t, installed),
@@ -337,8 +386,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
               child: Text(error.isEmpty ? t.globalSearchSourceFailed : error,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style:
-                      GoogleFonts.manrope(fontSize: 12, color: cs.outline))),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: cs.outline))),
           const SizedBox(width: 8),
           TextButton(
             onPressed: () => _retrySource(installed),
@@ -347,8 +398,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
             child: Text(t.detailRetry,
-                style: GoogleFonts.manrope(
-                    fontSize: 12,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: cs.primary)),
           ),
@@ -358,7 +408,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       stateWidget = Padding(
         padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
         child: Text(t.globalSearchSourceNoResults,
-            style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: cs.outline)),
       );
     } else {
       stateWidget = SizedBox(
@@ -398,8 +451,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
               child: Text(name.toUpperCase(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(
-                      fontSize: 11,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: cs.primary,
                       letterSpacing: 1.0)),
@@ -414,8 +466,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                 }),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(t.browseSeeAll,
-                      style: GoogleFonts.manrope(
-                          fontSize: 11,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: cs.primary)),
                   Icon(Icons.chevron_right_rounded, size: 16, color: cs.primary),
@@ -434,11 +485,14 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       Icon(Icons.explore_off_rounded, size: 48, color: cs.outline),
       const SizedBox(height: 12),
       Text(title,
-          style: GoogleFonts.manrope(
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontSize: 15, fontWeight: FontWeight.w700, color: cs.onSurface)),
       const SizedBox(height: 6),
       Text(subtitle,
-          style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: cs.outline)),
     ]));
   }
 }
@@ -477,8 +531,7 @@ class _MangaCard extends StatelessWidget {
             Text(name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.manrope(
-                    fontSize: 11,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: cs.onSurface)),
           ])),

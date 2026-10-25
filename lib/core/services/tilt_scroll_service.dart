@@ -102,7 +102,7 @@ class TiltScroll {
   }
 
   static void _onAccel(AccelerometerEvent e) {
-    // Forward/back pitch in the device Y–Z plane (left/right roll about X ignored).
+    // Forward/back pitch in the device Y-Z plane (left/right roll about X ignored).
     final pitch = math.atan2(e.y, e.z);
     final a = _settings.smoothing.clamp(0.01, 1.0);
     if (_hasSample) {

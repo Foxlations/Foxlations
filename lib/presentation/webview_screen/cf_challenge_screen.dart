@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/app_navigator.dart';
 import '../../core/services/webview_service.dart';
@@ -43,27 +42,9 @@ class _CfChallengeScreenState extends State<CfChallengeScreen> {
   bool _done = false;
   InAppWebViewController? _controller;
 
-  Future<bool> _isChallenge(InAppWebViewController c) async {
-    try {
-      final title =
-          (await c.evaluateJavascript(source: 'document.title'))?.toString() ??
-              '';
-      final t = title.toLowerCase();
-      if (t.contains('just a moment') ||
-          t.contains('checking your browser') ||
-          t.contains('please wait')) {
-        return true;
-      }
-      final hasEl = await c.evaluateJavascript(
-          source: "!!(document.getElementById('challenge-form') || "
-              "document.getElementById('cf-please-wait') || "
-              "document.querySelector('#challenge-stage') || "
-              "document.querySelector('[class*=\"cf-\"]'))");
-      return hasEl == true;
-    } catch (_) {
-      return false;
-    }
-  }
+  // Shared heuristic (see webview_service) so the two CF detectors stay in sync.
+  Future<bool> _isChallenge(InAppWebViewController c) =>
+      isCloudflareChallengePage(c);
 
   Future<void> _check() async {
     if (_done || _controller == null) return;
@@ -81,8 +62,8 @@ class _CfChallengeScreenState extends State<CfChallengeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(t.miscVerifyHuman,
-            style:
-                GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
+            style: Theme.of(context).textTheme.titleMedium
+                ?.copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           onPressed: () => Navigator.of(context).pop(false),
@@ -95,7 +76,7 @@ class _CfChallengeScreenState extends State<CfChallengeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Text(
             t.miscCfInstructions,
-            style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurfaceVariant),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ),
         Expanded(
@@ -107,7 +88,7 @@ class _CfChallengeScreenState extends State<CfChallengeScreen> {
             ),
             onWebViewCreated: (c) => _controller = c,
             onLoadStop: (c, _) async => _check(),
-            onUpdateVisitedHistory: (c, _, __) async => _check(),
+            onUpdateVisitedHistory: (c, _, _) async => _check(),
           ),
         ),
       ]),

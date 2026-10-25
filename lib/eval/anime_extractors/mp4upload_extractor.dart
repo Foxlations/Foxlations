@@ -28,7 +28,7 @@ class Mp4uploadExtractor {
 
       if (scriptElementWithEval.isNotEmpty) {
         // Unpack the packed eval script (Mangayomi unpacked an empty string
-        // here — clearly a slip; unpack the matched script instead).
+        // here - clearly a slip; unpack the matched script instead).
         script = JSPacker(scriptElementWithEval.first ?? "").unpack() ?? "";
       } else {
         final scriptElementWithSrc = xpathSelector(

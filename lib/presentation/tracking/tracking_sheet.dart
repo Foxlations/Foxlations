@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/providers/tracking_provider.dart';
 import '../../core/tracking/tracker.dart';
 import '../../core/tracking/tracker_models.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_tokens.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Bottom sheet for linking a manga to tracking services and editing its
@@ -30,6 +30,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final t = AppLocalizations.of(context);
     final tp = context.watch<TrackingProvider>();
     final connected = tp.connected;
@@ -38,34 +39,33 @@ class _TrackingSheetState extends State<TrackingSheet> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 8),
+            bottom: MediaQuery.viewInsetsOf(context).bottom,
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            top: AppSpacing.sm),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
             width: 40,
             height: 4,
-            margin: const EdgeInsets.only(bottom: 12),
+            margin: const EdgeInsets.only(bottom: AppSpacing.md),
             decoration: BoxDecoration(
                 color: cs.outlineVariant,
                 borderRadius: BorderRadius.circular(2)),
           ),
           Row(children: [
             Icon(Icons.sync_rounded, color: cs.primary, size: 20),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             Text(t.trackTitle,
-                style: GoogleFonts.manrope(
-                    fontSize: 16, fontWeight: FontWeight.w800)),
+                style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           if (connected.isEmpty)
             _notConnected(cs)
           else
             ...connected.map((t) => bindings[t.id] != null
                 ? _boundCard(t, bindings[t.id]!, cs)
                 : _unboundCard(t, cs)),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
         ]),
       ),
     );
@@ -73,38 +73,38 @@ class _TrackingSheetState extends State<TrackingSheet> {
 
   Widget _notConnected(ColorScheme cs) {
     final t = AppLocalizations.of(context);
+    final tt = Theme.of(context).textTheme;
     return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
         child: Column(children: [
           Icon(Icons.link_off_rounded, color: cs.outline, size: 36),
           const SizedBox(height: 10),
           Text(t.trackNoTrackerConnected,
-              style: GoogleFonts.manrope(
-                  fontSize: 14, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
+              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: AppSpacing.xs),
           Text(t.trackConnectHint,
               textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+              style: tt.bodySmall?.copyWith(color: cs.outline)),
         ]),
       );
   }
 
   Widget _unboundCard(Tracker t, ColorScheme cs) {
     final l10n = AppLocalizations.of(context);
+    final tt = Theme.of(context).textTheme;
     return Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         ),
         child: Row(children: [
           Icon(_iconFor(t.id), color: Color(t.colorValue), size: 20),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Text(l10n.trackNotLinkedOn(t.name),
-                style: GoogleFonts.manrope(
-                    fontSize: 13, fontWeight: FontWeight.w600)),
+                style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w600)),
           ),
           FilledButton(
             onPressed: () => _linkFlow(t),
@@ -118,9 +118,10 @@ class _TrackingSheetState extends State<TrackingSheet> {
 
   Widget _boundCard(Tracker t, TrackRecord r, ColorScheme cs) {
     final l10n = AppLocalizations.of(context);
+    final tt = Theme.of(context).textTheme;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
@@ -134,7 +135,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
             child: Text(r.title.isEmpty ? t.name : r.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.manrope(
+                style: tt.titleSmall?.copyWith(
                     fontSize: 13.5, fontWeight: FontWeight.w700)),
           ),
           IconButton(
@@ -145,21 +146,20 @@ class _TrackingSheetState extends State<TrackingSheet> {
                 context.read<TrackingProvider>().removeBinding(widget.mangaKey, t.id),
           ),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         // Status
         Row(children: [
           SizedBox(
               width: 70,
               child: Text(l10n.trackStatus,
-                  style: GoogleFonts.manrope(fontSize: 12, color: cs.outline))),
+                  style: tt.bodySmall?.copyWith(color: cs.outline))),
           Expanded(
             child: DropdownButton<TrackStatus>(
               value: r.status,
               isExpanded: true,
               isDense: true,
               underline: const SizedBox.shrink(),
-              style: GoogleFonts.manrope(
-                  fontSize: 13,
+              style: tt.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface),
               items: TrackStatus.values
@@ -177,7 +177,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
           SizedBox(
               width: 70,
               child: Text(l10n.trackChapters,
-                  style: GoogleFonts.manrope(fontSize: 12, color: cs.outline))),
+                  style: tt.bodySmall?.copyWith(color: cs.outline))),
           IconButton(
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.remove_circle_outline_rounded, size: 20),
@@ -190,8 +190,7 @@ class _TrackingSheetState extends State<TrackingSheet> {
             r.totalChapters > 0
                 ? '${r.lastChapterRead} / ${r.totalChapters}'
                 : '${r.lastChapterRead}',
-            style: GoogleFonts.manrope(
-                fontSize: 13, fontWeight: FontWeight.w700),
+            style: tt.labelLarge?.copyWith(fontWeight: FontWeight.w700),
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
@@ -205,24 +204,23 @@ class _TrackingSheetState extends State<TrackingSheet> {
           SizedBox(
               width: 70,
               child: Text(l10n.trackScore,
-                  style: GoogleFonts.manrope(fontSize: 12, color: cs.outline))),
+                  style: tt.bodySmall?.copyWith(color: cs.outline))),
           Expanded(
             child: Slider(
               value: r.score.clamp(0, 10),
               min: 0,
               max: 10,
               divisions: 20,
-              label: r.score == 0 ? '—' : r.score.toStringAsFixed(1),
+              label: r.score == 0 ? ' - ' : r.score.toStringAsFixed(1),
               onChanged: (v) => setState(() => r.score = v),
               onChangeEnd: (v) => _save(t, r.copyWith(score: v)),
             ),
           ),
           SizedBox(
             width: 28,
-            child: Text(r.score == 0 ? '—' : r.score.toStringAsFixed(1),
+            child: Text(r.score == 0 ? ' - ' : r.score.toStringAsFixed(1),
                 textAlign: TextAlign.end,
-                style: GoogleFonts.manrope(
-                    fontSize: 12, fontWeight: FontWeight.w700)),
+                style: tt.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
           ),
         ]),
       ]),
@@ -287,6 +285,12 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
     _search();
   }
 
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
   Future<void> _search() async {
     setState(() => _loading = true);
     final res = await context
@@ -303,18 +307,19 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final t = AppLocalizations.of(context);
     return Padding(
       padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 16,
-          right: 16,
-          top: 12),
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.md),
       child: SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: MediaQuery.sizeOf(context).height * 0.7,
         child: Column(children: [
           Text(t.trackLinkOn(widget.tracker.name),
-              style: GoogleFonts.manrope(
+              style: tt.titleMedium?.copyWith(
                   fontSize: 15, fontWeight: FontWeight.w800)),
           const SizedBox(height: 10),
           Row(children: [
@@ -332,7 +337,7 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
                 onSubmitted: (_) => _search(),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             FilledButton(
                 onPressed: _loading ? null : _search,
                 child: Text(t.trackSearch)),
@@ -344,7 +349,7 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
                 : _results.isEmpty
                     ? Center(
                         child: Text(t.trackNoResults,
-                            style: GoogleFonts.manrope(color: cs.outline)))
+                            style: TextStyle(color: cs.outline)))
                     : ListView.builder(
                         itemCount: _results.length,
                         itemBuilder: (_, i) {
@@ -358,19 +363,19 @@ class _TrackSearchSheetState extends State<_TrackSearchSheet> {
                                         width: 40,
                                         height: 56,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
+                                        errorBuilder: (_, _, _) =>
                                             const SizedBox(width: 40)),
                                   ),
                             title: Text(r.title,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.manrope(
-                                    fontSize: 13,
+                                style: tt.labelLarge?.copyWith(
                                     fontWeight: FontWeight.w600)),
                             subtitle: r.totalChapters > 0
                                 ? Text(t.trackChaptersShort(r.totalChapters),
-                                    style: GoogleFonts.manrope(
-                                        fontSize: 11, color: cs.outline))
+                                    style: tt.labelSmall?.copyWith(
+                                        fontWeight: FontWeight.w400,
+                                        color: cs.outline))
                                 : null,
                             onTap: () => Navigator.pop(context, r),
                           );

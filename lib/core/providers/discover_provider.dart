@@ -30,9 +30,9 @@ class SourceMatch {
 ///
 /// Each card lazily resolves whether an installed source carries it: a match
 /// enables "Add to Library", otherwise the user can "Save for later" (wishlist).
-/// Feeds are per content type — the UI switches [kind] between manga/anime/novel.
+/// Feeds are per content type - the UI switches [kind] between manga/anime/novel.
 class DiscoverProvider extends ChangeNotifier {
-  // Injected after construction (see main.dart) — long-lived app singletons.
+  // Injected after construction (see main.dart) - long-lived app singletons.
   late final TrackingProvider tracking;
   late final SourceProvider sources;
   late final LibraryProvider library;
@@ -65,14 +65,14 @@ class DiscoverProvider extends ChangeNotifier {
   /// it). Drives whether the UI shows the genre chips.
   bool get supportsGenreFilter => _activeSource?.supportsGenreFilter ?? false;
 
-  /// Metadata sources usable right now — AniList always (public), MAL/others
+  /// Metadata sources usable right now - AniList always (public), MAL/others
   /// only once signed in.
   List<MetadataDiscovery> get availableSources => tracking.discoverySources;
 
   MetadataDiscovery? get activeSource => _activeSource;
   String? get activeSourceId => _activeSource?.discoveryId;
 
-  /// Only offer a tracker switcher when there's an actual choice — i.e. the user
+  /// Only offer a tracker switcher when there's an actual choice - i.e. the user
   /// is signed into a second source beyond the always-on public AniList. Not
   /// signed into anything ⇒ one source ⇒ no switcher shown.
   bool get canSwitchSource => availableSources.length > 1;
@@ -122,7 +122,7 @@ class DiscoverProvider extends ChangeNotifier {
   List<LibraryManga> get wishlist => _wishlist.getAll();
   int get wishlistCount => _wishlist.getAll().length;
 
-  /// Whether any installed source could carry titles of the current [kind] — the
+  /// Whether any installed source could carry titles of the current [kind] - the
   /// UI uses this to explain why matches/adds may not be available.
   bool get hasSourcesForKind => _sourcesForKind().isNotEmpty;
 
@@ -206,7 +206,7 @@ class DiscoverProvider extends ChangeNotifier {
     } catch (_) {/* personalization is best-effort */}
   }
 
-  /// Ensure a feed exists — called when the screen first opens.
+  /// Ensure a feed exists - called when the screen first opens.
   Future<void> ensureLoaded() async {
     if (_current != null || _loading) return;
     await _reload();
@@ -289,7 +289,7 @@ class DiscoverProvider extends ChangeNotifier {
       if (_seen.contains(it.dedupeKey) || _isExcluded(it)) continue;
       return it;
     }
-    // Trending exhausted — use any remaining personalized picks.
+    // Trending exhausted - use any remaining personalized picks.
     return _nextFromPersonal();
   }
 
@@ -373,7 +373,7 @@ class DiscoverProvider extends ChangeNotifier {
   // ── source matching ─────────────────────────────────────────────────────────
 
   Future<void> _resolveMatch(DiscoverItem item) async {
-    // A fallback item already IS a source result — it carries its own match.
+    // A fallback item already IS a source result - it carries its own match.
     if (item.origin.startsWith('source:')) {
       final s = sources.getInstalledSource(item.origin.substring(7));
       if (s != null && _current?.dedupeKey == item.dedupeKey) {
@@ -536,7 +536,7 @@ class DiscoverProvider extends ChangeNotifier {
   }
 
   /// A recommendation is excluded once it's already in the library OR saved for
-  /// later — the user has acted on it, so don't surface it again.
+  /// later - the user has acted on it, so don't surface it again.
   bool _isExcluded(DiscoverItem item) =>
       _isInLibrary(item) || _wishlist.containsTitle(item.title);
 

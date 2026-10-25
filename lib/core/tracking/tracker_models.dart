@@ -58,7 +58,7 @@ class TrackRecord {
   TrackStatus status;
   int lastChapterRead;
   int totalChapters; // 0 = unknown
-  double score; // 0–10 scale (normalized)
+  double score; // 0-10 scale (normalized)
 
   TrackRecord({
     required this.trackerId,

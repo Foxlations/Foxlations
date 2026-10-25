@@ -16,6 +16,10 @@ on:
         description: 'Also scp the IPA home over Tailscale? (true/false)'
         required: false
         default: 'false'
+      jimage:
+        description: 'Pack the JVM as a jimage + jar harness classes so the bundle has NO loose .class files (0xCAFEBABE collides with Mach-O FAT magic and breaks SideStore/CodeSignKit). (true/false)'
+        required: false
+        default: 'true'
 
 permissions:
   contents: read
@@ -154,6 +158,81 @@ jobs:
             -d "$W/ios/jvm/jars/runner.jar" "$M1/SourceRunner.kt" "$M1"/compat/*.kt
           echo "== ios/jvm/jars =="; ls -lh ios/jvm/jars
 
+      # IPA size: the Suwayomi fat-jar (~166 MB) bundles ~90 MB (compressed) of
+      # server/desktop code the HEADLESS on-device extension runner never loads —
+      # GraalJS engine (80 MB uncompressed, zero refs anywhere), bundled fonts, ICU,
+      # JCEF, Jetty, GraphQL, H2/Postgres, JNA, and native libs with no iOS slice.
+      # Strip them (and prune any now-dangling META-INF/services entries, else
+      # ServiceLoader throws at boot). Proven safe with a -verbose:class harness:
+      # the real SourceRunner host boots + getPopular works against the slimmed jar
+      # with ZERO stripped classes loaded. Runs AFTER the runner/animesource compiles
+      # (which use the full jar). Keeps rx/dex2jar/ASM/androidx.preference + the core.
+      - name: Slim suwayomi-server.jar for the headless host (IPA size)
+        run: python3 docs/kotlin-extensions/m1/slim_suwayomi_jar.py "$GITHUB_WORKSPACE/ios/jvm/jars/suwayomi-server.jar"
+
+      # ── SideStore-safe packing: remove ALL loose .class files ─────────────────
+      # The embedded JVM ships as an EXPLODED JDK image (the M0 jdk-image cross build
+      # failed and fell back to exploded): modules live LOOSE at java-home/modules/**
+      # (25k+ .class). A .class starts with 0xCAFEBABE — identical to the Mach-O FAT
+      # magic — so SideStore's CodeSignKit misreads each one as a fat binary and fails
+      # ("FAT slice bounds exceed file size"). AltStore's zsign tolerated it. Fix: pack
+      # the modules into a single `modules` jimage (magic 0xCAFEDADA) at the standard
+      # java.home/lib/modules spot, with the host JDK 21's jlink (classes are
+      # platform-independent; the iOS libjimage IS force-loaded so it reads the jimage),
+      # and jar our harness classes. Placed BEFORE the long Flutter build so a jlink
+      # failure fails fast. Gated behind the `jimage` input while we validate on device.
+      - name: Pack JVM as jimage + jar harness classes (SideStore-safe)
+        if: ${{ inputs.jimage == 'true' }}
+        run: |
+          set -euo pipefail
+          JH="$GITHUB_WORKSPACE/ios/jvm/java-home"
+          # Exploded image => modules are a DIR at java-home/modules/<module>/**.class.
+          # Packed image => a FILE at java-home/lib/modules. HotSpot with java.home=<JH>
+          # prefers the jimage at <JH>/lib/modules, else the exploded <JH>/modules dir.
+          if [ -d "$JH/modules" ] && [ ! -f "$JH/lib/modules" ]; then
+            # The iOS JVM is openjdk/mobile Java 28, built "28-internal-adhoc.runner.mobile".
+            # A stock jlink refuses those modules ("jlink build ... does not match target
+            # java.base build ...") and that check can't be disabled. But the check is in the
+            # jlink COMMAND, not the image writer — ImageFileCreator.recreateJimage() packs a
+            # jimage with no version check. PackJimage.java calls it via reflection; the jimage
+            # container is version-independent, so a STOCK JDK 28's internals pack the mobile-28
+            # classes. See docs/kotlin-extensions/m1/PackJimage.java.
+            JDK28_URL="https://download.java.net/java/early_access/jdk28/19/GPL/openjdk-28-ea+19_macos-aarch64_bin.tar.gz"
+            echo "Fetching stock JDK 28 (for its jlink image-writer internals): $JDK28_URL"
+            curl -fL --retry 5 --retry-all-errors --retry-delay 3 -o /tmp/jdk28.tar.gz "$JDK28_URL"
+            rm -rf /tmp/jdk28 && mkdir -p /tmp/jdk28 && tar -xzf /tmp/jdk28.tar.gz -C /tmp/jdk28
+            J28="$(dirname "$(dirname "$(find /tmp/jdk28 -type f -name java | head -1)")")"
+            [ -x "$J28/bin/java" ] && [ -x "$J28/bin/javac" ] || { echo "::error::no java/javac in fetched JDK 28"; find /tmp/jdk28 -maxdepth 5 -name javac; exit 1; }
+            "$J28/bin/java" -version
+            "$J28/bin/javac" -d /tmp "$GITHUB_WORKSPACE/docs/kotlin-extensions/m1/PackJimage.java"
+            echo "exploded .class before: $(find "$JH/modules" -name '*.class' | wc -l)"
+            mkdir -p "$JH/lib"
+            "$J28/bin/java" --add-modules jdk.jlink \
+              --add-opens jdk.jlink/jdk.tools.jlink.internal=ALL-UNNAMED \
+              -cp /tmp PackJimage "$JH/modules" "$JH/lib/modules"
+            test -f "$JH/lib/modules" || { echo "::error::PackJimage produced no jimage"; exit 1; }
+            # The jimage MUST contain the jlink-generated SystemModules$all (from the
+            # system-modules plugin); without it the VM fails module-system init on boot
+            # ("non-java.base package ... jdk/internal/foreign/abi"). Guard against ever
+            # shipping an empty-plugin jimage again.
+            "$J28/bin/jimage" list "$JH/lib/modules" 2>/dev/null | grep -qF 'SystemModules$all' \
+              || { echo "::error::packed jimage has no SystemModules\$all — the VM won't boot"; exit 1; }
+            rm -rf "$JH/modules"
+            echo "jimage size: $(ls -lh "$JH/lib/modules" | awk '{print $5}')"
+          else
+            echo "::warning::expected exploded $JH/modules not found (or jimage already present) — leaving as-is"
+            ls -la "$JH" || true
+          fi
+          # Harness classes (DohResolver etc.) are also loose .class — jar them, drop the dir.
+          if [ -d "$GITHUB_WORKSPACE/ios/jvm/classes" ]; then
+            ( cd "$GITHUB_WORKSPACE/ios/jvm/classes" && jar cf "$GITHUB_WORKSPACE/ios/jvm/jars/classes.jar" . )
+            rm -rf "$GITHUB_WORKSPACE/ios/jvm/classes"
+            echo "classes.jar size: $(ls -lh "$GITHUB_WORKSPACE/ios/jvm/jars/classes.jar" | awk '{print $5}')"
+          fi
+          REM=$(find "$GITHUB_WORKSPACE/ios/jvm" -name '*.class' | wc -l)
+          echo "== loose .class remaining under ios/jvm (want 0): $REM =="
+          [ "$REM" -eq 0 ] || { echo "::error::still $REM loose .class files — SideStore will reject"; exit 1; }
+
       - name: Compute JVM link flags + header paths
         run: |
           set -euo pipefail
@@ -238,7 +317,8 @@ jobs:
           for rel in lib/tzdb.dat lib/security/cacerts; do
             [ -f "$APP/lib/$rel" ] || { [ -f "$JAVA_HOME/$rel" ] && cp "$JAVA_HOME/$rel" "$APP/lib/$rel"; }
           done
-          cp -R ios/jvm/classes "$APP/classes"
+          # classes/ is absent when jarred into jars/classes.jar (jimage build).
+          [ -d ios/jvm/classes ] && cp -R ios/jvm/classes "$APP/classes" || true
           cp -R ios/jvm/jars    "$APP/jars"
           # Drop any dylibs (we link the VM statically); keep the bundle data-only.
           find "$APP/lib" -name '*.dylib' -delete 2>/dev/null || true

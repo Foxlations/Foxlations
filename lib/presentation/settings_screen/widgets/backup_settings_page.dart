@@ -1,6 +1,5 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/providers/library_provider.dart';
@@ -8,6 +7,8 @@ import '../../../core/providers/source_provider.dart';
 import '../../../core/providers/vault_provider.dart';
 import '../../../core/services/backup_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
+import '../../widgets/ds/ds.dart';
 import '../../../l10n/app_localizations.dart';
 
 class BackupSettingsPage extends StatefulWidget {
@@ -40,13 +41,26 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     }
   }
 
+  /// [verb] is a stable token ('backup' or 'export') that selects the localized
+  /// success/failure snackbar, not a display string.
   Future<void> _run(Future<String> Function() action, String verb) async {
+    final t = AppLocalizations.of(context);
+    final isExport = verb == 'export';
     setState(() => _busy = true);
     try {
       await action();
-      if (mounted) AppTheme.showSnackBar(context, '$verb complete');
+      if (mounted) {
+        AppTheme.showSnackBar(context,
+            isExport ? t.setxBackupExportComplete : t.setxBackupCreateComplete);
+      }
     } catch (e) {
-      if (mounted) AppTheme.showSnackBar(context, '$verb failed: $e');
+      if (mounted) {
+        AppTheme.showSnackBar(
+            context,
+            isExport
+                ? t.setxBackupExportFailed('$e')
+                : t.setxBackupCreateFailed('$e'));
+      }
     }
     if (mounted) setState(() => _busy = false);
     await _refresh();
@@ -94,7 +108,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
   Future<void> _createFoxBackup() async {
     final t = AppLocalizations.of(context);
     if (!context.read<VaultProvider>().vaultEnabled) {
-      await _run(() => _service.createBackup(), 'Backup');
+      await _run(() => _service.createBackup(), 'backup');
       return;
     }
     var inclVault = false;
@@ -105,7 +119,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
         return StatefulBuilder(builder: (dctx, setD) {
           return AlertDialog(
             title: Text(t.setxBackupCreateTitle,
-                style: GoogleFonts.manrope(
+                style: Theme.of(dctx).textTheme.titleMedium?.copyWith(
                     fontSize: 17, fontWeight: FontWeight.w700)),
             content: CheckboxListTile(
               value: inclVault,
@@ -119,10 +133,10 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                 }
               },
               title: Text(t.backupIncludeVault,
-                  style: GoogleFonts.manrope(
-                      fontSize: 14, fontWeight: FontWeight.w500)),
+                  style: Theme.of(dctx).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500)),
               subtitle: Text(t.backupIncludeVaultSubtitle,
-                  style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+                  style: Theme.of(dctx).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w400, color: cs.outline)),
               dense: true,
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
@@ -140,7 +154,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
       },
     );
     if (proceed != true) return;
-    await _run(() => _service.createBackup(includeVault: inclVault), 'Backup');
+    await _run(() => _service.createBackup(includeVault: inclVault), 'backup');
   }
 
   /// then create a backup made compatible with that app.
@@ -160,8 +174,8 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                 value: value,
                 onChanged: (v) => setD(() => onCh(v ?? false)),
                 title: Text(label,
-                    style: GoogleFonts.manrope(
-                        fontSize: 14, fontWeight: FontWeight.w500)),
+                    style: Theme.of(dctx).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500)),
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
@@ -171,15 +185,16 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
               (target.anime && inclAnime) ||
               (target.novel && inclNovels);
           return AlertDialog(
-            title: Text('Create compatible backup',
-                style: GoogleFonts.manrope(
+            title: Text(t.setxBackupCreateCompatTitle,
+                style: Theme.of(dctx).textTheme.titleMedium?.copyWith(
                     fontSize: 17, fontWeight: FontWeight.w700)),
             content: Column(mainAxisSize: MainAxisSize.min, children: [
               DropdownButtonFormField<BackupTarget>(
                 initialValue: target,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                    labelText: 'Target app', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                    labelText: t.setxBackupTargetApp,
+                    border: const OutlineInputBorder()),
                 items: [
                   for (final tg in BackupTarget.all)
                     DropdownMenuItem(value: tg, child: Text(tg.label)),
@@ -189,19 +204,18 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
               const SizedBox(height: 12),
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Include',
-                    style: GoogleFonts.manrope(
-                        fontSize: 12,
+                child: Text(t.setxBackupIncludeLabel,
+                    style: Theme.of(dctx).textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: cs.outline)),
               ),
               if (target.manga)
-                typeTile('Manga', inclManga, (v) => inclManga = v),
+                typeTile(t.browseManga, inclManga, (v) => inclManga = v),
               if (target.anime)
-                typeTile('Anime', inclAnime, (v) => inclAnime = v),
+                typeTile(t.browseAnime, inclAnime, (v) => inclAnime = v),
               if (target.novel)
-                typeTile('Light novels', inclNovels, (v) => inclNovels = v),
-              // Vault opt-in — off by default; checking it unlocks the vault
+                typeTile(t.setxBackupTypeNovels, inclNovels, (v) => inclNovels = v),
+              // Vault opt-in - off by default; checking it unlocks the vault
               // (Face/Touch ID or password) before the titles are included.
               if (vaultEnabled) ...[
                 const Divider(height: 16),
@@ -216,11 +230,11 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                     }
                   },
                   title: Text(t.backupIncludeVault,
-                      style: GoogleFonts.manrope(
-                          fontSize: 14, fontWeight: FontWeight.w500)),
+                      style: Theme.of(dctx).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500)),
                   subtitle: Text(t.backupIncludeVaultSubtitle,
-                      style: GoogleFonts.manrope(
-                          fontSize: 11, color: cs.outline)),
+                      style: Theme.of(dctx).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w400, color: cs.outline)),
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,
@@ -230,8 +244,8 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(dctx),
-                  child: Text('Cancel',
-                      style: GoogleFonts.manrope(fontWeight: FontWeight.w600))),
+                  child: Text(t.appCancel,
+                      style: const TextStyle(fontWeight: FontWeight.w600))),
               FilledButton(
                 onPressed: anySelected
                     ? () {
@@ -243,11 +257,11 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                                 includeAnime: inclAnime,
                                 includeNovels: inclNovels,
                                 includeVault: inclVault),
-                            'Export');
+                            'export');
                       }
                     : null,
-                child: Text('Create backup',
-                    style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+                child: Text(t.setxBackupCreateTitle,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
               ),
             ],
           );
@@ -260,7 +274,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     final res = await FilePicker.pickFiles(type: FileType.any);
     final path = res?.files.single.path;
     if (path == null || !mounted) return;
-    // Confirm before importing — the one backup action that changes the library.
+    // Confirm before importing - the one backup action that changes the library.
     final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
@@ -315,7 +329,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
       }
       if (mounted) {
         await context.read<LibraryProvider>().reload();
-        // Vault titles the backup carried were routed into the vault box — reflect
+        // Vault titles the backup carried were routed into the vault box - reflect
         // them if the vault's unlocked (no-op when locked).
         context.read<VaultProvider>().reloadIfOpen();
         await context.read<SourceProvider>().refreshRepos();
@@ -363,7 +377,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
       builder: (_) => _CategoryMapDialog(
         categories: newCats,
         counts: counts,
-        // Public library categories ONLY — vault categories reach the dropdown
+        // Public library categories ONLY - vault categories reach the dropdown
         // solely through the "Show vault categories" toggle (and only unlocked).
         libraryCategories: lib.categories
             .map((c) => c.name)
@@ -479,11 +493,11 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
                 color: cs.onSurface, size: 20),
             onPressed: () => Navigator.pop(context)),
         title: Text(t.setxBackupTitle,
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: Stack(children: [
-        ListView(padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom), children: [
+        ListView(padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.viewPaddingOf(context).bottom), children: [
           _header(t.setxBackupSectionFoxlations, cs),
           _action(Icons.save_rounded, t.setxBackupCreateTitle,
               t.setxBackupCreateSubtitle, cs, _createFoxBackup),
@@ -501,12 +515,12 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
           ListTile(
             leading: _iconBox(Icons.schedule_rounded, cs),
             title: Text(t.setxBackupFrequency,
-                style: GoogleFonts.manrope(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600)),
             subtitle: Text(t.setxBackupAutoSubtitle(_freqLabel(_frequency).toLowerCase()),
-                style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline)),
             trailing: Text(_freqLabel(_frequency),
-                style: GoogleFonts.manrope(
+                style: TextStyle(
                     fontWeight: FontWeight.w700, color: cs.primary)),
             onTap: _pickFrequency,
           ),
@@ -515,7 +529,7 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
               child: Text(t.setxBackupNone,
-                  style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline)),
             )
           else
             ..._backups.map((b) => _backupRow(b, cs)),
@@ -530,22 +544,17 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
     );
   }
 
-  Widget _header(String t, ColorScheme cs) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
-        child: Text(t.toUpperCase(),
-            style: GoogleFonts.manrope(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.0,
-                color: cs.primary)),
+  Widget _header(String t, ColorScheme cs) => AppSectionLabel(
+        t,
+        color: cs.primary,
+        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 18, AppSpacing.lg, 6),
       );
 
   Widget _iconBox(IconData icon, ColorScheme cs) => Container(
         width: 40,
         height: 40,
-        decoration: BoxDecoration(
-            color: cs.primary.withAlpha(25),
-            borderRadius: BorderRadius.circular(10)),
+        decoration: oledIconChip(context,
+            color: cs.primary, fill: cs.primary.withAlpha(25), radius: 10),
         child: Icon(icon, color: cs.primary, size: 20),
       );
 
@@ -554,10 +563,10 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
       ListTile(
         leading: _iconBox(icon, cs),
         title: Text(title,
-            style:
-                GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600)),
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600)),
         subtitle: Text(subtitle,
-            style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline)),
         onTap: _busy ? null : onTap,
       );
 
@@ -570,12 +579,12 @@ class _BackupSettingsPageState extends State<BackupSettingsPage> {
         color: b.isAuto ? cs.outline : cs.primary,
       ),
       title: Text(b.name,
-          style: GoogleFonts.manrope(
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontSize: 13.5, fontWeight: FontWeight.w600)),
       subtitle: Text(
         '${b.isTachiyomi ? 'Tachiyomi/Mihon' : 'Foxlations'}'
-        '${b.isAuto ? ' · auto' : ''} · ${kb} KB',
-        style: GoogleFonts.manrope(fontSize: 11.5, color: cs.outline),
+        '${b.isAuto ? ' · ${t.setxBackupAutoTag}' : ''} · $kb KB',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11.5, color: cs.outline),
       ),
       trailing: PopupMenuButton<String>(
         icon: Icon(Icons.more_vert_rounded, color: cs.outline),
@@ -673,8 +682,8 @@ class _CategoryMapDialogState extends State<_CategoryMapDialog> {
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
       title: Text(t.backupOrganizeTitle,
-          style: GoogleFonts.manrope(
-              fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700, color: cs.onSurface)),
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(
@@ -683,7 +692,7 @@ class _CategoryMapDialogState extends State<_CategoryMapDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(t.backupOrganizePrompt(widget.categories.length),
-                  style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline)),
               const SizedBox(height: 12),
               ...widget.categories.map((c) {
                 final target = _targets[c]!;
@@ -698,13 +707,12 @@ class _CategoryMapDialogState extends State<_CategoryMapDialog> {
                             Text(c,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.manrope(
-                                    fontSize: 14,
+                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                                     fontWeight: FontWeight.w600,
                                     color: cs.onSurface)),
                             Text(t.backupOrganizeItemCount(widget.counts[c] ?? 0),
-                                style: GoogleFonts.manrope(
-                                    fontSize: 11, color: cs.outline)),
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w400, color: cs.outline)),
                           ],
                         ),
                       ),
@@ -746,8 +754,8 @@ class _CategoryMapDialogState extends State<_CategoryMapDialog> {
                 children: [
                   Expanded(
                     child: Text(t.backupOrganizeShowVault,
-                        style: GoogleFonts.manrope(
-                            fontSize: 13, color: cs.onSurface)),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurface)),
                   ),
                   Switch(
                     value: _showVault,
@@ -767,8 +775,8 @@ class _CategoryMapDialogState extends State<_CategoryMapDialog> {
               if (_showVault && !_vaultReady) ...[
                 if (widget.vault.hasPassword) ...[
                   Text(t.backupOrganizeUnlockVault,
-                      style: GoogleFonts.manrope(
-                          fontSize: 12, color: cs.outline)),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.outline)),
                   const SizedBox(height: 6),
                   Row(children: [
                     Expanded(

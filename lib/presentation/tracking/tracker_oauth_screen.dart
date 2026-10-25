@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../l10n/app_localizations.dart';
+import '../../theme/app_tokens.dart';
 
 /// Opens an OAuth authorize URL in a WebView and captures the result:
 ///  - token/implicit flow (AniList): reads `#access_token=…` from the pin page.
@@ -63,20 +63,22 @@ class _TrackerOAuthScreenState extends State<TrackerOAuthScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final t = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(t.trackConnectTracker(widget.trackerName),
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+            style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: Column(children: [
         Container(
           width: double.infinity,
           color: cs.surfaceContainerHighest,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg, vertical: 10),
           child: Text(
             t.trackOauthInstructions,
-            style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurfaceVariant),
+            style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ),
         Expanded(
@@ -99,7 +101,7 @@ class _TrackerOAuthScreenState extends State<TrackerOAuthScreen> {
             onLoadStop: (controller, url) async {
               await _captureToken(controller);
             },
-            onUpdateVisitedHistory: (controller, url, __) async {
+            onUpdateVisitedHistory: (controller, url, _) async {
               if (!_captureCode(url?.toString() ?? '')) {
                 await _captureToken(controller);
               }

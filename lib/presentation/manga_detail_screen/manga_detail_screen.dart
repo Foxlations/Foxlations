@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../widgets/manga_image.dart';
@@ -7,6 +7,7 @@ import '../../core/models/manga_model.dart';
 import '../../core/utils/external_browser.dart';
 import '../../core/providers/source_provider.dart';
 import '../../core/providers/library_provider.dart';
+import '../../core/providers/library_like.dart';
 import '../../core/services/app_logger.dart';
 import '../../core/providers/tracking_provider.dart';
 import '../../core/providers/vault_provider.dart';
@@ -23,6 +24,7 @@ import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
 import '../../core/utils/date_format.dart';
 import '../../l10n/app_localizations.dart';
+import '../widgets/duration_format.dart';
 
 class MangaDetailScreen extends StatefulWidget {
   final String mangaUrl;
@@ -34,6 +36,11 @@ class MangaDetailScreen extends StatefulWidget {
   /// the last-read chapter once the chapter list loads.
   final bool resume;
 
+  /// True when this title lives in the VAULT (opened in vault mode). Routes all
+  /// chapter-state / progress / cache / in-library work to [VaultProvider] so it
+  /// never leaks into - or reads stale data from - the public library boxes.
+  final bool isVault;
+
   const MangaDetailScreen({
     super.key,
     required this.mangaUrl,
@@ -41,6 +48,7 @@ class MangaDetailScreen extends StatefulWidget {
     this.title,
     this.coverUrl,
     this.resume = false,
+    this.isVault = false,
   });
 
   @override
@@ -53,6 +61,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   String? _error;
   bool _descExpanded = false;
 
+  /// The owning store for this title - the vault's provider when [isVault],
+  /// otherwise the public library's. All chapter-state / progress / cache /
+  /// in-library reads & writes go through this so vault data stays in the vault.
+  LibraryLike get _store => widget.isVault
+      ? context.read<VaultProvider>()
+      : context.read<LibraryProvider>();
+
   // Chapter toolbar state
   bool _sortAscending = false;
   _ChapterSort _chapterSort = _ChapterSort.source;
@@ -63,6 +78,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   String _chapterSearchQuery = '';
   final _chapterSearchController = TextEditingController();
   final Set<String> _bookmarkedChapterUrls = {};
+
+  // Collapsing app-bar title: fades in next to the back button once the big
+  // title scrolls up under the bar, and back out when it's visible again.
+  final ScrollController _detailScroll = ScrollController();
+  final ValueNotifier<double> _appBarTitleOp = ValueNotifier<double>(0.0);
 
   // Multi-select mode (entered via three-dots "Select chapters" or long-press)
   bool _selectionMode = false;
@@ -79,11 +99,11 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   /// Absolute URL for "Open in WebView". A library item's url is often a
   /// source-relative path (LNReader novels especially), which WebView can't
-  /// load (blank/error) — resolve it against the source's base URL. Opening the
+  /// load (blank/error) - resolve it against the source's base URL. Opening the
   /// source directly works because it already uses the full base URL.
   /// The URL to open for "Open in browser" / WebView. Prefers the source's own
   /// browsable page URL (getMangaUrl / getAnimeUrl / resolveUrl, carried on
-  /// [_manga.webUrl]) — sources that fetch details from an API return a page
+  /// [_manga.webUrl]) - sources that fetch details from an API return a page
   /// that differs from baseUrl+url, so the naive join 404s. Falls back to
   /// joining the stored item url onto the source base URL when the source
   /// didn't supply one (older hosts, cached-only library view).
@@ -103,14 +123,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   }
 
   /// Open this item's source page. Prefers a cached source-resolved URL
-  /// ([_manga.webUrl]); otherwise asks the source to resolve it on demand —
-  /// LNReader's `resolveUrl`, or base+path for manga/anime — so a library item
+  /// ([_manga.webUrl]); otherwise asks the source to resolve it on demand - 
+  /// LNReader's `resolveUrl`, or base+path for manga/anime - so a library item
   /// opened from cache (before its background refresh) still lands on the right
   /// page instead of a 404. [external] routes through ExternalBrowser (honours
   /// the "external browser" setting); otherwise the in-app WebView.
   Future<void> _openWebView({bool external = false}) async {
     final title = _manga?.name ?? widget.title ?? '';
-    // Read everything that touches `context` BEFORE the await — the user can
+    // Read everything that touches `context` BEFORE the await - the user can
     // leave the screen while getWebUrl resolves, and State.context throws once
     // the widget is unmounted.
     final isNovel = _isNovel;
@@ -152,6 +172,43 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     _loadDetail();
     _loadNote();
     _loadBookmarks();
+    _loadSortPrefs();
+    _detailScroll.addListener(_onDetailScroll);
+  }
+
+  void _onDetailScroll() {
+    if (!_detailScroll.hasClients || !mounted) return;
+    final topPad = MediaQuery.paddingOf(context).top;
+    // The 280px header collapses to the toolbar; the big title slides under the
+    // bar just after that - fade the app-bar title in across a short range.
+    final collapse = (280.0 - kToolbarHeight - topPad).clamp(0.0, 280.0);
+    _appBarTitleOp.value =
+        ((_detailScroll.offset - (collapse - 10)) / 44).clamp(0.0, 1.0);
+  }
+
+  // The chapter order (oldest/newest + sort key) persists across opens.
+  Future<void> _loadSortPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final asc = prefs.getBool('detail_sort_ascending') ?? false;
+      final sortName = prefs.getString('detail_chapter_sort');
+      final sort = _ChapterSort.values.firstWhere((e) => e.name == sortName,
+          orElse: () => _ChapterSort.source);
+      if (mounted) {
+        setState(() {
+          _sortAscending = asc;
+          _chapterSort = sort;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveSortPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('detail_sort_ascending', _sortAscending);
+      await prefs.setString('detail_chapter_sort', _chapterSort.name);
+    } catch (_) {}
   }
 
   String get _noteKey => 'manga_note_${widget.sourceId}_${widget.mangaUrl}';
@@ -207,6 +264,8 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   @override
   void dispose() {
     _chapterSearchController.dispose();
+    _detailScroll.dispose();
+    _appBarTitleOp.dispose();
     super.dispose();
   }
 
@@ -218,7 +277,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   bool get _isNovel =>
       context.read<SourceProvider>().resolveInstalled(widget.sourceId)?.source.isNovel ?? false;
 
-  List<MChapter> _getFilteredChapters(LibraryProvider libraryProvider) {
+  List<MChapter> _getFilteredChapters(LibraryLike libraryProvider) {
     var chapters = List<MChapter>.from(_manga?.chapters ?? []);
     // Novels: LNReader plugins return chapters in an inconsistent order and the
     // cache's sourceIndex can be duplicated, which scrambled the list (and
@@ -226,8 +285,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     // deterministic newest-first order by the real chapter number parsed from
     // the name (then URL as a unique tiebreak) before the asc/desc reverse.
     // Manga/anime keep the source's own order (sourceIndex), which is reliable.
-    double? numOf(MChapter c) =>
-        _parseLeadingNumber(c.name ?? '') ?? _parseLeadingNumber(c.url ?? '');
+    double? numOf(MChapter c) => _chapterOrderKey(c);
     switch (_chapterSort) {
       case _ChapterSort.source:
         // Novels have no reliable source order (sourceIndex can repeat), so fall
@@ -297,9 +355,75 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     return DateTime.tryParse(d)?.millisecondsSinceEpoch ?? 0;
   }
 
-  double? _parseLeadingNumber(String s) {
-    final m = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(s);
-    return m != null ? double.tryParse(m.group(1)!) : null;
+  /// Best-effort chapter number used only for ORDERING. Prefers an explicit
+  /// "Chapter N" / "Episode N" label; otherwise takes the LAST number in the
+  /// string, never the first - chapter NAMES carry volume prefixes
+  /// ("Vol. 2 Chapter 5") and URLs carry ids ("/novel/12345/678") where the
+  /// first number is a volume/novel-id, not the chapter. Reading the first
+  /// number made those collapse to one constant value, so every chapter tied and
+  /// the fallback url-sort flipped the list, sending "next" to the chapter before.
+  double? _parseChapterNumber(String s) {
+    if (s.isEmpty) return null;
+    final labeled = RegExp(
+      r'(?:^|[\s./#:_-])(?:chapter|chap|ch|episode|ep|part)\.?\s*[:#]?\s*(\d+(?:\.\d+)?)',
+      caseSensitive: false,
+    ).firstMatch(s);
+    if (labeled != null) {
+      final v = double.tryParse(labeled.group(1)!);
+      if (v != null) return v;
+    }
+    final all = RegExp(r'\d+(?:\.\d+)?').allMatches(s).toList();
+    if (all.isEmpty) return null;
+    return double.tryParse(all.last.group(0)!);
+  }
+
+  /// The single key the chapter list AND next/previous navigation order by.
+  /// Prefers the source-provided [MChapter.chapterNumber] (reliable reading
+  /// sequence); only when the source gives none does it fall back to parsing the
+  /// name, then the url. Using one key everywhere keeps the displayed order and
+  /// the reader's next/prev perfectly in step.
+  double? _chapterOrderKey(MChapter c) {
+    final n = c.chapterNumber;
+    if (n != null && n > 0) return n;
+    return _parseChapterNumber(c.name ?? '') ?? _parseChapterNumber(c.url ?? '');
+  }
+
+  /// Canonical navigation order for the readers: chapters sorted NEWEST-FIRST
+  /// (chapter number DESCENDING), paired with the index of [openedUrl] in that
+  /// order.
+  ///
+  /// The manga/anime/novel readers navigate next/prev by LIST POSITION and all
+  /// assume a newest-first list (the manga reader + player remap via
+  /// `length-1-currentIndex`, the novel reader uses the index directly). Large
+  /// paginated sources return chapters out of chapter-number order (pages
+  /// stitched together), so handing the raw/display order to a reader makes
+  /// "next" jump to an arbitrary chapter. Sorting by chapter number here keeps
+  /// "next" == next number. A source whose list is already clean number-order
+  /// is unaffected.
+  (List<Map<String, dynamic>>, int) _navOrder(
+      List<MChapter> raw, String openedUrl) {
+    double? numOf(MChapter c) => _chapterOrderKey(c);
+    final sorted = List<MChapter>.of(raw);
+    sorted.sort((a, b) {
+      final na = numOf(a);
+      final nb = numOf(b);
+      if (na != null && nb != null) {
+        final cmp = nb.compareTo(na); // DESCENDING: highest number first
+        if (cmp != 0) return cmp;
+      } else if (na != null) {
+        return -1; // numbered chapters sort before unnumbered ones
+      } else if (nb != null) {
+        return 1;
+      }
+      // Stable, deterministic tiebreak so equal-number entries never shuffle.
+      return (a.url ?? '').compareTo(b.url ?? '');
+    });
+    final maps = <Map<String, dynamic>>[
+      for (final c in sorted) {'url': c.url, 'name': c.name},
+    ];
+    var idx = maps.indexWhere((m) => m['url'] == openedUrl);
+    if (idx < 0) idx = 0;
+    return (maps, idx);
   }
 
   // ── Chapter actions ─────────────────────────────────────────
@@ -315,7 +439,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   }
 
   Future<void> _setChapterRead(
-      String chapterUrl, bool read, LibraryProvider lib) async {
+      String chapterUrl, bool read, LibraryLike lib) async {
     if (read) {
       await lib.markChapterRead(widget.sourceId, widget.mangaUrl, chapterUrl);
     } else {
@@ -323,10 +447,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     }
   }
 
-  // "Mark all below as read" — marks every chapter that sits BELOW the given one
+  // "Mark all below as read" - marks every chapter that sits BELOW the given one
   // in the currently-displayed order. The chapter itself is left untouched (use
   // the per-chapter toggle for that).
-  Future<void> _markBelowRead(String chapterUrl, LibraryProvider lib) async {
+  Future<void> _markBelowRead(String chapterUrl, LibraryLike lib) async {
     final displayed = _getFilteredChapters(lib);
     final idx = displayed.indexWhere((c) => (c.url ?? '') == chapterUrl);
     if (idx < 0) return;
@@ -376,7 +500,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   // Bottom-sheet menu shown when a chapter is long-pressed (not in select mode).
   void _showChapterActions(
-      BuildContext context, MChapter chapter, LibraryProvider lib) {
+      BuildContext context, MChapter chapter, LibraryLike lib) {
     final chapterUrl = chapter.url ?? '';
     if (chapterUrl.isEmpty) return;
     final cs = Theme.of(context).colorScheme;
@@ -396,7 +520,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Text(chapter.name ?? t.detailChapterFallback,
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 15),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 15),
                 maxLines: 2, overflow: TextOverflow.ellipsis),
           ),
           ListTile(
@@ -404,13 +528,13 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 ? Icons.bookmark_remove_rounded
                 : Icons.bookmark_add_rounded, color: cs.primary),
             title: Text(isBookmarked ? t.detailRemoveBookmark : t.detailBookmark,
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             onTap: () { Navigator.pop(sheetCtx); _toggleBookmark(chapterUrl); },
           ),
           ListTile(
             leading: Icon(Icons.done_all_rounded, color: cs.primary),
             title: Text(t.detailMarkAllBelowRead,
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             onTap: () { Navigator.pop(sheetCtx); _markBelowRead(chapterUrl, lib); },
           ),
           ListTile(
@@ -418,7 +542,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 ? Icons.visibility_off_rounded
                 : Icons.check_circle_rounded, color: cs.primary),
             title: Text(isRead ? t.detailMarkAsUnread : t.detailMarkChapterAsRead,
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             onTap: () async {
               Navigator.pop(sheetCtx);
               await _setChapterRead(chapterUrl, !isRead, lib);
@@ -429,7 +553,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 ? Icons.download_done_rounded
                 : Icons.download_rounded, color: cs.primary),
             title: Text(isDl ? t.detailDownloaded : t.detailDownload,
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             enabled: !isDl,
             onTap: isDl ? null : () {
               Navigator.pop(sheetCtx);
@@ -471,7 +595,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     });
   }
 
-  void _selectAllChapters(LibraryProvider lib) {
+  void _selectAllChapters(LibraryLike lib) {
     setState(() {
       for (final c in _getFilteredChapters(lib)) {
         final u = c.url ?? '';
@@ -480,7 +604,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     });
   }
 
-  Future<void> _bulkSetRead(bool read, LibraryProvider lib) async {
+  Future<void> _bulkSetRead(bool read, LibraryLike lib) async {
     final urls = _selectedChapterUrls.toList();
     for (final url in urls) {
       await _setChapterRead(url, read, lib);
@@ -506,9 +630,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     _exitSelectionMode();
   }
 
-  // Chapters strictly below the lowest selected chapter, in display order — the
+  // Chapters strictly below the lowest selected chapter, in display order - the
   // "below" set for the bulk actions. The selected/anchor chapter is excluded.
-  List<String> _belowSelectionUrls(LibraryProvider lib) {
+  List<String> _belowSelectionUrls(LibraryLike lib) {
     final displayed = _getFilteredChapters(lib);
     var lowest = -1;
     for (var i = 0; i < displayed.length; i++) {
@@ -524,7 +648,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
 
   // "Mark all below" in selection mode: mark every chapter below the lowest
   // selected one (the selected chapter itself is left untouched) read or unread.
-  Future<void> _bulkMarkBelow(LibraryProvider lib, {required bool read}) async {
+  Future<void> _bulkMarkBelow(LibraryLike lib, {required bool read}) async {
     for (final url in _belowSelectionUrls(lib)) {
       if (read) {
         await lib.markChapterRead(widget.sourceId, widget.mangaUrl, url);
@@ -535,7 +659,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     _exitSelectionMode();
   }
 
-  void _bulkDownload(LibraryProvider lib) {
+  void _bulkDownload(LibraryLike lib) {
     final displayed = _getFilteredChapters(lib);
     for (final c in displayed) {
       if (_selectedChapterUrls.contains(c.url ?? '')) _downloadChapter(c);
@@ -577,15 +701,18 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     );
   }
 
-  Future<void> _confirmRemoveFromLibrary(
-      BuildContext context, LibraryProvider lib) async {
+  Future<void> _confirmRemoveFromLibrary(BuildContext context) async {
     final t = AppLocalizations.of(context);
+    // Capture the owning provider BEFORE the dialog await (removeFromLibrary
+    // isn't on the common LibraryLike surface, so branch on isVault).
+    final library = widget.isVault ? null : context.read<LibraryProvider>();
+    final vault = widget.isVault ? context.read<VaultProvider>() : null;
     final ok = await showDialog<bool>(
       context: context,
       builder: (dCtx) => AlertDialog(
         title: Text(t.detailRemoveFromLibraryTitle),
-        content: Text(
-            'Remove "${_manga?.name ?? widget.title ?? 'this title'}" from your library?'),
+        content: Text(t.detailRemoveFromLibraryBody(
+            _manga?.name ?? widget.title ?? t.detailThisTitle)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(dCtx, false),
@@ -597,12 +724,16 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       ),
     );
     if (ok == true) {
-      await lib.removeFromLibrary(widget.sourceId, widget.mangaUrl);
+      if (widget.isVault) {
+        await vault!.removeFromLibrary(widget.sourceId, widget.mangaUrl);
+      } else {
+        await library!.removeFromLibrary(widget.sourceId, widget.mangaUrl);
+      }
       if (mounted) Navigator.pop(context);
     }
   }
 
-  Widget _buildSelectionBar(BuildContext context, LibraryProvider lib) {
+  Widget _buildSelectionBar(BuildContext context, LibraryLike lib) {
     final cs = Theme.of(context).colorScheme;
     final t = AppLocalizations.of(context);
     final count = _selectedChapterUrls.length;
@@ -635,7 +766,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                       color: color,
@@ -660,7 +791,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                 onPressed: _exitSelectionMode,
               ),
               Text(t.detailCountSelected(count),
-                  style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
               const Spacer(),
               TextButton(
                 onPressed: () => _selectAllChapters(lib),
@@ -696,55 +827,59 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   bool _didAutoResume = false;
 
   void _resumeReading(LibraryManga libraryManga, String title) {
-    final chapters = _manga!.chapters!;
     final lastUrl = libraryManga.lastReadChapterUrl!;
-    final idx = chapters.indexWhere((c) => c.url == lastUrl);
+    // Readers navigate by LIST POSITION on a newest-first list, so hand them
+    // the canonical number-ordered sequence (not the raw/display order).
+    final (chapterMaps, idx) = _navOrder(_manga!.chapters!, lastUrl);
+    final chapterName = chapterMaps.isNotEmpty ? chapterMaps[idx]['name'] : null;
     final sp = context.read<SourceProvider>();
     final src = sp.resolveInstalled(widget.sourceId)?.source;
     final isAnime = src?.isAnime ?? false;
     final isNovel = src?.isNovel ?? false;
-    final chapterMaps = chapters.map((c) => {'url': c.url, 'name': c.name}).toList();
     if (isNovel) {
       Navigator.pushNamed(context, AppRoutes.novelReader, arguments: {
+        'isVault': widget.isVault,
         'chapterUrl': lastUrl,
         'sourceId': widget.sourceId,
         'mangaUrl': widget.mangaUrl,
-        'chapterTitle': idx >= 0 ? chapters[idx].name : null,
+        'chapterTitle': chapterName,
         'mangaTitle': title,
         'chapters': chapterMaps,
-        'currentIndex': idx >= 0 ? idx : 0,
+        'currentIndex': idx,
         'startOffset': libraryManga.novelOffsetOr,
         'startFraction': libraryManga.novelProgressFraction,
       });
     } else if (isAnime) {
       Navigator.pushNamed(context, AppRoutes.player, arguments: {
+        'isVault': widget.isVault,
         'episodeUrl': lastUrl,
         'sourceId': widget.sourceId,
-        'episodeTitle': idx >= 0 ? chapters[idx].name : null,
+        'episodeTitle': chapterName,
         'animeTitle': title,
         'mangaUrl': widget.mangaUrl,
         'episodes': chapterMaps,
-        'currentIndex': idx >= 0 ? idx : 0,
+        'currentIndex': idx,
       });
     } else {
       logger.info(
           'Resume manga: startPage=${libraryManga.lastReadPage} chapter=$lastUrl',
           category: LogCategory.library);
       Navigator.pushNamed(context, AppRoutes.reader, arguments: {
+        'isVault': widget.isVault,
         'chapterUrl': lastUrl,
         'sourceId': widget.sourceId,
         'mangaUrl': widget.mangaUrl,
-        'chapterTitle': idx >= 0 ? chapters[idx].name : null,
+        'chapterTitle': chapterName,
         'mangaTitle': title,
         'chapters': chapterMaps,
-        'currentIndex': idx >= 0 ? idx : 0,
+        'currentIndex': idx,
         'startPage': libraryManga.lastReadPage,
       });
     }
   }
 
   Future<void> _loadDetail({bool forceRefresh = false}) async {
-    final libraryProvider = context.read<LibraryProvider>();
+    final libraryProvider = _store;
     final inLibrary = libraryProvider.isInLibrary(widget.sourceId, widget.mangaUrl);
 
     // Show cached chapters instantly for library manga
@@ -770,6 +905,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           url: c.chapterUrl,
           name: c.title,
           dateUpload: c.dateUpload,
+          chapterNumber: c.chapterNumber,
         )).toList();
         setState(() { _manga = cachedManga; _isLoading = false; });
         _reconcileDownloads();
@@ -813,6 +949,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         (service) => service.getDetail(widget.mangaUrl),
       );
       if (mounted) {
+        _preserveMeta(manga);
         setState(() => _manga = manga);
         _reconcileDownloads();
         _persistWebUrl(manga.webUrl);
@@ -834,7 +971,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   }
 
   /// Re-detect downloads already on disk for this title, in case the app's
-  /// tracking index was lost (reinstall / data wipe) — the provider heals its
+  /// tracking index was lost (reinstall / data wipe) - the provider heals its
   /// index and notifies, so chapter checkmarks come back without re-downloading.
   /// Fire-and-forget; safe to call whenever chapters (re)load.
   void _reconcileDownloads() {
@@ -852,6 +989,21 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         );
   }
 
+  /// Keep a known-good title/cover when a source's getDetail comes back without
+  /// them (some sources omit the name on the detail call). Otherwise a
+  /// background refresh blanks the title the cached library entry had - which is
+  /// what then reaches the reader, so the title shows on cold open (from cache)
+  /// but is gone after the refresh.
+  void _preserveMeta(MManga fresh) {
+    if ((fresh.name?.trim() ?? '').isEmpty) {
+      final prev = _manga?.name?.trim() ?? '';
+      fresh.name = prev.isNotEmpty ? _manga!.name : widget.title;
+    }
+    if ((fresh.imageUrl ?? '').isEmpty && (_manga?.imageUrl ?? '').isNotEmpty) {
+      fresh.imageUrl = _manga!.imageUrl;
+    }
+  }
+
   Future<void> _refreshInBackground() async {
     try {
       final sourceProvider = context.read<SourceProvider>();
@@ -862,17 +1014,18 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         (service) => service.getDetail(widget.mangaUrl),
       );
       if (mounted) {
+        _preserveMeta(manga);
         setState(() => _manga = manga);
         _reconcileDownloads();
         _persistWebUrl(manga.webUrl);
-        final libraryProvider = context.read<LibraryProvider>();
+        final libraryProvider = _store;
         if (manga.chapters != null) {
           libraryProvider.cacheChapters(widget.sourceId, widget.mangaUrl,
               manga.chapters!.map((c) => c.toJson()).toList());
         }
       }
     } catch (_) {
-      // Silent fail — cached data is already showing
+      // Silent fail - cached data is already showing
     }
   }
 
@@ -895,7 +1048,9 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     final t = AppLocalizations.of(context);
     final coverUrl = _manga?.imageUrl ?? widget.coverUrl;
     final title = _manga?.name ?? widget.title ?? '';
-    final libraryProvider = context.watch<LibraryProvider>();
+    final LibraryLike libraryProvider = widget.isVault
+        ? context.watch<VaultProvider>()
+        : context.watch<LibraryProvider>();
     final inLibrary = libraryProvider.isInLibrary(widget.sourceId, widget.mangaUrl);
     final libraryManga = inLibrary
         ? libraryProvider.manga.cast<LibraryManga?>().firstWhere(
@@ -923,12 +1078,57 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         onRefresh: () => _loadDetail(forceRefresh: true),
         color: cs.primary,
         child: CustomScrollView(
+        controller: _detailScroll,
         slivers: [
           // App bar with cover
           SliverAppBar(
             expandedHeight: 280,
             pinned: true,
-            backgroundColor: cs.surface,
+            // Paint the bar in the SAME colour the cover fades to, and kill the
+            // M3 scroll-under tint, so the collapsed bar and the cover's fade
+            // target match exactly - no surface≠background seam as it collapses.
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            // Custom back button with a dark scrim + shadowed arrow so it stays
+            // visible over bright cover art (the plain icon washed out on light
+            // covers).
+            leading: Padding(
+              padding: const EdgeInsets.all(7),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black.withValues(alpha: 0.38),
+                ),
+                child: IconButton(
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: Icon(Icons.arrow_back_rounded,
+                      color: Colors.white,
+                      size: 22,
+                      shadows: [
+                        Shadow(
+                            color: Colors.black.withValues(alpha: 0.7),
+                            blurRadius: 4),
+                      ]),
+                ),
+              ),
+            ),
+            centerTitle: false,
+            titleSpacing: 8,
+            title: ValueListenableBuilder<double>(
+              valueListenable: _appBarTitleOp,
+              builder: (_, op, _) => Opacity(
+                opacity: op,
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: Theme.of(context).colorScheme.onSurface)),
+              ),
+            ),
             actions: [
               // Download menu
               PopupMenuButton<String>(
@@ -993,7 +1193,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   } else if (v == 'select') {
                     _enterSelectionMode();
                   } else if (v == 'remove') {
-                    _confirmRemoveFromLibrary(context, libraryProvider);
+                    _confirmRemoveFromLibrary(context);
                   } else if (v == 'migrate') {
                     Navigator.push(context, MaterialPageRoute(
                       builder: (_) => MigrateScreen(
@@ -1008,15 +1208,49 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: coverUrl != null && coverUrl.isNotEmpty
-                  ? Stack(fit: StackFit.expand, children: [
-                      MangaImage(imageUrl: coverUrl, referer: _safeOrigin(widget.mangaUrl)),
-                      DecoratedBox(decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, cs.surface],
-                        ),
-                      )),
-                    ])
+                  ? Builder(builder: (context) {
+                      // Fade the cover into the SAME colour as the page behind
+                      // the content below (scaffoldBackgroundColor) - the app
+                      // bar is painted that colour too (see backgroundColor
+                      // above), so there's no surface≠background seam, at rest
+                      // or mid-scroll. All gradient stops use that colour at
+                      // varying alpha so the interpolation never tints the
+                      // cover, and the resting fade is weighted to the lower
+                      // half for a gentle blend.
+                      final bg = Theme.of(context).scaffoldBackgroundColor;
+                      // Drive a SECOND fade off the live collapse fraction so
+                      // the whole cover melts away continuously as the header
+                      // shrinks - instead of FlexibleSpaceBar's default, which
+                      // keeps it solid then cross-fades out only in the last
+                      // toolbar-height of travel (the "ends abruptly" seam).
+                      final settings = context.dependOnInheritedWidgetOfExactType<
+                          FlexibleSpaceBarSettings>();
+                      var t = 1.0; // 1.0 = fully expanded, 0.0 = collapsed
+                      if (settings != null) {
+                        final range = settings.maxExtent - settings.minExtent;
+                        if (range > 0) {
+                          t = ((settings.currentExtent - settings.minExtent) /
+                                  range)
+                              .clamp(0.0, 1.0);
+                        }
+                      }
+                      return Opacity(
+                        opacity: Curves.easeOut.transform(t),
+                        child: Stack(fit: StackFit.expand, children: [
+                          MangaImage(
+                              imageUrl: coverUrl,
+                              referer: _safeOrigin(widget.mangaUrl)),
+                          DecoratedBox(decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [bg.withAlpha(0), bg.withAlpha(0), bg],
+                              stops: const [0.0, 0.45, 1.0],
+                            ),
+                          )),
+                        ]),
+                      );
+                    })
                   : null,
             ),
           ),
@@ -1029,7 +1263,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
               children: [
                 Icon(Icons.error_outline_rounded, color: cs.outline, size: 48),
                 const SizedBox(height: 12),
-                Text(_error!, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline),
+                Text(_error!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 16),
                 FilledButton(onPressed: _loadDetail, child: Text(t.detailRetry)),
@@ -1040,13 +1274,23 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             SliverToBoxAdapter(child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // Long-press the title to search it across all sources.
+                // Tap the title to copy it; long-press to search it everywhere.
                 GestureDetector(
+                  onTap: title.trim().isEmpty
+                      ? null
+                      : () {
+                          Clipboard.setData(ClipboardData(text: title));
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(t.detailTitleCopied),
+                            duration: const Duration(seconds: 2),
+                          ));
+                        },
                   onLongPress: title.trim().isEmpty
                       ? null
                       : () => Navigator.pushNamed(context, AppRoutes.globalSearch,
                           arguments: {'query': title}),
-                  child: Text(title, style: GoogleFonts.manrope(
+                  child: Text(title, style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontSize: 22, fontWeight: FontWeight.w800, color: cs.onSurface)),
                 ),
                 const SizedBox(height: 6),
@@ -1054,17 +1298,17 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   Row(children: [
                     Icon(Icons.person_outline_rounded, size: 14, color: cs.outline),
                     const SizedBox(width: 4),
-                    Text(_manga!.author!, style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                    Text(_manga!.author!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline)),
                   ]),
                 const SizedBox(height: 4),
                 Row(children: [
                   Icon(Icons.schedule_rounded, size: 14, color: cs.outline),
                   const SizedBox(width: 4),
                   Text(_statusLabel(t, _manga?.status ?? MangaStatus.unknown),
-                      style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline)),
                 ]),
                 const SizedBox(height: 4),
-                // Which source this title is from — handy after a backup restore
+                // Which source this title is from - handy after a backup restore
                 // for finding/installing the right extension.
                 Row(children: [
                   Icon(Icons.extension_rounded, size: 14, color: cs.outline),
@@ -1075,7 +1319,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           .read<SourceProvider>()
                           .sourceDisplayName(widget.sourceId),
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline),
                     ),
                   ),
                 ]),
@@ -1094,7 +1338,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   cs: cs,
                   onTap: () {
                     if (inLibrary) {
-                      _removeFromLibraryWithUndo(libraryProvider);
+                      _removeFromLibraryWithUndo();
                     } else {
                       _addToLibrary(context);
                     }
@@ -1150,7 +1394,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                   onTap: () => setState(() => _descExpanded = !_descExpanded),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(stripHtml(_manga!.description!),
-                        style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface.withAlpha(200)),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurface.withAlpha(200)),
                         maxLines: _descExpanded ? 100 : 3,
                         overflow: TextOverflow.ellipsis),
                     Icon(_descExpanded ? Icons.expand_less : Icons.expand_more,
@@ -1178,7 +1422,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                       Icon(Icons.sticky_note_2_rounded, size: 18, color: cs.primary),
                       const SizedBox(width: 8),
                       Expanded(child: Text(_note,
-                          style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface))),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurface))),
                     ]),
                   ),
                 ),
@@ -1208,7 +1452,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: cs.outlineVariant),
                       ),
-                      child: Text(g, style: GoogleFonts.manrope(fontSize: 11, color: cs.onSurface)),
+                      child: Text(g, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurface)),
                     ),
                   ),
                 ).toList()),
@@ -1222,10 +1466,10 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                       Expanded(child: TextField(
                         controller: _chapterSearchController,
                         autofocus: true,
-                        style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurface),
                         decoration: InputDecoration(
                           hintText: t.detailSearchChaptersHint,
-                          hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
+                          hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.outline),
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(
@@ -1248,7 +1492,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     ])
                   : Row(children: [
                       Text(_isAnime ? t.detailEpisodeCount(_manga?.chapters?.length ?? 0) : t.detailChapterCount(_manga?.chapters?.length ?? 0),
-                          style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w800, color: cs.onSurface)),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: cs.onSurface)),
                       const Spacer(),
                       IconButton(
                         icon: Icon(Icons.search_rounded, size: 20, color: cs.outline),
@@ -1262,36 +1506,42 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           size: 20, color: cs.outline),
                         tooltip: _sortAscending ? t.detailOldestFirst : t.detailNewestFirst,
                         visualDensity: VisualDensity.compact,
-                        onPressed: () => setState(() => _sortAscending = !_sortAscending),
+                        onPressed: () {
+                          setState(() => _sortAscending = !_sortAscending);
+                          _saveSortPrefs();
+                        },
                       ),
                       PopupMenuButton<_ChapterSort>(
                         icon: Icon(Icons.sort_rounded, size: 20,
                             color: _chapterSort != _ChapterSort.source
                                 ? cs.primary
                                 : cs.outline),
-                        tooltip: 'Sort by',
+                        tooltip: t.detailSortBy,
                         initialValue: _chapterSort,
                         itemBuilder: (_) => [
                           CheckedPopupMenuItem(
                             value: _ChapterSort.source,
                             checked: _chapterSort == _ChapterSort.source,
-                            child: Text('Source order',
-                                style: GoogleFonts.manrope(fontSize: 14)),
+                            child: Text(t.detailSortSourceOrder,
+                                style: Theme.of(context).textTheme.bodyLarge),
                           ),
                           CheckedPopupMenuItem(
                             value: _ChapterSort.number,
                             checked: _chapterSort == _ChapterSort.number,
-                            child: Text('Chapter number',
-                                style: GoogleFonts.manrope(fontSize: 14)),
+                            child: Text(t.detailSortChapterNumber,
+                                style: Theme.of(context).textTheme.bodyLarge),
                           ),
                           CheckedPopupMenuItem(
                             value: _ChapterSort.uploadDate,
                             checked: _chapterSort == _ChapterSort.uploadDate,
-                            child: Text('Upload date',
-                                style: GoogleFonts.manrope(fontSize: 14)),
+                            child: Text(t.detailSortUploadDate,
+                                style: Theme.of(context).textTheme.bodyLarge),
                           ),
                         ],
-                        onSelected: (v) => setState(() => _chapterSort = v),
+                        onSelected: (v) {
+                          setState(() => _chapterSort = v);
+                          _saveSortPrefs();
+                        },
                       ),
                       PopupMenuButton<String>(
                         icon: Icon(Icons.filter_list_rounded, size: 20,
@@ -1304,15 +1554,15 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                         itemBuilder: (_) => [
                           CheckedPopupMenuItem<String>(
                             value: 'unread', checked: _filterUnread,
-                            child: Text(t.detailUnread, style: GoogleFonts.manrope(fontSize: 14)),
+                            child: Text(t.detailUnread, style: Theme.of(context).textTheme.bodyLarge),
                           ),
                           CheckedPopupMenuItem<String>(
                             value: 'bookmarked', checked: _filterBookmarked,
-                            child: Text(t.detailBookmarked, style: GoogleFonts.manrope(fontSize: 14)),
+                            child: Text(t.detailBookmarked, style: Theme.of(context).textTheme.bodyLarge),
                           ),
                           CheckedPopupMenuItem<String>(
                             value: 'downloaded', checked: _filterDownloaded,
-                            child: Text(t.detailDownloaded, style: GoogleFonts.manrope(fontSize: 14)),
+                            child: Text(t.detailDownloaded, style: Theme.of(context).textTheme.bodyLarge),
                           ),
                           const PopupMenuDivider(),
                           PopupMenuItem<String>(
@@ -1320,7 +1570,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                             child: Row(children: [
                               Icon(Icons.done_all_rounded, size: 18, color: cs.onSurface),
                               const SizedBox(width: 8),
-                              Text(t.detailMarkAllAsRead, style: GoogleFonts.manrope(fontSize: 14)),
+                              Text(t.detailMarkAllAsRead, style: Theme.of(context).textTheme.bodyLarge),
                             ]),
                           ),
                           PopupMenuItem<String>(
@@ -1328,7 +1578,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                             child: Row(children: [
                               Icon(Icons.remove_done_rounded, size: 18, color: cs.onSurface),
                               const SizedBox(width: 8),
-                              Text(t.detailMarkAllAsUnread, style: GoogleFonts.manrope(fontSize: 14)),
+                              Text(t.detailMarkAllAsUnread, style: Theme.of(context).textTheme.bodyLarge),
                             ]),
                           ),
                         ],
@@ -1344,7 +1594,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             )),
 
             // Empty-chapter state. 0 chapters is usually a parse/availability
-            // issue, not a login wall — so stay neutral ("No chapters found")
+            // issue, not a login wall - so stay neutral ("No chapters found")
             // and only offer login when the source actually declares a
             // loginUrl, framed as optional. Sources with no login just get
             // Retry, so an optional-login (or no-login) source is never gated
@@ -1370,26 +1620,26 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           size: 32, color: cs.outline),
                       const SizedBox(height: 8),
                       Text(t.detailNoChaptersFound,
-                          style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
                       const SizedBox(height: 4),
                       Text(
                           hasLogin
                               ? t.detailNoChaptersLoginHint
                               : t.detailNoChaptersRetryHint,
-                          style: GoogleFonts.manrope(fontSize: 12, color: cs.outline), textAlign: TextAlign.center),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline), textAlign: TextAlign.center),
                       const SizedBox(height: 12),
                       Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         if (hasLogin) ...[
                           FilledButton.icon(
                             icon: const Icon(Icons.login_rounded, size: 16),
                             label: Text(t.detailLogIn,
-                                style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 12)),
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700, color: cs.onPrimary)),
                             style: FilledButton.styleFrom(
                               backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
                             onPressed: () async {
                               await Navigator.pushNamed(context, AppRoutes.webview,
-                                  arguments: {'url': loginUrl, 'title': 'Login'});
+                                  arguments: {'url': loginUrl, 'title': t.detailLoginPageTitle});
                               _loadDetail();
                             },
                           ),
@@ -1399,7 +1649,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                           onPressed: _loadDetail,
                           style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8)),
-                          child: Text(t.detailRetry, style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 12)),
+                          child: Text(t.detailRetry, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, color: cs.primary)),
                         ),
                       ]),
                     ]),
@@ -1410,15 +1660,14 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             // Chapter list
             Builder(builder: (context) {
               final filtered = _getFilteredChapters(libraryProvider);
-              final allChapterMaps = _manga!.chapters!.map((c) => {'url': c.url, 'name': c.name}).toList();
               return SliverList(delegate: SliverChildBuilderDelegate(
-                (_, i) => _buildChapterTile(context, filtered[i], libraryProvider, libraryManga, allChapterMaps),
+                (_, i) => _buildChapterTile(context, filtered[i], libraryProvider, libraryManga),
                 childCount: filtered.length,
               ));
             }),
             SliverPadding(
                 padding: EdgeInsets.only(
-                    bottom: 80 + MediaQuery.of(context).viewPadding.bottom)),
+                    bottom: 80 + MediaQuery.viewPaddingOf(context).bottom)),
           ],
         ],
       )),
@@ -1429,31 +1678,24 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
               backgroundColor: cs.primary,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(t.detailResume, style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+              label: Text(t.detailResume, style: const TextStyle(fontWeight: FontWeight.w700)),
               onPressed: () => _resumeReading(libraryManga!, title),
             )
           : null,
     );
   }
 
-  /// Formats a saved anime position (seconds) as m:ss / h:mm:ss, matching the player.
-  String _fmtWatchTime(int seconds) {
-    final d = Duration(seconds: seconds);
-    final h = d.inHours;
-    final m = (d.inMinutes % 60).toString().padLeft(h > 0 ? 2 : 1, '0');
-    final s = (d.inSeconds % 60).toString().padLeft(2, '0');
-    return h > 0 ? '$h:$m:$s' : '$m:$s';
-  }
+  /// Formats a saved anime position (seconds) as m:ss / h:mm:ss, matching the
+  /// player via the shared [formatDuration] helper.
+  String _fmtWatchTime(int seconds) => formatDuration(Duration(seconds: seconds));
 
   Widget _buildChapterTile(BuildContext context, MChapter chapter,
-      LibraryProvider libraryProvider, LibraryManga? libraryManga,
-      List<Map<String, dynamic>> allChapters) {
+      LibraryLike libraryProvider, LibraryManga? libraryManga) {
     final cs = Theme.of(context).colorScheme;
     final t = AppLocalizations.of(context);
     final chapterUrl = chapter.url ?? '';
     final isRead = libraryProvider.isChapterRead(widget.sourceId, chapterUrl);
     final isBookmarked = _bookmarkedChapterUrls.contains(chapterUrl);
-    final index = _manga!.chapters!.indexWhere((c) => c.url == chapterUrl);
 
     // Only show page position on the last-read unread chapter
     final isLastRead = libraryManga?.lastReadChapterUrl == chapterUrl && !isRead;
@@ -1474,35 +1716,66 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             ?.source;
         final isAnime = src2?.isAnime ?? false;
         final isNovel = src2?.isNovel ?? false;
+        // Readers navigate by LIST POSITION on a newest-first list, so hand them
+        // the canonical number-ordered sequence (not the raw/display order) and
+        // the index of the chapter the user actually tapped.
+        final (navMaps, navIdx) = _navOrder(_manga!.chapters!, chapterUrl);
         if (isNovel) {
+          // Resume this chapter where it was left off (per-chapter progress),
+          // unless it's already finished. The saved offset rides on the same
+          // LibraryChapter row the manga reader uses.
+          var resumeOffset = 0;
+          for (final c in libraryProvider.getCachedChapters(
+              widget.sourceId, widget.mangaUrl)) {
+            if (c.chapterUrl == chapterUrl) {
+              resumeOffset = c.isRead ? 0 : c.lastPageRead;
+              break;
+            }
+          }
           Navigator.pushNamed(context, AppRoutes.novelReader, arguments: {
+            'isVault': widget.isVault,
             'chapterUrl': chapterUrl,
             'sourceId': widget.sourceId,
             'mangaUrl': widget.mangaUrl,
             'chapterTitle': chapter.name,
             'mangaTitle': _manga?.name,
-            'chapters': allChapters,
-            'currentIndex': index >= 0 ? index : 0,
+            'chapters': navMaps,
+            'currentIndex': navIdx,
+            'startOffset': resumeOffset,
           });
         } else if (isAnime) {
           Navigator.pushNamed(context, AppRoutes.player, arguments: {
+            'isVault': widget.isVault,
             'episodeUrl': chapterUrl,
             'sourceId': widget.sourceId,
             'episodeTitle': chapter.name,
             'animeTitle': _manga?.name,
             'mangaUrl': widget.mangaUrl,
-            'episodes': allChapters,
-            'currentIndex': index >= 0 ? index : 0,
+            'episodes': navMaps,
+            'currentIndex': navIdx,
           });
         } else {
+          // Resume this chapter where it was left off (per-chapter progress),
+          // unless it's already finished - then start fresh from the top.
+          var resumePage = 0;
+          for (final c
+              in libraryProvider.getCachedChapters(
+                  widget.sourceId, widget.mangaUrl)) {
+            if (c.chapterUrl == chapterUrl) {
+              resumePage = c.isRead ? 0 : c.lastPageRead;
+              break;
+            }
+          }
           Navigator.pushNamed(context, AppRoutes.reader, arguments: {
+            'isVault': widget.isVault,
             'chapterUrl': chapterUrl,
             'sourceId': widget.sourceId,
             'mangaUrl': widget.mangaUrl,
             'chapterTitle': chapter.name,
             'mangaTitle': _manga?.name,
-            'chapters': allChapters,
-            'currentIndex': index >= 0 ? index : 0,
+            'chapters': navMaps,
+            'currentIndex': navIdx,
+            'startPage': resumePage,
           });
         }
       },
@@ -1539,8 +1812,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               chapter.name ?? t.detailChapterFallback,
-              style: GoogleFonts.manrope(
-                fontSize: 14,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 fontWeight: isLastRead ? FontWeight.w700 : FontWeight.w500,
                 color: isLastRead ? cs.primary : titleColor,
               ),
@@ -1550,18 +1822,18 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
             Row(children: [
               if (chapter.dateUpload != null && formatChapterDate(chapter.dateUpload).isNotEmpty)
                 Text(formatChapterDate(chapter.dateUpload),
-                    style: GoogleFonts.manrope(fontSize: 11, color: subColor)),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: subColor)),
               // Page position only for the current reading chapter
               if (isLastRead && libraryManga != null) ...[
                 if (chapter.dateUpload != null) Text(' \u2022 ',
-                    style: GoogleFonts.manrope(fontSize: 11, color: subColor)),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: subColor)),
                 Text(
                     _isAnime
                         ? _fmtWatchTime(libraryManga.watchSecondsOr)
                         : _isNovel
                             ? t.detailInProgress
                             : t.detailPage(libraryManga.lastReadPage + 1),
-                    style: GoogleFonts.manrope(fontSize: 11, color: cs.primary, fontWeight: FontWeight.w600)),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.primary, fontWeight: FontWeight.w600)),
               ],
             ]),
           ])),
@@ -1608,7 +1880,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
     );
   }
 
-  void _handleBulkDownload(String action, BuildContext context, LibraryProvider libraryProvider) {
+  void _handleBulkDownload(String action, BuildContext context, LibraryLike libraryProvider) {
     final t = AppLocalizations.of(context);
     final chapters = _manga?.chapters;
     if (chapters == null || chapters.isEmpty) return;
@@ -1701,31 +1973,46 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
   }
 
   /// Remove with a snackbar + Undo (the remove was instant, silent and
-  /// un-undoable — a mis-tap on the heart dropped the title and its progress
+  /// un-undoable - a mis-tap on the heart dropped the title and its progress
   /// with no acknowledgement). Snapshots the entry + chapters so Undo restores
   /// read state exactly.
-  Future<void> _removeFromLibraryWithUndo(LibraryProvider lib) async {
+  Future<void> _removeFromLibraryWithUndo() async {
+    // removeFromLibrary / fullChapters / addEntryWithChapters live on both
+    // providers but not on the common LibraryLike surface, so branch on isVault
+    // to keep a vault title's removal (and Undo) inside the vault.
+    final library = widget.isVault ? null : context.read<LibraryProvider>();
+    final vault = widget.isVault ? context.read<VaultProvider>() : null;
+    final LibraryLike store = vault ?? library!;
     LibraryManga? entry;
-    for (final m in lib.manga) {
+    for (final m in store.manga) {
       if (m.sourceId == widget.sourceId && m.url == widget.mangaUrl) {
         entry = m;
         break;
       }
     }
     final snapshot = entry?.clone();
-    final chapters = lib.fullChapters(widget.sourceId, widget.mangaUrl);
-    await lib.removeFromLibrary(widget.sourceId, widget.mangaUrl);
+    final chapters = widget.isVault
+        ? vault!.fullChapters(widget.sourceId, widget.mangaUrl)
+        : library!.fullChapters(widget.sourceId, widget.mangaUrl);
+    if (widget.isVault) {
+      await vault!.removeFromLibrary(widget.sourceId, widget.mangaUrl);
+    } else {
+      await library!.removeFromLibrary(widget.sourceId, widget.mangaUrl);
+    }
     if (!mounted) return;
+    final t = AppLocalizations.of(context);
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(SnackBar(
-        content: const Text('Removed from library'),
+        content: Text(t.detailRemovedFromLibrary),
         duration: const Duration(seconds: 4),
         action: snapshot == null
             ? null
             : SnackBarAction(
-                label: 'Undo',
-                onPressed: () => lib.addEntryWithChapters(snapshot, chapters),
+                label: t.detailUndo,
+                onPressed: () => widget.isVault
+                    ? vault!.addEntryWithChapters(snapshot, chapters)
+                    : library!.addEntryWithChapters(snapshot, chapters),
               ),
       ));
   }
@@ -1769,7 +2056,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
       }
     }
 
-    // Default-category preference (normal library only — vault keeps its own
+    // Default-category preference (normal library only - vault keeps its own
     // flow): file the entry straight into the chosen category, no picker.
     final preset = library.defaultCategoriesForNewEntry();
     if (!isVault && preset.isNotEmpty) {
@@ -1817,7 +2104,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         builder: (context, setSheetState) => SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.8),
+                maxHeight: MediaQuery.sizeOf(context).height * 0.8),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1825,7 +2112,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     decoration: BoxDecoration(color: cs.outline, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 16),
                 Text(t.detailAddToCategory,
-                    style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
                 const SizedBox(height: 12),
                 Flexible(
                   child: SingleChildScrollView(
@@ -1844,7 +2131,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                                   size: 20, color: isIn ? cs.primary : cs.outline),
                               const SizedBox(width: 14),
                               Expanded(
-                                child: Text(cat, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+                                child: Text(cat, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
                               ),
                             ]),
                           ),
@@ -1861,7 +2148,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
                     padding: const EdgeInsets.symmetric(vertical: 14)),
                   child: Text(selected.isEmpty ? t.detailAddWithoutCategory : t.detailAddToLibrary,
-                      style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14)),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700, color: cs.onPrimary)),
                 )),
               ]),
             ),
@@ -1902,7 +2189,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
         builder: (context, setSheetState) => SafeArea(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.8),
+                maxHeight: MediaQuery.sizeOf(context).height * 0.8),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1910,7 +2197,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     decoration: BoxDecoration(color: cs.outline, borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 16),
                 Text(t.detailEditCategoriesTitle,
-                    style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, color: cs.onSurface)),
                 const SizedBox(height: 12),
                 // Scrolls when there are more categories than fit.
                 Flexible(
@@ -1928,7 +2215,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                                   size: 20, color: isIn ? cs.primary : cs.outline),
                               const SizedBox(width: 14),
                               Expanded(
-                                child: Text(cat, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
+                                child: Text(cat, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
                               ),
                             ]),
                           ),
@@ -1951,7 +2238,7 @@ class _MangaDetailScreenState extends State<MangaDetailScreen> {
                     backgroundColor: cs.primary, foregroundColor: cs.onPrimary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
                     padding: const EdgeInsets.symmetric(vertical: 14)),
-                  child: Text(t.detailSave, style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 14)),
+                  child: Text(t.detailSave, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700, color: cs.onPrimary)),
                 )),
               ]),
             ),
@@ -2002,7 +2289,12 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: active ? cs.surfaceContainerHighest : cs.surfaceContainerHighest.withAlpha(140),
-      borderRadius: BorderRadius.circular(12),
+      // Hairline border so the button stays legible as its own surface - the
+      // separator in OLED (where the fill is pure black), subtle otherwise.
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: cs.outlineVariant),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -2011,8 +2303,8 @@ class _ActionButton extends StatelessWidget {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: 22, color: active ? cs.primary : cs.onSurface),
             const SizedBox(height: 4),
-            Text(label, style: GoogleFonts.manrope(
-              fontSize: 11, fontWeight: FontWeight.w600,
+            Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w600,
               color: active ? cs.primary : cs.onSurface)),
           ]),
         ),

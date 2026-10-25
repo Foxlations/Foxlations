@@ -66,7 +66,7 @@ class IsolateService {
     try {
       await rhttp.Rhttp.init();
     } catch (_) {
-      // May already be initialized — not fatal
+      // May already be initialized - not fatal
     }
     isBackgroundIsolate = true;
 

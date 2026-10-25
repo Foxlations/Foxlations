@@ -11,7 +11,7 @@ import '../services/settings_store.dart';
 enum ReadingMode { ltr, rtl, vertical, webtoon }
 
 /// Snapshot of reader preferences loaded from the settings store when a
-/// chapter is opened. Read-only — to change values open the Reader settings
+/// chapter is opened. Read-only - to change values open the Reader settings
 /// page; the next chapter open will pick up the new state.
 class ReaderSettings {
   final bool fullscreen;
@@ -37,6 +37,13 @@ class ReaderSettings {
   // a wide double-page so it isn't squished.
   final bool dualPageLandscape;
   final bool dualPageSplitWide;
+  // Hands-free auto-scroll speed (logical px/sec) for continuous / webtoon mode.
+  final double autoScrollSpeed;
+  // Image colour adjustments, applied as one composed colour matrix on every
+  // page (all layouts). Neutral defaults: sepia 0 (none), contrast/saturation 1.
+  final double sepia;
+  final double contrast;
+  final double saturation;
 
   const ReaderSettings({
     this.fullscreen = true,
@@ -56,9 +63,19 @@ class ReaderSettings {
     this.brightness = 1.0,
     this.dualPageLandscape = false,
     this.dualPageSplitWide = false,
+    this.autoScrollSpeed = 120.0,
+    this.sepia = 0.0,
+    this.contrast = 1.0,
+    this.saturation = 1.0,
   });
 
-  ReaderSettings copyWith({double? warmTint, double? brightness}) =>
+  ReaderSettings copyWith(
+          {double? warmTint,
+          double? brightness,
+          double? autoScrollSpeed,
+          double? sepia,
+          double? contrast,
+          double? saturation}) =>
       ReaderSettings(
         fullscreen: fullscreen,
         keepScreenOn: keepScreenOn,
@@ -77,6 +94,10 @@ class ReaderSettings {
         brightness: brightness ?? this.brightness,
         dualPageLandscape: dualPageLandscape,
         dualPageSplitWide: dualPageSplitWide,
+        autoScrollSpeed: autoScrollSpeed ?? this.autoScrollSpeed,
+        sepia: sepia ?? this.sepia,
+        contrast: contrast ?? this.contrast,
+        saturation: saturation ?? this.saturation,
       );
 
   static Future<ReaderSettings> load() async {
@@ -99,6 +120,11 @@ class ReaderSettings {
       brightness: (p.getDouble('reader_brightness') ?? 1.0).clamp(0.15, 1.0),
       dualPageLandscape: p.getBool('reader_dual_page') ?? false,
       dualPageSplitWide: p.getBool('reader_dual_page_split') ?? false,
+      autoScrollSpeed:
+          (p.getDouble('reader_auto_scroll_speed') ?? 120.0).clamp(40.0, 600.0),
+      sepia: (p.getDouble('reader_sepia') ?? 0.0).clamp(0.0, 1.0),
+      contrast: (p.getDouble('reader_contrast') ?? 1.0).clamp(0.5, 1.5),
+      saturation: (p.getDouble('reader_saturation') ?? 1.0).clamp(0.0, 2.0),
     );
   }
 }
@@ -108,14 +134,46 @@ class ChapterBoundary {
   final int pageIndex; // Index in the unified pages list where this boundary sits
   final String? prevChapterName;
   final String? nextChapterName;
+  final String? prevChapterUrl;
+  final String? nextChapterUrl;
   final bool isLastChapter;
 
   const ChapterBoundary({
     required this.pageIndex,
     this.prevChapterName,
     this.nextChapterName,
+    this.prevChapterUrl,
+    this.nextChapterUrl,
     this.isLastChapter = false,
   });
+}
+
+/// A page in the reader's unified multi-chapter list. It carries the image
+/// source AND the chapter it belongs to, so every chapter/position lookup is
+/// O(1) off the page itself - no walking boundary markers, and no trusting a
+/// current-chapter pointer that drifts ahead when the next chapter preloads
+/// (that drift is what produced the resume bugs). Passthrough getters keep the
+/// page-image call sites (url / headers / fileName) working unchanged.
+class ReaderPage {
+  final PageUrl source;
+  final String chapterUrl; // the chapter this page belongs to
+  final String chapterName;
+  final int chapterIndex; // index into the (oldest-first) chapter list
+  final int localIndex; // 0-based page number within its own chapter
+  final int chapterPageCount; // total pages in its chapter
+
+  const ReaderPage(
+    this.source, {
+    required this.chapterUrl,
+    required this.chapterName,
+    required this.chapterIndex,
+    required this.localIndex,
+    required this.chapterPageCount,
+  });
+
+  String get url => source.url;
+  String? get fileName => source.fileName;
+  Map<String, String>? get headers => source.headers;
 }
 
 class ReaderProvider extends ChangeNotifier {
@@ -126,7 +184,7 @@ class ReaderProvider extends ChangeNotifier {
   final List<Map<String, dynamic>> _chapters;
   int _currentChapterIndex;
 
-  List<PageUrl> _pages = [];
+  List<ReaderPage> _pages = [];
   int _currentPage = 0;
   bool _isLoading = false;
   bool _isLoadingNext = false;
@@ -137,19 +195,21 @@ class ReaderProvider extends ChangeNotifier {
 
   final int _startPage;
 
-  // Track chapter boundaries for transition dividers
-  final List<ChapterBoundary> _boundaries = [];
-  // Track which chapters have been loaded into the unified list
+  // Which chapters have been loaded into the unified list. Chapter boundaries
+  // for the transition dividers are now DERIVED from the per-page chapter meta
+  // (getBoundaryAt / boundaries), so there's a single source of truth.
   final Set<int> _loadedChapterIndexes = {};
 
   final String _sourceId;
   final String _mangaTitle;
+  final String _mangaUrl;
 
   ReaderProvider({
     required InstalledSource installedSource,
     required String chapterUrl,
     required String sourceId,
     String mangaTitle = '',
+    String mangaUrl = '',
     List<Map<String, dynamic>>? chapters,
     int currentIndex = 0,
     int startPage = 0,
@@ -157,9 +217,10 @@ class ReaderProvider extends ChangeNotifier {
         _chapterUrl = chapterUrl,
         _sourceId = sourceId,
         _mangaTitle = mangaTitle,
+        _mangaUrl = mangaUrl,
         // The source hands chapters NEWEST-first (Tachiyomi convention). All the
         // navigation here treats index+1 as the NEXT (later) chapter, so store
-        // the list OLDEST-first and remap the opened index — otherwise "Next"
+        // the list OLDEST-first and remap the opened index - otherwise "Next"
         // went to the older chapter and opening chapter 1 disabled Next. (The
         // novel reader instead handles the newest-first list directly with
         // index-1; this makes the manga reader consistent and correct.)
@@ -173,7 +234,7 @@ class ReaderProvider extends ChangeNotifier {
     _loadSavedReadingMode();
   }
 
-  List<PageUrl> get pages => _pages;
+  List<ReaderPage> get pages => _pages;
   int get currentPage => _currentPage;
   bool get isLoading => _isLoading;
   bool get isLoadingNext => _isLoadingNext;
@@ -184,50 +245,37 @@ class ReaderProvider extends ChangeNotifier {
   int get totalPages => _pages.length;
   bool get hasPreviousChapter => _currentChapterIndex > 0;
   bool get hasNextChapter => _currentChapterIndex < _chapters.length - 1;
-  List<ChapterBoundary> get boundaries => _boundaries;
 
-  /// The [start, end) page range (in the unified multi-chapter list) of the
-  /// chapter that page [p] belongs to, derived from the chapter boundaries. Lets
-  /// the page slider scrub only the current chapter instead of every loaded one.
-  ({int start, int end}) chapterRangeForPage(int p) {
-    final marks = _boundaries
-        .map((b) => b.pageIndex)
-        .where((i) => i > 0 && i < _pages.length)
-        .toList()
-      ..sort();
-    int start = 0;
-    int end = _pages.length;
-    for (final m in marks) {
-      if (m <= p) {
-        start = m;
-      } else {
-        end = m;
-        break;
-      }
+  /// Chapter-transition boundaries, derived from the per-page chapter meta
+  /// (a boundary sits wherever two consecutive pages belong to different
+  /// chapters). The viewer uses [getBoundaryAt] per item; this is for any
+  /// consumer that wants the whole list.
+  List<ChapterBoundary> get boundaries {
+    final out = <ChapterBoundary>[];
+    for (var i = 1; i < _pages.length; i++) {
+      final b = getBoundaryAt(i);
+      if (b != null) out.add(b);
     }
-    return (start: start, end: end);
+    return out;
   }
 
-  /// Name of the chapter that owns page [p] in the unified multi-chapter list,
-  /// derived from the chapter boundaries — so the HUD reflects the chapter the
-  /// user is actually on as they scroll/flip across chapters (vs the static
-  /// opened-chapter title, which never changed, or _currentChapterIndex, which
-  /// drifts ahead when the next chapter preloads).
+  /// The [start, end) page range (in the unified multi-chapter list) of the
+  /// chapter that page [p] belongs to - O(1) off the page's own chapter meta.
+  /// Lets the page slider scrub only the current chapter, not every loaded one.
+  ({int start, int end}) chapterRangeForPage(int p) {
+    if (p < 0 || p >= _pages.length) return (start: 0, end: _pages.length);
+    final page = _pages[p];
+    final start = p - page.localIndex;
+    return (start: start, end: start + page.chapterPageCount);
+  }
+
+  /// Name of the chapter that owns page [p] - straight off the page's chapter
+  /// meta, so the HUD reflects the chapter the user is actually on as they
+  /// scroll across chapters (not _currentChapterIndex, which drifts ahead when
+  /// the next chapter preloads).
   String chapterNameForPage(int p) {
-    if (_boundaries.isEmpty) return currentChapterName;
-    final sorted = [..._boundaries]
-      ..sort((a, b) => a.pageIndex.compareTo(b.pageIndex));
-    if (p < sorted.first.pageIndex) {
-      return sorted.first.prevChapterName ?? currentChapterName;
-    }
-    String name = sorted.first.prevChapterName ?? currentChapterName;
-    for (final b in sorted) {
-      if (b.pageIndex <= p) {
-        name = b.nextChapterName ?? name;
-      } else {
-        break;
-      }
-    }
+    if (p < 0 || p >= _pages.length) return currentChapterName;
+    final name = _pages[p].chapterName;
     return name.isNotEmpty ? name : currentChapterName;
   }
 
@@ -241,6 +289,33 @@ class ReaderProvider extends ChangeNotifier {
   Future<void> saveEyeComfort() async {
     await SettingsStore.instance.setDouble('reader_warm_tint', _settings.warmTint);
     await SettingsStore.instance.setDouble('reader_brightness', _settings.brightness);
+  }
+
+  /// Hands-free auto-scroll speed (logical px/sec, clamped 40..600). Updates the
+  /// live settings and persists - safe to call live while scrolling.
+  void setAutoScrollSpeed(double v) {
+    final speed = v.clamp(40.0, 600.0);
+    _settings = _settings.copyWith(autoScrollSpeed: speed);
+    notifyListeners();
+    SettingsStore.instance.setDouble('reader_auto_scroll_speed', speed);
+  }
+
+  /// Live image colour adjustments (sepia 0..1, contrast 0.5..1.5, saturation
+  /// 0..2). Dragging calls this; [saveColorAdjust] persists on release.
+  void setColorAdjust({double? sepia, double? contrast, double? saturation}) {
+    _settings = _settings.copyWith(
+      sepia: sepia?.clamp(0.0, 1.0),
+      contrast: contrast?.clamp(0.5, 1.5),
+      saturation: saturation?.clamp(0.0, 2.0),
+    );
+    notifyListeners();
+  }
+
+  Future<void> saveColorAdjust() async {
+    final p = SettingsStore.instance;
+    await p.setDouble('reader_sepia', _settings.sepia);
+    await p.setDouble('reader_contrast', _settings.contrast);
+    await p.setDouble('reader_saturation', _settings.saturation);
   }
 
   String get currentChapterUrl =>
@@ -301,13 +376,54 @@ class ReaderProvider extends ChangeNotifier {
     return _chapters[index]['name'] as String?;
   }
 
+  String? _chapterUrlOf(int index) {
+    if (index < 0 || index >= _chapters.length) return null;
+    return _chapters[index]['url'] as String?;
+  }
+
+  /// Wrap a chapter's raw [PageUrl]s into [ReaderPage]s tagged with that
+  /// chapter's url/name/index + each page's position within the chapter, so the
+  /// unified list carries its own chapter meta.
+  List<ReaderPage> _wrapPages(List<PageUrl> raw, int chapterIndex) {
+    final url = _chapterUrlOf(chapterIndex) ?? currentChapterUrl;
+    final name = _chapterName(chapterIndex) ?? currentChapterName;
+    return [
+      for (var i = 0; i < raw.length; i++)
+        ReaderPage(raw[i],
+            chapterUrl: url,
+            chapterName: name,
+            chapterIndex: chapterIndex,
+            localIndex: i,
+            chapterPageCount: raw.length),
+    ];
+  }
+
+  /// URL of the chapter that owns page [p] - O(1) off the page's chapter meta.
+  /// Resume uses this (not [currentChapterUrl], which follows
+  /// _currentChapterIndex and drifts ahead to the next chapter once it preloads)
+  /// so a saved position points at the chapter the page actually belongs to.
+  String chapterUrlForPage(int p) {
+    if (p < 0 || p >= _pages.length) return currentChapterUrl;
+    final url = _pages[p].chapterUrl;
+    return url.isNotEmpty ? url : currentChapterUrl;
+  }
+
+  /// Per-manga reading-mode override key, or null when we have no manga URL to
+  /// scope it to (fall back to the global default then).
+  String? get _perMangaModeKey =>
+      _mangaUrl.isEmpty ? null : 'reader_mode_${_sourceId}_$_mangaUrl';
+
   Future<void> _loadSavedReadingMode() async {
     final prefs = SettingsStore.instance;
-    final saved = prefs.getInt(_readingModeKey);
-    if (saved != null && saved < ReadingMode.values.length) {
+    // Prefer this manga's own remembered mode; otherwise the global default
+    // (Settings → Reader), so a brand-new title inherits your usual choice.
+    final perManga =
+        _perMangaModeKey == null ? null : prefs.getInt(_perMangaModeKey!);
+    final saved = perManga ?? prefs.getInt(_readingModeKey);
+    if (saved != null && saved >= 0 && saved < ReadingMode.values.length) {
       _readingMode = ReadingMode.values[saved];
     }
-    // Load all reader settings in one shot — used by reader_screen to apply
+    // Load all reader settings in one shot - used by reader_screen to apply
     // visual / behavior preferences (background, grayscale, tap zones, etc.).
     _settings = await ReaderSettings.load();
     notifyListeners();
@@ -332,7 +448,8 @@ class ReaderProvider extends ChangeNotifier {
             LocalChapter(name: '', path: dirPath));
         }
         if (paths.isNotEmpty) {
-          _pages = paths.map((p) => PageUrl('file://$p')).toList();
+          _pages = _wrapPages(
+              paths.map((p) => PageUrl('file://$p')).toList(), _currentChapterIndex);
           _currentPage = _startPage.clamp(0, _pages.length - 1);
           _loadedChapterIndexes.add(_currentChapterIndex);
           _isLoading = false;
@@ -351,7 +468,9 @@ class ReaderProvider extends ChangeNotifier {
           final localPages = await DownloadService().getLocalPages(
               _sourceId, _mangaTitle, chapterName);
           if (localPages.isNotEmpty) {
-            _pages = localPages.map((path) => PageUrl('file://$path')).toList();
+            _pages = _wrapPages(
+                localPages.map((path) => PageUrl('file://$path')).toList(),
+                _currentChapterIndex);
             _currentPage = _startPage.clamp(0, _pages.length - 1);
             _loadedChapterIndexes.add(_currentChapterIndex);
             _isLoading = false;
@@ -368,7 +487,7 @@ class ReaderProvider extends ChangeNotifier {
         _installedSource.sourceCode,
         (service) => service.getPageList(currentChapterUrl),
       );
-      _pages = pages;
+      _pages = _wrapPages(pages, _currentChapterIndex);
       _currentPage = _startPage.clamp(0, pages.length - 1);
       _loadedChapterIndexes.add(_currentChapterIndex);
     } catch (e) {
@@ -409,10 +528,9 @@ class ReaderProvider extends ChangeNotifier {
         );
       } catch (e) {
         debugPrint('[Reader] Isolate failed: $e');
-        // Isolate can't handle Cloudflare — fall back to main thread
+        // Isolate can't handle Cloudflare - fall back to main thread
         // Clear current pages first to free memory before WebView
         _pages = [];
-        _boundaries.clear();
         _loadedChapterIndexes.clear();
         _currentPage = 0;
         _currentChapterIndex = nextIndex;
@@ -435,18 +553,15 @@ class ReaderProvider extends ChangeNotifier {
 
       if (nextPages != null && nextPages.isNotEmpty) {
         if (_pages.isNotEmpty) {
-          // Seamless append (isolate succeeded)
-          _boundaries.add(ChapterBoundary(
-            pageIndex: _pages.length,
-            prevChapterName: _chapterName(_currentChapterIndex),
-            nextChapterName: _chapterName(nextIndex),
-          ));
-          _pages.addAll(nextPages);
+          // Seamless append (isolate succeeded). The chapter boundary is derived
+          // from each page's chapter meta (see getBoundaryAt), so we just tag the
+          // appended pages with the next chapter and add them.
+          _pages.addAll(_wrapPages(nextPages, nextIndex));
           _loadedChapterIndexes.add(nextIndex);
           _currentChapterIndex = nextIndex;
         } else {
           // Full reload (main thread fallback cleared pages)
-          _pages = nextPages;
+          _pages = _wrapPages(nextPages, nextIndex);
           _loadedChapterIndexes.add(nextIndex);
         }
       }
@@ -462,12 +577,20 @@ class ReaderProvider extends ChangeNotifier {
   bool _nextChapterError = false;
   bool get nextChapterError => _nextChapterError;
 
-  /// Check if a page index is a chapter boundary (transition divider).
+  /// A chapter transition sits at [pageIndex] iff that page and the one before
+  /// it belong to different chapters - derived O(1) from the page chapter meta.
   ChapterBoundary? getBoundaryAt(int pageIndex) {
-    for (final b in _boundaries) {
-      if (b.pageIndex == pageIndex) return b;
-    }
-    return null;
+    if (pageIndex <= 0 || pageIndex >= _pages.length) return null;
+    final cur = _pages[pageIndex];
+    final prev = _pages[pageIndex - 1];
+    if (cur.chapterIndex == prev.chapterIndex) return null;
+    return ChapterBoundary(
+      pageIndex: pageIndex,
+      prevChapterName: prev.chapterName,
+      nextChapterName: cur.chapterName,
+      prevChapterUrl: prev.chapterUrl,
+      nextChapterUrl: cur.chapterUrl,
+    );
   }
 
   /// Whether this is the last available chapter.
@@ -487,6 +610,11 @@ class ReaderProvider extends ChangeNotifier {
     _readingMode = mode;
     notifyListeners();
     final prefs = SettingsStore.instance;
+    // Remember it for THIS manga, and also move the global default so the next
+    // new title inherits the choice (existing titles keep their own override).
+    if (_perMangaModeKey != null) {
+      await prefs.setInt(_perMangaModeKey!, mode.index);
+    }
     await prefs.setInt(_readingModeKey, mode.index);
   }
 
@@ -494,7 +622,6 @@ class ReaderProvider extends ChangeNotifier {
     if (!hasNextChapter) return;
     _currentChapterIndex++;
     _pages = [];
-    _boundaries.clear();
     _loadedChapterIndexes.clear();
     _currentPage = 0;
     notifyListeners();
@@ -505,7 +632,6 @@ class ReaderProvider extends ChangeNotifier {
     if (!hasPreviousChapter) return;
     _currentChapterIndex--;
     _pages = [];
-    _boundaries.clear();
     _loadedChapterIndexes.clear();
     _currentPage = 0;
     notifyListeners();

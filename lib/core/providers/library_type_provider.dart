@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Which kind of content the Library tab is currently showing — manga, anime or
+/// Which kind of content the Library tab is currently showing - manga, anime or
 /// light novels. Chosen by long-pressing the Library tab (see the nav-bar-style
 /// menu) and persisted, so it survives leaving or closing the app.
 ///
@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LibraryTypeProvider extends ChangeNotifier {
   static const _key = 'library_content_type';
 
-  /// Ordered for the menu: All first (the default — shows everything), then
+  /// Ordered for the menu: All first (the default - shows everything), then
   /// Manga, Anime, Light Novels which act as filters.
   static const List<String> types = ['all', 'manga', 'anime', 'novel'];
 

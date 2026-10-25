@@ -105,7 +105,7 @@ class CookieStore {
     final parts = domain.split('.');
     if (parts.length > 2) {
       final parent = parts.sublist(parts.length - 2).join('.');
-      // e.g. for foo.github.io the parent is github.io — a public suffix, so
+      // e.g. for foo.github.io the parent is github.io - a public suffix, so
       // skip it. Only widen to a real registrable domain.
       if (!_multiLabelSuffixes.contains(parent)) {
         domains.add(parent);
@@ -142,7 +142,7 @@ class CookieStore {
   /// Every stored clearance as `{domain: "k=v; k2=v2"}`.
   ///
   /// The Android extension host (ApkBridge's NetworkHelper) has no WebView or
-  /// FlareSolverr of its own — it just carries whatever is in its cookie jar. So
+  /// FlareSolverr of its own - it just carries whatever is in its cookie jar. So
   /// we hand it every Cloudflare cookie the app holds on each invoke and let it
   /// inject them into that jar. Reads both the in-memory cache and the persisted
   /// `cookies_<domain>` keys so it survives a cold start.

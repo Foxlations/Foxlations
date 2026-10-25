@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:battery_plus/battery_plus.dart';
+import '../services/background_task.dart';
 import '../services/download_service.dart';
 import '../services/settings_store.dart';
 import '../services/app_logger.dart';
@@ -62,7 +64,7 @@ class DownloadProvider extends ChangeNotifier {
   int _maxConcurrent = 2;
   int _activeCount = 0;
   // Tally for the current run of the queue. The app fires ONE "downloads
-  // complete" notification when the queue fully drains, not one per chapter —
+  // complete" notification when the queue fully drains, not one per chapter - 
   // these count what finished since the queue was last empty, and reset after
   // the summary notification.
   int _batchCompleted = 0;
@@ -73,7 +75,7 @@ class DownloadProvider extends ChangeNotifier {
 
   // Settings (persisted via SettingsStore). Wired keys:
   //   dl_auto              autoDownload            (consumed by
-  //                                                 LibraryUpdateService — new
+  //                                                 LibraryUpdateService - new
   //                                                 chapters auto-download)
   //   dl_wifi_only         wifiOnly                (consumed in _constraintsOk)
   //   dl_only_charging     onlyWhenCharging        (consumed in _constraintsOk)
@@ -113,7 +115,7 @@ class DownloadProvider extends ChangeNotifier {
     return [...downloading, ..._queue];
   }
 
-  /// Number of tasks queued or downloading — cheap value the UI can badge.
+  /// Number of tasks queued or downloading - cheap value the UI can badge.
   int get activeCount => _activeCount + _queue.length;
 
   /// Chapters/episodes finished this session, newest first (session-scoped).
@@ -122,12 +124,12 @@ class DownloadProvider extends ChangeNotifier {
   /// Library entries ('{sourceId}::{mangaUrl}') that have downloaded chapters.
   Set<String> get downloadedMangaKeys => Set.unmodifiable(_downloadedMangaKeys);
 
-  /// O(1) membership without allocating a wrapper — the library grid/list calls
+  /// O(1) membership without allocating a wrapper - the library grid/list calls
   /// this once per card per frame, so the `Set.unmodifiable(...)` getter above
   /// was churning a throwaway view object per card during scroll.
   bool isMangaDownloaded(String key) => _downloadedMangaKeys.contains(key);
 
-  /// Count of entries with downloads — cheap value the library can `select` on
+  /// Count of entries with downloads - cheap value the library can `select` on
   /// so it rebuilds when the downloaded SET changes (a chapter finished), not on
   /// every per-image progress tick.
   int get downloadedCount => _downloadedMangaKeys.length;
@@ -150,7 +152,7 @@ class DownloadProvider extends ChangeNotifier {
   }
 
   /// Reconcile one title's chapter download-state against what's actually on
-  /// disk, re-adding any downloaded chapters the persisted index lost — a
+  /// disk, re-adding any downloaded chapters the persisted index lost - a
   /// reinstall or data wipe keeps the files but clears SharedPreferences, so
   /// the chapter checkmarks and the "Downloaded" filter would otherwise read as
   /// not-downloaded until a needless re-download. Cheap: one directory listing
@@ -184,13 +186,32 @@ class DownloadProvider extends ChangeNotifier {
   }
 
   /// Reference to source provider (set from outside after construction).
-  SourceProvider? sourceProvider;
+  /// Setting it kicks the queue, so a queue restored on launch (before the
+  /// source list is wired) starts the moment the source provider is available.
+  SourceProvider? _sourceProvider;
+  SourceProvider? get sourceProvider => _sourceProvider;
+  set sourceProvider(SourceProvider? value) {
+    _sourceProvider = value;
+    if (value != null && _queue.isNotEmpty) _processQueue();
+  }
   // Resume a paused queue when the network/charging state becomes favourable.
   StreamSubscription? _connSub;
   StreamSubscription? _battSub;
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
+    // One-time: move downloads from the old numeric `<sourceId>/<title>` layout
+    // to the readable `<Type>/<Title (sourceId)>` layout. Idempotent + retried
+    // on the next launch if it throws, so a partial move can't strand files.
+    if (!(prefs.getBool('dl_layout_v2_migrated') ?? false)) {
+      try {
+        await _downloadService.migrateDownloadLayout();
+        await prefs.setBool('dl_layout_v2_migrated', true);
+      } catch (e) {
+        await logger.warning('Download layout migration incomplete - will retry',
+            category: LogCategory.download, detail: e.toString());
+      }
+    }
     autoDownload = SettingsStore.instance.getBool('dl_auto') ?? false;
     wifiOnly = SettingsStore.instance.getBool('dl_wifi_only') ?? true;
     onlyWhenCharging = SettingsStore.instance.getBool('dl_only_charging') ?? false;
@@ -205,6 +226,9 @@ class DownloadProvider extends ChangeNotifier {
     downloadQuality = SettingsStore.instance.getString('dl_quality') ?? 'Original';
     _maxConcurrent = int.tryParse(simultaneousDownloads) ?? 2;
     _downloadedChapters.addAll(prefs.getStringList('downloaded_chapters') ?? []);
+    // Re-queue downloads interrupted by the app closing (after the downloaded
+    // set is loaded, so already-finished chapters are skipped).
+    await _restorePending();
     // Resume the queue when conditions improve (back on Wi-Fi / plugged in).
     _connSub ??= Connectivity().onConnectivityChanged.listen((_) {
       if (_queue.isNotEmpty) _processQueue();
@@ -218,15 +242,120 @@ class DownloadProvider extends ChangeNotifier {
   void dispose() {
     _connSub?.cancel();
     _battSub?.cancel();
+    // Flush a pending debounced save so nothing queued is lost on teardown.
+    if (_saveDownloadedTimer?.isActive ?? false) {
+      _saveDownloadedTimer!.cancel();
+      _saveDownloaded();
+    }
     super.dispose();
   }
 
+  // Coalesce the downloaded-chapters persistence. Each completed chapter/episode
+  // used to rewrite the whole StringList to SharedPreferences; a bulk download
+  // did that O(N) times. Debounce completion writes to one ~400ms after the last
+  // change (mirrors AppLogger._schedulePersist). The in-memory set is
+  // authoritative for the session, and reconcileDownloads rebuilds any entry a
+  // hard kill drops within the debounce window from what's actually on disk, so
+  // no download record is permanently lost. Deletes still flush immediately.
+  Timer? _saveDownloadedTimer;
+
+  void _scheduleSaveDownloaded() {
+    _saveDownloadedTimer?.cancel();
+    _saveDownloadedTimer = Timer(const Duration(milliseconds: 400), () {
+      _saveDownloadedTimer = null;
+      _saveDownloaded();
+    });
+  }
+
   Future<void> _saveDownloaded() async {
+    // An immediate save supersedes any pending debounced one (it writes the
+    // whole current set, so the trailing write would be redundant).
+    _saveDownloadedTimer?.cancel();
+    _saveDownloadedTimer = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('downloaded_chapters', _downloadedChapters.toList());
   }
 
-  /// How many chapters to pull ahead while reading (1–10).
+  // ── Resumable queue ───────────────────────────────────────────────────────
+  // Persist the not-yet-finished tasks so a download interrupted by the app
+  // being backgrounded/closed resumes on next launch (iOS can't keep our
+  // segment-fetch pipeline running while suspended). A partially-downloaded
+  // item just restarts - manga skips already-saved pages, and HLS/DASH delete
+  // their partial file on failure, so re-running is safe.
+  static const _pendingKey = 'download_pending_queue';
+  Timer? _savePendingTimer;
+
+  void _schedulePendingSave() {
+    _savePendingTimer?.cancel();
+    _savePendingTimer = Timer(const Duration(milliseconds: 400), _savePending);
+  }
+
+  Future<void> _savePending() async {
+    _savePendingTimer?.cancel();
+    _savePendingTimer = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pending = <Map<String, dynamic>>[];
+      for (final t in _tasks.values) {
+        if (t.status == DownloadStatus.completed ||
+            t.status == DownloadStatus.failed ||
+            t.status == DownloadStatus.cancelled) {
+          continue;
+        }
+        pending.add({
+          's': t.sourceId,
+          'mu': t.mangaUrl,
+          'mt': t.mangaTitle,
+          'cu': t.chapterUrl,
+          'cn': t.chapterName,
+          'v': t.isVault,
+          'a': t.isAnime,
+          'n': t.isNovel,
+        });
+      }
+      if (pending.isEmpty) {
+        await prefs.remove(_pendingKey);
+      } else {
+        await prefs.setString(_pendingKey, jsonEncode(pending));
+      }
+    } catch (_) {}
+  }
+
+  /// Re-queue downloads that were still pending when the app last closed.
+  Future<void> _restorePending() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_pendingKey);
+      if (raw == null || raw.isEmpty) return;
+      final list = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+      var added = false;
+      for (final m in list) {
+        if (_enqueueOne(
+          sourceId: m['s'] as String? ?? '',
+          mangaUrl: m['mu'] as String? ?? '',
+          mangaTitle: m['mt'] as String? ?? '',
+          chapterUrl: m['cu'] as String? ?? '',
+          chapterName: m['cn'] as String? ?? '',
+          isVault: m['v'] as bool? ?? false,
+          isAnime: m['a'] as bool? ?? false,
+          isNovel: m['n'] as bool? ?? false,
+        )) {
+          added = true;
+        }
+      }
+      if (added) {
+        notifyListeners();
+        _processQueue();
+      }
+    } catch (_) {}
+  }
+
+  @visibleForTesting
+  Future<void> savePendingForTest() => _savePending();
+  @visibleForTesting
+  Future<void> restorePendingForTest() => _restorePending();
+
+  /// How many chapters to pull ahead while reading (1-10).
   Future<void> setDownloadAheadCount(int n) async {
     downloadAheadCount = n.clamp(1, 10);
     await SettingsStore.instance.setInt('dl_ahead_count', downloadAheadCount);
@@ -306,6 +435,42 @@ class DownloadProvider extends ChangeNotifier {
     return _tasks['${sourceId}_$chapterUrl'];
   }
 
+  /// Build + queue one task WITHOUT notifying or kicking the queue. The public
+  /// single-item enqueues call this then notify + process once; the bulk
+  /// enqueues call it in a loop and notify + process ONCE at the end, instead of
+  /// per item (which fired an O(N) notifyListeners + _processQueue storm for a
+  /// "download all"). Returns true if a task was actually added - false is the
+  /// existing dedup no-op (already queued/downloading or already on disk).
+  bool _enqueueOne({
+    required String sourceId,
+    required String mangaUrl,
+    required String mangaTitle,
+    required String chapterUrl,
+    required String chapterName,
+    bool isVault = false,
+    bool isAnime = false,
+    bool isNovel = false,
+  }) {
+    final key = '${sourceId}_$chapterUrl';
+    if (_tasks.containsKey(key) || _downloadedChapters.contains(key)) {
+      return false;
+    }
+    final task = DownloadTask(
+      sourceId: sourceId,
+      mangaUrl: mangaUrl,
+      mangaTitle: mangaTitle,
+      chapterUrl: chapterUrl,
+      chapterName: chapterName,
+      isVault: isVault,
+      isAnime: isAnime,
+      isNovel: isNovel,
+    );
+    _tasks[key] = task;
+    _queue.add(task);
+    _schedulePendingSave();
+    return true;
+  }
+
   /// Queue a single chapter for download.
   void enqueueChapter({
     required String sourceId,
@@ -315,21 +480,17 @@ class DownloadProvider extends ChangeNotifier {
     required String chapterName,
     bool isVault = false,
   }) {
-    final key = '${sourceId}_$chapterUrl';
-    if (_tasks.containsKey(key) || _downloadedChapters.contains(key)) return;
-
-    final task = DownloadTask(
+    if (_enqueueOne(
       sourceId: sourceId,
       mangaUrl: mangaUrl,
       mangaTitle: mangaTitle,
       chapterUrl: chapterUrl,
       chapterName: chapterName,
       isVault: isVault,
-    );
-    _tasks[key] = task;
-    _queue.add(task);
-    notifyListeners();
-    _processQueue();
+    )) {
+      notifyListeners();
+      _processQueue();
+    }
   }
 
   /// Queue an anime episode for download.
@@ -340,21 +501,17 @@ class DownloadProvider extends ChangeNotifier {
     required String episodeUrl,
     required String episodeName,
   }) {
-    final key = '${sourceId}_$episodeUrl';
-    if (_tasks.containsKey(key) || _downloadedChapters.contains(key)) return;
-
-    final task = DownloadTask(
+    if (_enqueueOne(
       sourceId: sourceId,
       mangaUrl: animeUrl,
       mangaTitle: animeTitle,
       chapterUrl: episodeUrl,
       chapterName: episodeName,
       isAnime: true,
-    );
-    _tasks[key] = task;
-    _queue.add(task);
-    notifyListeners();
-    _processQueue();
+    )) {
+      notifyListeners();
+      _processQueue();
+    }
   }
 
   /// Queue a light-novel chapter for offline reading (saves its text, not images).
@@ -366,10 +523,7 @@ class DownloadProvider extends ChangeNotifier {
     required String chapterName,
     bool isVault = false,
   }) {
-    final key = '${sourceId}_$chapterUrl';
-    if (_tasks.containsKey(key) || _downloadedChapters.contains(key)) return;
-
-    final task = DownloadTask(
+    if (_enqueueOne(
       sourceId: sourceId,
       mangaUrl: novelUrl,
       mangaTitle: novelTitle,
@@ -377,36 +531,52 @@ class DownloadProvider extends ChangeNotifier {
       chapterName: chapterName,
       isVault: isVault,
       isNovel: true,
-    );
-    _tasks[key] = task;
-    _queue.add(task);
-    notifyListeners();
-    _processQueue();
+    )) {
+      notifyListeners();
+      _processQueue();
+    }
   }
 
-  /// Queue multiple chapters.
+  /// Queue multiple chapters. Notifies + kicks the queue once after the whole
+  /// batch is enqueued, not per chapter.
   void enqueueChapters(List<Map<String, String>> chapters) {
+    var added = false;
     for (final ch in chapters) {
-      enqueueChapter(
+      if (_enqueueOne(
         sourceId: ch['sourceId']!,
         mangaUrl: ch['mangaUrl']!,
         mangaTitle: ch['mangaTitle']!,
         chapterUrl: ch['chapterUrl']!,
         chapterName: ch['chapterName']!,
-      );
+      )) {
+        added = true;
+      }
+    }
+    if (added) {
+      notifyListeners();
+      _processQueue();
     }
   }
 
-  /// Queue multiple novel chapters.
+  /// Queue multiple novel chapters. Notifies + kicks the queue once after the
+  /// whole batch is enqueued, not per chapter.
   void enqueueNovelChapters(List<Map<String, String>> chapters) {
+    var added = false;
     for (final ch in chapters) {
-      enqueueNovelChapter(
+      if (_enqueueOne(
         sourceId: ch['sourceId']!,
-        novelUrl: ch['mangaUrl']!,
-        novelTitle: ch['mangaTitle']!,
+        mangaUrl: ch['mangaUrl']!,
+        mangaTitle: ch['mangaTitle']!,
         chapterUrl: ch['chapterUrl']!,
         chapterName: ch['chapterName']!,
-      );
+        isNovel: true,
+      )) {
+        added = true;
+      }
+    }
+    if (added) {
+      notifyListeners();
+      _processQueue();
     }
   }
 
@@ -418,6 +588,7 @@ class DownloadProvider extends ChangeNotifier {
       task.status = DownloadStatus.cancelled;
       _queue.removeWhere((t) => t.key == key);
       _tasks.remove(key);
+      _schedulePendingSave();
       notifyListeners();
     }
   }
@@ -431,13 +602,15 @@ class DownloadProvider extends ChangeNotifier {
     _tasks.clear();
     _isProcessing = false;
     _activeCount = 0;
+    BackgroundTask.end();
+    _savePending();
     notifyListeners();
   }
 
   /// Pause the queue: in-flight downloads finish, but no new ones start until
   /// [resumeQueue]. The underlying page/video fetch has no mid-chapter pause
   /// hook, so the currently-downloading item completes rather than stopping
-  /// part-way — matching how the queue already "pauses" on lost Wi-Fi.
+  /// part-way - matching how the queue already "pauses" on lost Wi-Fi.
   void pauseQueue() {
     if (_paused) return;
     _paused = true;
@@ -470,7 +643,7 @@ class DownloadProvider extends ChangeNotifier {
 
   /// Process the download queue.
   /// Whether the current network/battery state satisfies "Wi-Fi only" and "only
-  /// while charging". Fails CLOSED — if a state can't be read we pause rather
+  /// while charging". Fails CLOSED - if a state can't be read we pause rather
   /// than download against the user's wishes (mirrors the library scheduler).
   Future<bool> _constraintsOk() async {
     if (wifiOnly) {
@@ -497,6 +670,10 @@ class DownloadProvider extends ChangeNotifier {
   }
 
   Future<void> _processQueue() async {
+    // The source list isn't wired yet (e.g. a queue restored during launch) - 
+    // starting now would fail every task with "Source not installed". The
+    // sourceProvider setter re-kicks the queue once it's available.
+    if (_sourceProvider == null) return;
     // User-paused: in-flight tasks finish, nothing new starts until resumed.
     if (_paused) return;
     if (_isProcessing && _activeCount >= _maxConcurrent) return;
@@ -504,6 +681,9 @@ class DownloadProvider extends ChangeNotifier {
     // the connectivity/battery listeners resume it when conditions improve.
     if (_queue.isNotEmpty && !await _constraintsOk()) return;
     _isProcessing = true;
+    // Reserve iOS background time so a download in progress keeps going for the
+    // grace period after the app is backgrounded. No-op off iOS; idempotent.
+    if (_queue.isNotEmpty) BackgroundTask.begin();
 
     while (_queue.isNotEmpty && _activeCount < _maxConcurrent) {
       final task = _queue.removeAt(0);
@@ -547,6 +727,7 @@ class DownloadProvider extends ChangeNotifier {
 
     _activeCount--;
     _tasks.remove(task.key);
+    _schedulePendingSave(); // this item is no longer pending
     notifyListeners();
 
     // Process next in queue
@@ -557,6 +738,8 @@ class DownloadProvider extends ChangeNotifier {
     // and the last item lands.
     if (_activeCount == 0 && _queue.isEmpty) {
       _isProcessing = false;
+      BackgroundTask.end(); // nothing left to download - release background time
+      _savePending(); // clear the persisted queue now that it's drained
       if (_batchCompleted + _batchFailed > 0) {
         NotificationService.instance.downloadsFinished(
             completed: _batchCompleted, failed: _batchFailed);
@@ -567,7 +750,7 @@ class DownloadProvider extends ChangeNotifier {
   }
 
   Future<void> _downloadMangaChapter(DownloadTask task, dynamic installed) async {
-    // Fetch the page list AND the request headers in ONE service build —
+    // Fetch the page list AND the request headers in ONE service build - 
     // constructing the extension service (interpreter/runtime + full source
     // execute) is one of the most expensive ops in the pipeline, so doing it
     // once per chapter instead of twice halves that cost. (Also keeps source
@@ -589,7 +772,7 @@ class DownloadProvider extends ChangeNotifier {
     task.total = imageUrls.length;
     notifyListeners();
 
-    // Coalesce progress notifications — pages now download in parallel, so
+    // Coalesce progress notifications - pages now download in parallel, so
     // completions arrive in bursts; rebuilding every listener per image (across
     // concurrent chapters) floods the UI isolate and competes with the download
     // work. Notify at most ~4x/sec, plus once when the chapter finishes.
@@ -616,26 +799,36 @@ class DownloadProvider extends ChangeNotifier {
 
     if (success) {
       if (saveAsCbz) {
-        await _downloadService.convertToCbz(
+        final out = await _downloadService.convertToCbz(
           sourceId: task.sourceId,
           mangaTitle: task.mangaTitle,
           chapterName: task.chapterName,
           isVault: task.isVault,
         );
+        if (out == null) {
+          await logger.warning(
+              'Save as CBZ failed - "${task.chapterName}" kept as images',
+              category: LogCategory.download, detail: 'Source: ${task.sourceId}');
+        }
       } else if (saveAsPdf) {
-        await _downloadService.convertToPdf(
+        final out = await _downloadService.convertToPdf(
           sourceId: task.sourceId,
           mangaTitle: task.mangaTitle,
           chapterName: task.chapterName,
           isVault: task.isVault,
         );
+        if (out == null) {
+          await logger.warning(
+              'Save as PDF failed - "${task.chapterName}" kept as images',
+              category: LogCategory.download, detail: 'Source: ${task.sourceId}');
+        }
       }
       task.status = DownloadStatus.completed;
       _downloadedChapters.add(task.key);
       // Keep the manga-level index in step without a full rescan (the next full
       // refresh reconciles deletions).
       _downloadedMangaKeys.add('${task.sourceId}::${task.mangaUrl}');
-      await _saveDownloaded();
+      _scheduleSaveDownloaded();
     } else {
       task.status = DownloadStatus.failed;
     }
@@ -668,7 +861,7 @@ class DownloadProvider extends ChangeNotifier {
       task.status = DownloadStatus.completed;
       _downloadedChapters.add(task.key);
       _downloadedMangaKeys.add('${task.sourceId}::${task.mangaUrl}');
-      await _saveDownloaded();
+      _scheduleSaveDownloaded();
     } else {
       task.status = DownloadStatus.failed;
     }
@@ -691,12 +884,34 @@ class DownloadProvider extends ChangeNotifier {
     task.total = 1;
     notifyListeners();
 
+    // Keep the episode's subtitle + external-audio tracks so offline playback
+    // offers the same options as streaming.
+    final rawSubs = video.subtitles;
+    final rawAuds = video.audios;
+    final subs = <({String url, String label})>[
+      if (rawSubs != null)
+        for (final s in rawSubs)
+          if ((s.file ?? '').isNotEmpty)
+            (
+              url: s.file!,
+              label: (s.label ?? '').isNotEmpty ? s.label! : 'Subtitle'
+            ),
+    ];
+    final auds = <({String url, String label})>[
+      if (rawAuds != null)
+        for (final a in rawAuds)
+          if ((a.file ?? '').isNotEmpty)
+            (url: a.file!, label: (a.label ?? '').isNotEmpty ? a.label! : 'Audio'),
+    ];
+
     final success = await _downloadService.downloadEpisode(
       sourceId: task.sourceId,
       animeTitle: task.mangaTitle,
       episodeName: task.chapterName,
       videoUrl: video.url,
       headers: video.headers ?? {},
+      subtitles: subs,
+      audios: auds,
       onProgress: (received, total) {
         task.completed = received;
         task.total = total > 0 ? total : 1;
@@ -710,7 +925,7 @@ class DownloadProvider extends ChangeNotifier {
       task.status = DownloadStatus.completed;
       _downloadedChapters.add(task.key);
       _downloadedMangaKeys.add('${task.sourceId}::${task.mangaUrl}');
-      await _saveDownloaded();
+      _scheduleSaveDownloaded();
     } else {
       task.status = DownloadStatus.failed;
     }
@@ -724,7 +939,7 @@ class DownloadProvider extends ChangeNotifier {
     for (final v in videos) {
       if (v.quality.toLowerCase().contains(pref)) return v;
     }
-    // Default: the highest RESOLUTION variant, parsed from the quality label —
+    // Default: the highest RESOLUTION variant, parsed from the quality label - 
     // sources don't agree on order, so "first"/"last" was a coin flip.
     dynamic best;
     var bestRes = -1;

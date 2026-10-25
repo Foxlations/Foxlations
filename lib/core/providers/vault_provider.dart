@@ -7,6 +7,9 @@ import '../models/category_model.dart';
 import '../services/library_service.dart';
 import '../services/secure_store.dart';
 import '../services/vault_crypto.dart';
+import '../services/app_logger.dart';
+import 'incognito_provider.dart';
+import 'library_like.dart';
 
 /// Arguments for the off-thread key derivation.
 class _KdfRequest {
@@ -17,11 +20,11 @@ class _KdfRequest {
 }
 
 /// PBKDF2 with 50k iterations takes ~1s in pure Dart, which would jank the UI
-/// on the main isolate — so it runs via `compute`. Must be top-level.
+/// on the main isolate - so it runs via `compute`. Must be top-level.
 Uint8List _deriveKeyIsolate(_KdfRequest r) =>
     VaultCrypto.deriveKey(r.password, r.salt, iterations: r.iterations);
 
-class VaultProvider extends ChangeNotifier {
+class VaultProvider extends ChangeNotifier implements LibraryLike {
   static const _settingsBoxName = 'vault_settings';
 
   // Points at the real vault ('vault' prefix) normally, or the decoy vault
@@ -41,9 +44,36 @@ class VaultProvider extends ChangeNotifier {
   bool _vaultActive = false;
   Set<String> _vaultSourceIds = {};
 
+  @override
   List<LibraryManga> get manga => _manga;
   List<Category> get categories => _categories;
   bool get initialized => _initialized;
+
+  /// Bumped on every notify so the library screen's memoized filtered list
+  /// recomputes when vault data changes (over-bumping is safe; see
+  /// LibraryProvider.dataVersion).
+  int _dataVersion = 0;
+  int get dataVersion => _dataVersion;
+
+  @override
+  void notifyListeners() {
+    _dataVersion++;
+    super.notifyListeners();
+  }
+
+  /// Guards a vault WRITE: the encrypted boxes are only open while unlocked, and
+  /// `LibraryService` accesses them null-safely, so a write attempted while
+  /// locked silently no-ops (and would then clobber the in-memory list to empty
+  /// on reload). Instead, refuse and log it loudly so the failure is visible in
+  /// Debug logs rather than looking like silent data loss. Returns true when the
+  /// caller may proceed. UI paths are also gated on [isUnlocked]; this is the
+  /// last-line guard.
+  bool _ensureOpen(String op) {
+    if (_vaultService.isOpen) return true;
+    logger.warning('Vault "$op" ignored - vault is locked (boxes closed)',
+        category: LogCategory.library);
+    return false;
+  }
 
   /// Source IDs that are hidden behind vault mode
   Set<String> get vaultSourceIds => _vaultSourceIds;
@@ -62,13 +92,15 @@ class VaultProvider extends ChangeNotifier {
 
     // Vault contents are NOT opened here when a password is set. Previously
     // they were loaded at startup regardless, so the password only hid the UI
-    // — the plaintext Hive files were readable by anything with filesystem
+    // - the plaintext Hive files were readable by anything with filesystem
     // access. Now the boxes stay encrypted and closed until [unlock] supplies
     // the key derived from the password.
     if (!hasPassword) {
       await _vaultService.init();
       _manga = _vaultService.getAllManga();
       _categories = _vaultService.getCategories();
+      await _vaultService.purgeEstimatedReadTime();
+      await _migrateLeakedChapters();
     }
     _initialized = true;
     notifyListeners();
@@ -78,7 +110,7 @@ class VaultProvider extends ChangeNotifier {
   bool get hasPassword =>
       (_settingsBox?.get('vault_verifier') as String?)?.isNotEmpty ?? false;
 
-  /// True once [unlock] has succeeded — i.e. the encrypted boxes are open.
+  /// True once [unlock] has succeeded - i.e. the encrypted boxes are open.
   bool get isUnlocked => !hasPassword || _vaultService.isOpen;
 
   Uint8List _saltOrNew() {
@@ -89,8 +121,8 @@ class VaultProvider extends ChangeNotifier {
     return VaultCrypto.newSalt();
   }
 
-  /// Derives the key, checks it against the stored verifier, and — only on
-  /// success — opens the encrypted boxes and loads their contents.
+  /// Derives the key, checks it against the stored verifier, and - only on
+  /// success - opens the encrypted boxes and loads their contents.
   Future<bool> unlock(String password) async {
     if (!hasPassword) return true;
     final salt = _saltOrNew();
@@ -110,6 +142,8 @@ class VaultProvider extends ChangeNotifier {
       await _vaultService.init(cipher: VaultCrypto.cipherFor(key));
       _manga = _vaultService.getAllManga();
       _categories = _vaultService.getCategories();
+      await _vaultService.purgeEstimatedReadTime();
+      await _migrateLeakedChapters();
       notifyListeners();
       return true;
     }
@@ -180,7 +214,7 @@ class VaultProvider extends ChangeNotifier {
   Future<void> setPassword(String? password) async {
     if (_decoyActive) return; // never touch the real vault from inside the decoy
     // Snapshot each entry WITH its chapters (read flags, resume positions,
-    // cached chapter lists) BEFORE closing — vault_chapters is deleted below,
+    // cached chapter lists) BEFORE closing - vault_chapters is deleted below,
     // and restoring manga alone wiped all vault reading progress.
     final existingManga = List<LibraryManga>.from(_manga);
     final existingChapters = <List<LibraryChapter>>[
@@ -309,14 +343,71 @@ class VaultProvider extends ChangeNotifier {
   /// from memory, so the data isn't left readable until the app restarts.
   Future<void> exitVault() async {
     _vaultActive = false;
+    // Only tear down the service for the ENCRYPTED paths (password or decoy):
+    // close the boxes, drop the decrypted copy, and reset to a fresh closed
+    // service so the next unlock starts clean. A NO-PASSWORD vault's boxes were
+    // opened once in initialize() and must STAY open - exitVault fires on every
+    // app-background (main.dart lifecycle) and on tapping out to the normal
+    // library, so swapping in a fresh un-init'd service here left the no-password
+    // vault write-dead (isOpen=false) until an app restart.
     if (hasPassword || _decoyActive) {
       await _vaultService.close();
       _manga = [];
       _categories = [];
+      _decoyActive = false;
+      _vaultService = LibraryService(prefix: 'vault');
     }
-    // Always reset to the real vault (closed) so the next unlock starts clean.
-    _decoyActive = false;
-    _vaultService = LibraryService(prefix: 'vault');
+    notifyListeners();
+  }
+
+  /// One-time cleanup of vault reads that LEAKED into the PUBLIC `library_chapters`
+  /// box before the detail/reader stack was routed per-title ([[vault-closed-box-bugs]]
+  /// Fix 2). For titles that live ONLY in the vault, move their chapter rows out
+  /// of the plaintext library box into the vault box - so stats separate and
+  /// nothing vault-related is left readable in plaintext. Only vault-ONLY titles
+  /// are touched (never one also in the public library), and it's idempotent
+  /// (after the move there's nothing left to move). Runs on unlock.
+  Future<void> _migrateLeakedChapters() async {
+    if (!_vaultService.isOpen) return;
+    final Box<LibraryChapter> libCh;
+    final Box<LibraryChapter> vaultCh;
+    try {
+      libCh = Hive.box<LibraryChapter>('library_chapters');
+      vaultCh = Hive.box<LibraryChapter>(
+          '${_decoyActive ? 'vault_decoy' : 'vault'}_chapters');
+    } catch (_) {
+      return; // a box isn't open - nothing to do
+    }
+    final vaultMangaKeys = _manga.map((m) => m.uniqueKey).toSet();
+    if (vaultMangaKeys.isEmpty) return;
+    Set<String> libMangaKeys = const {};
+    try {
+      libMangaKeys = Hive.box<LibraryManga>('library_manga')
+          .values
+          .map((m) => m.uniqueKey)
+          .toSet();
+    } catch (_) {}
+    final moveKeys = <dynamic>[];
+    for (final e in libCh.toMap().entries) {
+      final c = e.value;
+      final mangaKey = '${c.sourceId}_${c.mangaUrl}';
+      if (vaultMangaKeys.contains(mangaKey) &&
+          !libMangaKeys.contains(mangaKey)) {
+        moveKeys.add(e.key);
+      }
+    }
+    if (moveKeys.isEmpty) return;
+    for (final k in moveKeys) {
+      final c = libCh.get(k);
+      if (c != null && !vaultCh.containsKey(k)) {
+        await vaultCh.put(k, c.clone());
+      }
+      await libCh.delete(k);
+    }
+    _manga = _vaultService.getAllManga();
+    logger.warning(
+        'Vault: moved ${moveKeys.length} leaked chapter row(s) out of the public box into the vault',
+        category: LogCategory.library);
     notifyListeners();
   }
 
@@ -342,12 +433,14 @@ class VaultProvider extends ChangeNotifier {
 
   // ── Category management (mirrors LibraryProvider) ───────────
   Future<void> addCategory(String name) async {
+    if (!_ensureOpen('addCategory')) return;
     await _vaultService.addCategory(name);
     _categories = _vaultService.getCategories();
     notifyListeners();
   }
 
   Future<void> removeCategory(String name) async {
+    if (!_ensureOpen('removeCategory')) return;
     await _vaultService.removeCategory(name);
     _categories = _vaultService.getCategories();
     _manga = _vaultService.getAllManga();
@@ -355,12 +448,14 @@ class VaultProvider extends ChangeNotifier {
   }
 
   Future<void> reorderCategories(List<String> orderedNames) async {
+    if (!_ensureOpen('reorderCategories')) return;
     await _vaultService.reorderCategories(orderedNames);
     _categories = _vaultService.getCategories();
     notifyListeners();
   }
 
   Future<void> renameCategory(String oldName, String newName) async {
+    if (!_ensureOpen('renameCategory')) return;
     await _vaultService.renameCategory(oldName, newName);
     _categories = _vaultService.getCategories();
     _manga = _vaultService.getAllManga();
@@ -369,6 +464,7 @@ class VaultProvider extends ChangeNotifier {
 
   Future<void> setMangaCategories(
       String sourceId, String url, List<String> cats) async {
+    if (!_ensureOpen('setMangaCategories')) return;
     final manga = _vaultService.getManga(sourceId, url);
     if (manga != null) {
       manga.categories = cats;
@@ -379,18 +475,20 @@ class VaultProvider extends ChangeNotifier {
   }
 
   // ── Manga management ────────────────────────────────────────
+  @override
   bool isInLibrary(String sourceId, String url) {
     return _vaultService.isInLibrary(sourceId, url);
   }
 
   Future<void> addToLibrary(LibraryManga manga) async {
+    if (!_ensureOpen('addToLibrary')) return;
     await _vaultService.addManga(manga);
     _manga = _vaultService.getAllManga();
     notifyListeners();
   }
 
   /// Cache the source's browsable URL on this vault entry (instant cold-start
-  /// "Open in WebView"). Quiet — no notify.
+  /// "Open in WebView"). Quiet - no notify.
   Future<void> setWebUrl(String sourceId, String url, String? webUrl) =>
       _vaultService.setWebUrl(sourceId, url, webUrl);
 
@@ -404,6 +502,7 @@ class VaultProvider extends ChangeNotifier {
   }
 
   Future<void> removeFromLibrary(String sourceId, String url) async {
+    if (!_ensureOpen('removeFromLibrary')) return;
     await _vaultService.removeManga(sourceId, url);
     _manga = _vaultService.getAllManga();
     notifyListeners();
@@ -416,15 +515,17 @@ class VaultProvider extends ChangeNotifier {
   /// Adds an entry and its chapters into the vault, preserving read progress.
   Future<void> addEntryWithChapters(
       LibraryManga manga, List<LibraryChapter> chapters) async {
+    if (!_ensureOpen('addEntryWithChapters')) return;
     await _vaultService.addEntryWithChapters(manga, chapters);
     _manga = _vaultService.getAllManga();
     notifyListeners();
   }
 
-  /// Bulk add — one reload + one notify for the whole batch (moving many titles
+  /// Bulk add - one reload + one notify for the whole batch (moving many titles
   /// otherwise reloaded the full list + rebuilt the UI per item = O(N*M)).
   Future<void> addEntriesWithChaptersBulk(
       List<(LibraryManga, List<LibraryChapter>)> entries) async {
+    if (!_ensureOpen('addEntriesWithChaptersBulk')) return;
     for (final (m, ch) in entries) {
       await _vaultService.addEntryWithChapters(m, ch);
     }
@@ -432,8 +533,9 @@ class VaultProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Bulk remove — one reload + one notify for the whole batch.
+  /// Bulk remove - one reload + one notify for the whole batch.
   Future<void> removeMangaBulk(List<(String, String)> keys) async {
+    if (!_ensureOpen('removeMangaBulk')) return;
     for (final (sid, url) in keys) {
       await _vaultService.removeManga(sid, url);
     }
@@ -442,6 +544,7 @@ class VaultProvider extends ChangeNotifier {
   }
 
   Future<void> markAllReadBulk(List<(String, String)> keys) async {
+    if (!_ensureOpen('markAllReadBulk')) return;
     for (final (sid, url) in keys) {
       await _vaultService.markAllChaptersRead(sid, url);
     }
@@ -450,6 +553,7 @@ class VaultProvider extends ChangeNotifier {
   }
 
   Future<void> markAllUnreadBulk(List<(String, String)> keys) async {
+    if (!_ensureOpen('markAllUnreadBulk')) return;
     for (final (sid, url) in keys) {
       await _vaultService.markAllChaptersUnread(sid, url);
     }
@@ -459,6 +563,7 @@ class VaultProvider extends ChangeNotifier {
 
   Future<void> setMangaCategoriesBulk(
       List<(String, String, List<String>)> items) async {
+    if (!_ensureOpen('setMangaCategoriesBulk')) return;
     for (final (sid, url, cats) in items) {
       final m = _vaultService.getManga(sid, url);
       if (m != null) {
@@ -482,57 +587,135 @@ class VaultProvider extends ChangeNotifier {
     return n;
   }
 
+  @override
   Future<void> updateReadingProgress(
       String sourceId, String mangaUrl, String chapterUrl, int page) async {
-    // Persist only (fires per page turn; not shown live) — see the note on
+    // Persist only (fires per page turn; not shown live) - see the note on
     // LibraryProvider.updateReadingProgress.
     await _vaultService.updateReadingProgress(
         sourceId, mangaUrl, chapterUrl, page);
   }
 
+  /// Persist novel reading position into the VAULT (scroll offset + reflow-safe
+  /// fraction). Mirrors [LibraryProvider.updateNovelProgress], guarded by
+  /// [_ensureOpen] so a locked vault refuses the write.
+  @override
+  Future<void> updateNovelProgress(
+    String sourceId,
+    String mangaUrl,
+    String chapterUrl,
+    int offset,
+    double fraction,
+  ) async {
+    if (!_ensureOpen('updateNovelProgress')) return;
+    if (IncognitoProvider.active) return;
+    await _vaultService.updateNovelProgress(
+        sourceId, mangaUrl, chapterUrl, offset, fraction);
+    _manga = _vaultService.getAllManga();
+    notifyListeners();
+  }
+
+  /// Persist anime playback position into the VAULT (seconds). Mirrors
+  /// [LibraryProvider.updateEpisodeProgress] - [notify] gates the reload so the
+  /// mid-watch throttle doesn't rebuild the vault grid on every tick.
+  @override
+  Future<void> updateEpisodeProgress(
+    String sourceId,
+    String mangaUrl,
+    String episodeUrl,
+    int positionSeconds, {
+    int totalSeconds = 0,
+    bool notify = false,
+  }) async {
+    if (!_ensureOpen('updateEpisodeProgress')) return;
+    if (IncognitoProvider.active) return;
+    await _vaultService.updateEpisodeProgress(
+        sourceId, mangaUrl, episodeUrl, positionSeconds,
+        totalSeconds: totalSeconds);
+    if (notify) {
+      _manga = _vaultService.getAllManga();
+      notifyListeners();
+    }
+  }
+
+  @override
+  int episodeLastPosition(String sourceId, String episodeUrl) =>
+      _vaultService.episodeLastPosition(sourceId, episodeUrl);
+
+  /// Accumulate active read/watch time (Reading Insights) into the vault entry.
+  /// Quiet/persist-only; skipped while locked or reading privately (incognito).
+  @override
+  Future<void> addReadTime(String sourceId, String mangaUrl, int seconds) async {
+    if (IncognitoProvider.active) return;
+    if (!_ensureOpen('addReadTime')) return;
+    await _vaultService.addReadTime(sourceId, mangaUrl, seconds);
+  }
+
+  @override
   Future<void> cacheChapters(String sourceId, String mangaUrl, List<Map<String, dynamic>> chapters) async {
+    if (!_ensureOpen('cacheChapters')) return;
     final libChapters = chapters.map((c) => LibraryChapter(
       sourceId: sourceId,
       mangaUrl: mangaUrl,
       chapterUrl: c['url'] as String? ?? '',
       title: c['name'] as String? ?? '',
       dateUpload: c['dateUpload'] as String?,
+      chapterNumber: (c['chapterNumber'] as num?)?.toDouble(),
     )).toList();
     await _vaultService.cacheChapters(sourceId, mangaUrl, libChapters);
     _manga = _vaultService.getAllManga();
     notifyListeners();
   }
 
+  @override
   List<LibraryChapter> getCachedChapters(String sourceId, String mangaUrl) {
     return _vaultService.getCachedChapters(sourceId, mangaUrl);
   }
 
+  @override
   Future<void> markChapterRead(
-      String sourceId, String mangaUrl, String chapterUrl) async {
-    await _vaultService.markChapterRead(sourceId, mangaUrl, chapterUrl);
+      String sourceId, String mangaUrl, String chapterUrl,
+      {bool active = false}) async {
+    if (!_ensureOpen('markChapterRead')) return;
+    await _vaultService.markChapterRead(sourceId, mangaUrl, chapterUrl,
+        active: active);
     notifyListeners();
   }
 
-  /// Bulk mark (mirrors LibraryProvider) — lets a vault migration replay read
+  @override
+  Future<void> markChapterUnread(
+      String sourceId, String mangaUrl, String chapterUrl) async {
+    if (!_ensureOpen('markChapterUnread')) return;
+    await _vaultService.markChapterUnread(sourceId, mangaUrl, chapterUrl);
+    notifyListeners();
+  }
+
+  /// Bulk mark (mirrors LibraryProvider) - lets a vault migration replay read
   /// state into the VAULT box instead of the library's.
   Future<void> markChaptersRead(
       String sourceId, String mangaUrl, List<String> chapterUrls) async {
+    if (!_ensureOpen('markChaptersRead')) return;
     if (chapterUrls.isEmpty) return;
     await _vaultService.markChaptersRead(sourceId, mangaUrl, chapterUrls);
     notifyListeners();
   }
 
+  @override
   bool isChapterRead(String sourceId, String chapterUrl) {
     return _vaultService.isChapterRead(sourceId, chapterUrl);
   }
 
+  @override
   Future<void> markAllRead(String sourceId, String url) async {
+    if (!_ensureOpen('markAllRead')) return;
     await _vaultService.markAllChaptersRead(sourceId, url);
     _manga = _vaultService.getAllManga();
     notifyListeners();
   }
 
+  @override
   Future<void> markAllUnread(String sourceId, String url) async {
+    if (!_ensureOpen('markAllUnread')) return;
     await _vaultService.markAllChaptersUnread(sourceId, url);
     _manga = _vaultService.getAllManga();
     notifyListeners();
@@ -544,6 +727,11 @@ class VaultProvider extends ChangeNotifier {
   /// the same source of truth as the badge/streak/heatmap.
   int readCountForManga(LibraryManga m) =>
       _vaultService.readCount(m.sourceId, m.url);
+
+  /// Chapters actively read in-app for a vault entry (mirrors
+  /// [LibraryProvider.activeReadCountForManga]) - the gamified stats' source.
+  int activeReadCountForManga(LibraryManga m) =>
+      _vaultService.activeReadCount(m.sourceId, m.url);
 
   Map<DateTime, int> getReadActivityByDay({int days = 365, Set<String>? sourceIds}) =>
       _vaultService.getReadActivityByDay(days: days, sourceIds: sourceIds);

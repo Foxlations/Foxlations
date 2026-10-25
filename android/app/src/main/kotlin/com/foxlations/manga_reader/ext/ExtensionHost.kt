@@ -46,9 +46,13 @@ import java.io.File
  * NetworkHelper are stood up in [AndroidExtBootstrap].
  */
 object ExtensionHost {
-    private val sourceCache = HashMap<String, Any>()
-    private val mangaMemoCache = java.util.concurrent.ConcurrentHashMap<String, JsonObject>()
-    private val chapterMemoCache = java.util.concurrent.ConcurrentHashMap<String, JsonObject>()
+    // Shared across concurrent per-op threads (each invoke runs on its own thread, and
+    // loadSource reads+writes this during browse/global-search fan-out) → must be concurrent.
+    private val sourceCache = java.util.concurrent.ConcurrentHashMap<String, Any>()
+    // Bounded (insertion-order eviction) so the persisted foxlations_memo.json can't grow
+    // without end — best-effort caches that repopulate on demand, so eviction is safe.
+    private val mangaMemoCache = boundedMemoCache<JsonObject>(MANGA_MEMO_CAP)
+    private val chapterMemoCache = boundedMemoCache<JsonObject>(CHAPTER_MEMO_CAP)
     // Remember the browse-time title so getDetail's stub carries it into the source's
     // getMangaUpdate. On ART SManga.title is a plain `var = ""` (no crash), but a source that
     // reads manga.title inside mangaDetailsParse still needs the real value — and this keeps
@@ -112,51 +116,52 @@ object ExtensionHost {
 
     private fun loadSource(context: Context, apkPath: String, lang: String?, entryOverride: String): Any {
         val key = "$apkPath|$lang"
-        sourceCache[key]?.let { return it }
-        val file = File(apkPath)
-        require(file.exists()) { "extension apk not found: $apkPath" }
-        // Android 14+ (API 34) throws SecurityException "Writable dex file … is not
-        // allowed" when loading executable code (dex/APK) from a file the app can still
-        // write to (a W^X rule). Extensions download into our writable files dir, so mark
-        // the apk read-only before the classloader touches it. Deletion/updates still work
-        // — that's governed by the parent directory's write bit, not the file's.
-        runCatching { if (file.canWrite()) file.setReadOnly() }
-        val pm = context.packageManager
-        @Suppress("DEPRECATION")
-        val info = pm.getPackageArchiveInfo(
-            apkPath, PackageManager.GET_META_DATA or PackageManager.GET_CONFIGURATIONS,
-        ) ?: error("cannot read apk metadata: $apkPath")
-        val meta = info.applicationInfo?.metaData
-        val entry = entryOverride.ifBlank {
-            val keys = listOf(
-                "tachiyomi.extension.class", "tachiyomi.animeextension.class",
-                "tachiyomi.novelextension.class",
-            )
-            var e = keys.firstNotNullOfOrNull { meta?.getString(it) }
-                ?: error("no entry class in apk manifest")
-            e = e.split(";").first().trim()
-            if (e.startsWith(".")) (info.packageName ?: "") + e else e
-        }
-        val parent = this::class.java.classLoader ?: ClassLoader.getSystemClassLoader()
-        val loader = ChildFirstPathClassLoader(apkPath, file.parent, parent)
-        val obj = Class.forName(entry, false, loader).getDeclaredConstructor().newInstance()
-        val src: Any = when (obj) {
-            is SourceFactory -> {
-                val subs = obj.createSources().filterIsInstance<CatalogueSource>()
-                (lang?.let { l -> subs.firstOrNull { it.lang == l } } ?: subs.firstOrNull())
-                    ?: error("factory has no CatalogueSource")
+        // computeIfAbsent so concurrent first-loads of the same source dedupe cleanly (the
+        // classloader + newInstance run once per key, not once per racing thread).
+        return sourceCache.computeIfAbsent(key) {
+            val file = File(apkPath)
+            require(file.exists()) { "extension apk not found: $apkPath" }
+            // Android 14+ (API 34) throws SecurityException "Writable dex file … is not
+            // allowed" when loading executable code (dex/APK) from a file the app can still
+            // write to (a W^X rule). Extensions download into our writable files dir, so mark
+            // the apk read-only before the classloader touches it. Deletion/updates still work
+            // — that's governed by the parent directory's write bit, not the file's.
+            runCatching { if (file.canWrite()) file.setReadOnly() }
+            val pm = context.packageManager
+            @Suppress("DEPRECATION")
+            val info = pm.getPackageArchiveInfo(
+                apkPath, PackageManager.GET_META_DATA or PackageManager.GET_CONFIGURATIONS,
+            ) ?: error("cannot read apk metadata: $apkPath")
+            val meta = info.applicationInfo?.metaData
+            val entry = entryOverride.ifBlank {
+                val keys = listOf(
+                    "tachiyomi.extension.class", "tachiyomi.animeextension.class",
+                    "tachiyomi.novelextension.class",
+                )
+                var e = keys.firstNotNullOfOrNull { meta?.getString(it) }
+                    ?: error("no entry class in apk manifest")
+                e = e.split(";").first().trim()
+                if (e.startsWith(".")) (info.packageName ?: "") + e else e
             }
-            is AnimeSourceFactory -> {
-                val subs = obj.createSources().filterIsInstance<AnimeCatalogueSource>()
-                (lang?.let { l -> subs.firstOrNull { it.lang == l } } ?: subs.firstOrNull())
-                    ?: error("factory has no AnimeCatalogueSource")
+            val parent = this::class.java.classLoader ?: ClassLoader.getSystemClassLoader()
+            val loader = ChildFirstPathClassLoader(apkPath, file.parent, parent)
+            val obj = Class.forName(entry, false, loader).getDeclaredConstructor().newInstance()
+            when (obj) {
+                is SourceFactory -> {
+                    val subs = obj.createSources().filterIsInstance<CatalogueSource>()
+                    (lang?.let { l -> subs.firstOrNull { it.lang == l } } ?: subs.firstOrNull())
+                        ?: error("factory has no CatalogueSource")
+                }
+                is AnimeSourceFactory -> {
+                    val subs = obj.createSources().filterIsInstance<AnimeCatalogueSource>()
+                    (lang?.let { l -> subs.firstOrNull { it.lang == l } } ?: subs.firstOrNull())
+                        ?: error("factory has no AnimeCatalogueSource")
+                }
+                is CatalogueSource -> obj
+                is AnimeCatalogueSource -> obj
+                else -> error("not a (Anime)CatalogueSource: ${obj.javaClass.name}")
             }
-            is CatalogueSource -> obj
-            is AnimeCatalogueSource -> obj
-            else -> error("not a (Anime)CatalogueSource: ${obj.javaClass.name}")
         }
-        sourceCache[key] = src
-        return src
     }
 
     // ── manga dispatch (classic suspend API) ───────────────────────────────────────
@@ -247,9 +252,12 @@ object ExtensionHost {
         } catch (t: Throwable) {
             chErr = describe(t)
         }
+        // Persist only when something actually changed — re-opening a manga whose memo is
+        // already cached (identical value) must NOT rewrite the whole file. put() returns the
+        // previous value; a different (or absent) one means a real change.
         var cachedAny = false
-        memoOf(details)?.let { runCatching { mangaMemoCache[url] = it; cachedAny = true } }
-        chapters.forEach { ch -> memoOf(ch)?.let { runCatching { chapterMemoCache[ch.url] = it; cachedAny = true } } }
+        memoOf(details)?.let { m -> runCatching { if (mangaMemoCache.put(url, m) != m) cachedAny = true } }
+        chapters.forEach { ch -> memoOf(ch)?.let { m -> runCatching { if (chapterMemoCache.put(ch.url, m) != m) cachedAny = true } } }
         if (cachedAny) persistMemo()
         // Source's browsable page URL ("Open in browser"). getMangaUrl is a HttpSource
         // member sources override when details come from an API, so baseUrl+url would
@@ -490,6 +498,23 @@ object ExtensionHost {
         }.getOrNull()
     }
 
+    // Caps on the in-memory memo caches (and thus on the persisted foxlations_memo.json).
+    // Chapter memos are keyed per-chapter, so the chapter cap must comfortably hold several
+    // large chapter lists at once; manga memos are one-per-title. Kept in lockstep with
+    // SourceRunner.kt.
+    private const val MANGA_MEMO_CAP = 2000
+    private const val CHAPTER_MEMO_CAP = 10000
+
+    /** A size-capped, thread-safe, insertion-ordered map: once [cap] entries are present each
+     *  new key evicts the oldest. Synchronized, so callers MUST hold its monitor when iterating
+     *  it (see persistMemo); plain get/set are already guarded. */
+    private fun <V> boundedMemoCache(cap: Int): MutableMap<String, V> =
+        java.util.Collections.synchronizedMap(
+            object : LinkedHashMap<String, V>() {
+                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, V>): Boolean = size > cap
+            }
+        )
+
     // memo is an API-1.6 field the vendored model may or may not carry; access reflectively.
     private fun memoOf(o: Any?): JsonObject? {
         if (o == null) return null
@@ -534,9 +559,16 @@ object ExtensionHost {
     private fun persistMemo() {
         val dir = memoDir ?: return
         runCatching {
+            // The memo caches are synchronizedMap(LinkedHashMap): iterating one requires holding
+            // its monitor, or a concurrent put/evict from another op thread throws
+            // ConcurrentModificationException. The file write stays outside the locks.
             val obj = buildJsonObject {
-                put("chapters", buildJsonObject { chapterMemoCache.forEach { (k, v) -> put(k, v) } })
-                put("mangas", buildJsonObject { mangaMemoCache.forEach { (k, v) -> put(k, v) } })
+                put("chapters", buildJsonObject {
+                    synchronized(chapterMemoCache) { chapterMemoCache.forEach { (k, v) -> put(k, v) } }
+                })
+                put("mangas", buildJsonObject {
+                    synchronized(mangaMemoCache) { mangaMemoCache.forEach { (k, v) -> put(k, v) } }
+                })
             }
             val tmp = File(dir, "foxlations_memo.json.tmp")
             tmp.writeText(obj.toString())

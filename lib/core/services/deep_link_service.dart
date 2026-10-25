@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../providers/source_provider.dart';
 import 'app_logger.dart';
 import 'app_navigator.dart';
@@ -17,7 +18,7 @@ import 'repo_service.dart';
 /// popular upstream), `tachiyomi://add-repo?url=...`, `aniyomi://add-repo?url=...`.
 /// We register those schemes so Foxlations shows up in the OS "open with" chooser
 /// alongside the other readers, plus our own `foxlations://add-repo?url=...`. They
-/// all route to one confirm-then-add flow through [SourceProvider.addRepo] — the
+/// all route to one confirm-then-add flow through [SourceProvider.addRepo] - the
 /// same path the in-app "Add repo" field uses.
 ///
 /// The `foxlations` scheme is also the tracker-OAuth redirect (`foxlations://auth`,
@@ -32,7 +33,7 @@ class DeepLinkService {
   static const _nativeChannel = MethodChannel('foxlations/deeplink');
   static bool _initialized = false;
 
-  /// A prompt/add is in flight — drop re-deliveries so dialogs never stack.
+  /// A prompt/add is in flight - drop re-deliveries so dialogs never stack.
   static bool _busy = false;
 
   /// URL we're currently acting on, to collapse a duplicate cold-start + stream
@@ -109,7 +110,7 @@ class DeepLinkService {
     if (_busy) return;
     final ctx = rootNavigatorKey.currentContext;
     if (ctx == null) {
-      // Cold start: the shell/navigator isn't mounted yet — retry briefly
+      // Cold start: the shell/navigator isn't mounted yet - retry briefly
       // (up to ~6s) instead of giving up, or the link is silently dropped.
       if (attempt < 30) {
         Future.delayed(const Duration(milliseconds: 200),
@@ -122,6 +123,8 @@ class DeepLinkService {
       return;
     }
     _busy = true;
+    // Captured before any await so later use is not an across-gap context op.
+    final t = AppLocalizations.of(ctx);
     try {
       final sp = ctx.read<SourceProvider>();
       final host = Uri.tryParse(url)?.host ?? url;
@@ -140,7 +143,7 @@ class DeepLinkService {
         builder: (dctx) {
           final cs = Theme.of(dctx).colorScheme;
           return AlertDialog(
-            title: const Text('Add source repo?'),
+            title: Text(t.deeplinkAddRepoTitle),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,21 +153,22 @@ class DeepLinkService {
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 2),
-                  Text('$count source${count == 1 ? '' : 's'}',
+                  Text(t.repoSourceCount(count),
                       style: TextStyle(
                           color: cs.primary, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 10),
                 ],
-                Text('From $host', style: TextStyle(color: cs.outline)),
+                Text(t.deeplinkFromHost(host),
+                    style: TextStyle(color: cs.outline)),
               ],
             ),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(dctx, false),
-                  child: const Text('Cancel')),
+                  child: Text(t.appCancel)),
               FilledButton(
                   onPressed: () => Navigator.pop(dctx, true),
-                  child: const Text('Add')),
+                  child: Text(t.miscAdd)),
             ],
           );
         },
@@ -177,12 +181,12 @@ class DeepLinkService {
       await liveCtx.read<SourceProvider>().addRepo(url, prefetched: preview);
       rootMessengerKey.currentState?.showSnackBar(SnackBar(
           content: Text(name.isNotEmpty
-              ? 'Added "$name" — see Browse > Extensions'
-              : 'Repo added — see Browse > Extensions')));
+              ? t.deeplinkAddedNamed(name)
+              : t.deeplinkAdded)));
     } catch (e) {
       logger.error('Deep-link add-repo failed: $e', category: LogCategory.repo);
       rootMessengerKey.currentState?.showSnackBar(
-          SnackBar(content: Text("Couldn't add repo: $e")));
+          SnackBar(content: Text(t.deeplinkAddFailed('$e'))));
     } finally {
       _busy = false;
       _lastHandled = null; // allow the same link to be tapped again later

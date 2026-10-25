@@ -120,14 +120,6 @@
   "@settingsBrowseSubtitle": {
     "description": "Subtitle listing what the Browse settings cover."
   },
-  "settingsRepoForgeTitle": "RepoForge",
-  "@settingsRepoForgeTitle": {
-    "description": "Settings entry title for RepoForge; keep the product name as-is."
-  },
-  "settingsRepoForgeSubtitle": "Build & manage sources from any URL",
-  "@settingsRepoForgeSubtitle": {
-    "description": "Subtitle describing RepoForge (building/managing sources from a URL)."
-  },
   "settingsBackupTitle": "Backup & Restore",
   "@settingsBackupTitle": {
     "description": "Settings entry title for backup and restore options."
@@ -175,14 +167,6 @@
   "libraryAddManga": "Add Manga",
   "@libraryAddManga": {
     "description": "Menu item to add a manga to the library."
-  },
-  "libraryApply": "Apply",
-  "@libraryApply": {
-    "description": "Button confirming the chosen filter/sort/display options."
-  },
-  "libraryAscending": "Ascending",
-  "@libraryAscending": {
-    "description": "Sort-direction option: order results from low to high (A-Z, oldest first)."
   },
   "libraryBadges": "Badges",
   "@libraryBadges": {
@@ -254,10 +238,6 @@
     },
     "description": "Abbreviated chapter count, e.g. in stats; {n} is the number of chapters."
   },
-  "libraryChaptersRead": "Chapters Read",
-  "@libraryChaptersRead": {
-    "description": "Stats label for the total number of chapters the user has read."
-  },
   "libraryCheckForUpdates": "Check for updates",
   "@libraryCheckForUpdates": {
     "description": "Menu/button label to check library entries for new chapters."
@@ -306,10 +286,6 @@
   "@readerTtsSystemVoice": {
     "description": "Voice-picker option to use the device's default TTS voice."
   },
-  "libraryCoverSize": "Cover Size",
-  "@libraryCoverSize": {
-    "description": "Setting label controlling the size of cover thumbnails in the grid."
-  },
   "libraryDaysCount": "{days} days",
   "@libraryDaysCount": {
     "placeholders": {
@@ -318,10 +294,6 @@
       }
     },
     "description": "Duration text; {days} is a number of days."
-  },
-  "libraryDescending": "Descending",
-  "@libraryDescending": {
-    "description": "Sort-direction option: order results from high to low (Z-A, newest first)."
   },
   "libraryDeselectAll": "Deselect all",
   "@libraryDeselectAll": {
@@ -410,17 +382,9 @@
     },
     "description": "Chapter progress in list display mode; {read}=read chapters, {total}=total chapters."
   },
-  "libraryMonthlyActivity": "Monthly Activity",
-  "@libraryMonthlyActivity": {
-    "description": "Stats section heading for the monthly reading-activity chart."
-  },
   "libraryMore": "More",
   "@libraryMore": {
     "description": "Label for a More menu or overflow button."
-  },
-  "libraryMostReadSeries": "Most-Read Series",
-  "@libraryMostReadSeries": {
-    "description": "Stats section heading listing the user's most-read series."
   },
   "libraryMoveToCategory": "Move to Category",
   "@libraryMoveToCategory": {
@@ -437,10 +401,6 @@
   "libraryNoBookmarksDesc": "Long-press a manga and bookmark it to see it here.",
   "@libraryNoBookmarksDesc": {
     "description": "Empty-state body explaining how to bookmark a manga via long-press."
-  },
-  "libraryNoNewChapters": "No new chapters",
-  "@libraryNoNewChapters": {
-    "description": "Short status message: the update check found no new chapters."
   },
   "libraryNoNewChaptersLastCheck": "No new chapters were found in the last check.",
   "@libraryNoNewChaptersLastCheck": {
@@ -466,10 +426,6 @@
   "libraryOpenRandomEntry": "Open random entry",
   "@libraryOpenRandomEntry": {
     "description": "Tooltip/menu action to open a random title from the library."
-  },
-  "libraryReadingStreak": "Reading Streak",
-  "@libraryReadingStreak": {
-    "description": "Stats section heading for the consecutive-days reading streak."
   },
   "libraryResetToDefault": "Reset to default",
   "@libraryResetToDefault": {
@@ -504,41 +460,13 @@
     },
     "description": "Selection-mode counter in the app bar; {n} is the number selected."
   },
-  "librarySeries": "Series",
-  "@librarySeries": {
-    "description": "Stats/label word for a count of series (titles)."
-  },
   "libraryShowNumberOfItems": "Show number of items",
   "@libraryShowNumberOfItems": {
     "description": "Toggle label to show the item count on category tabs."
   },
-  "librarySizeLarge": "Large",
-  "@librarySizeLarge": {
-    "description": "Cover-size option: large."
-  },
   "librarySizeMedium": "Medium",
   "@librarySizeMedium": {
     "description": "Cover-size option: medium."
-  },
-  "librarySizeSmall": "Small",
-  "@librarySizeSmall": {
-    "description": "Cover-size option: small."
-  },
-  "librarySortLastUpdated": "Last Updated",
-  "@librarySortLastUpdated": {
-    "description": "Sort option: order by when the title was last updated."
-  },
-  "librarySortRating": "Rating",
-  "@librarySortRating": {
-    "description": "Sort option: order by rating."
-  },
-  "librarySortTitle": "Title",
-  "@librarySortTitle": {
-    "description": "Sort option: order alphabetically by title."
-  },
-  "librarySortUnreadCount": "Unread Count",
-  "@librarySortUnreadCount": {
-    "description": "Sort option: order by number of unread chapters."
   },
   "librarySources": "Sources",
   "@librarySources": {
@@ -576,14 +504,6 @@
   "@libraryStatusUnknown": {
     "description": "Reading-status filter: titles with no set status."
   },
-  "libraryStreakBest": "Best",
-  "@libraryStreakBest": {
-    "description": "Label for the user's best (longest) reading streak value."
-  },
-  "libraryStreakCurrent": "Current",
-  "@libraryStreakCurrent": {
-    "description": "Label for the user's current reading streak value."
-  },
   "libraryStreakDaysStrong": "{days} days strong — keep it up!",
   "@libraryStreakDaysStrong": {
     "placeholders": {
@@ -592,14 +512,6 @@
       }
     },
     "description": "Encouragement under the streak; {days} is the current streak length in days."
-  },
-  "libraryStreakKeepGoing": "Read tomorrow to keep the streak going!",
-  "@libraryStreakKeepGoing": {
-    "description": "Encouragement prompting the user to read tomorrow to keep the streak."
-  },
-  "libraryStreakStart": "Start a streak by reading today!",
-  "@libraryStreakStart": {
-    "description": "Prompt shown at zero streak, inviting the user to read today."
   },
   "libraryTabDisplay": "Display",
   "@libraryTabDisplay": {
@@ -625,10 +537,6 @@
       }
     },
     "description": "Abbreviated total count in stats; {n} is the total number."
-  },
-  "libraryTotalChapters": "Total Chapters",
-  "@libraryTotalChapters": {
-    "description": "Stats label for the total number of chapters across the library."
   },
   "libraryTypeMenuBarrier": "Library type",
   "@libraryTypeMenuBarrier": {
@@ -658,10 +566,6 @@
   "libraryVault": "Vault",
   "@libraryVault": {
     "description": "Name of the Vault tab/section (private or archived titles)."
-  },
-  "libraryVaultBreakdown": "Vault Breakdown",
-  "@libraryVaultBreakdown": {
-    "description": "Stats section heading breaking down vault contents."
   },
   "libraryVaultStats": "Vault Stats",
   "@libraryVaultStats": {
@@ -1236,6 +1140,863 @@
   "@appUnlock": {
     "description": "Button to unlock the Vault after entering the password."
   },
+  "appBiometrics": "Biometrics",
+  "@appBiometrics": {
+    "description": "Button in the Vault unlock dialog that triggers fingerprint/face unlock"
+  },
+  "appVaultTapsToEnter": "{count, plural, =1{1 more tap to enter vault} other{{count} more taps to enter vault}}",
+  "@appVaultTapsToEnter": {
+    "description": "Brief hint while tapping the Library tab the secret number of times to enter the Vault",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "appVaultTapsToExit": "{count, plural, =1{1 more tap to exit vault} other{{count} more taps to exit vault}}",
+  "@appVaultTapsToExit": {
+    "description": "Brief hint while tapping the Library tab the secret number of times to exit the Vault",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "detailRemoveFromLibraryBody": "Remove \"{title}\" from your library?",
+  "@detailRemoveFromLibraryBody": {
+    "description": "Body of the confirm dialog shown before removing a title from the library",
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "detailThisTitle": "this title",
+  "@detailThisTitle": {
+    "description": "Generic fallback used in place of a missing title name in the remove-confirmation dialog"
+  },
+  "detailTitleCopied": "Title copied",
+  "@detailTitleCopied": {
+    "description": "Snackbar shown after tapping the manga title to copy it to the clipboard"
+  },
+  "detailSortBy": "Sort by",
+  "@detailSortBy": {
+    "description": "Tooltip for the chapter-list sort menu button"
+  },
+  "detailSortSourceOrder": "Source order",
+  "@detailSortSourceOrder": {
+    "description": "Chapter sort option: keep the source's own ordering"
+  },
+  "detailSortChapterNumber": "Chapter number",
+  "@detailSortChapterNumber": {
+    "description": "Chapter sort option: order by chapter number"
+  },
+  "detailSortUploadDate": "Upload date",
+  "@detailSortUploadDate": {
+    "description": "Chapter sort option: order by upload date"
+  },
+  "detailLoginPageTitle": "Login",
+  "@detailLoginPageTitle": {
+    "description": "App-bar title of the in-app WebView opened to log in to a source"
+  },
+  "detailRemovedFromLibrary": "Removed from library",
+  "@detailRemovedFromLibrary": {
+    "description": "Snackbar confirming a title was removed from the library"
+  },
+  "detailUndo": "Undo",
+  "@detailUndo": {
+    "description": "Snackbar action to undo removing a title from the library"
+  },
+  "detailQueuePosition": "{position} of {total}",
+  "@detailQueuePosition": {
+    "description": "Bulk-migrate queue position shown in the migrate app bar (current of total)",
+    "placeholders": { "position": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "insightsTitle": "Reading Insights",
+  "@insightsTitle": {
+    "description": "App-bar title of the Reading Insights (Podium) screen"
+  },
+  "insightsEmptyTitle": "Nothing to rank yet",
+  "@insightsEmptyTitle": {
+    "description": "Empty-state title on the Reading Insights screen"
+  },
+  "insightsEmptyBody": "Read a little and your most-read titles show up here.",
+  "@insightsEmptyBody": {
+    "description": "Empty-state body on the Reading Insights screen"
+  },
+  "insightsEstimatedFromHistory": "Estimated from your history",
+  "@insightsEstimatedFromHistory": {
+    "description": "Subtitle under total time when no tracking start date is known"
+  },
+  "insightsTrackedSince": "Tracked since {month} {year}",
+  "@insightsTrackedSince": {
+    "description": "Subtitle showing the month/year when time tracking began",
+    "placeholders": { "month": { "type": "String" }, "year": { "type": "String" } }
+  },
+  "insightsMonthJanuary": "January",
+  "@insightsMonthJanuary": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthFebruary": "February",
+  "@insightsMonthFebruary": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthMarch": "March",
+  "@insightsMonthMarch": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthApril": "April",
+  "@insightsMonthApril": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthMay": "May",
+  "@insightsMonthMay": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthJune": "June",
+  "@insightsMonthJune": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthJuly": "July",
+  "@insightsMonthJuly": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthAugust": "August",
+  "@insightsMonthAugust": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthSeptember": "September",
+  "@insightsMonthSeptember": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthOctober": "October",
+  "@insightsMonthOctober": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthNovember": "November",
+  "@insightsMonthNovember": { "description": "Month name used in the 'Tracked since' label" },
+  "insightsMonthDecember": "December",
+  "@insightsMonthDecember": { "description": "Month name used in the 'Tracked since' label" },
+  "repoNoTitlesToMigrate": "No titles in this library to migrate.",
+  "@repoNoTitlesToMigrate": {
+    "description": "Hint shown when the bulk source-migrate FROM list is empty"
+  },
+  "repoChooseSourceFirst": "Choose a source to migrate from first.",
+  "@repoChooseSourceFirst": {
+    "description": "Hint under the bulk source-migrate TO picker before a FROM source is chosen"
+  },
+  "trackProviderClaudeDesc": "Best for nuanced translation",
+  "@trackProviderClaudeDesc": { "description": "AI translation provider blurb for Claude (Anthropic)" },
+  "trackProviderOpenaiDesc": "Fast & accurate",
+  "@trackProviderOpenaiDesc": { "description": "AI translation provider blurb for OpenAI GPT-4o" },
+  "trackProviderGeminiDesc": "Multilingual specialist",
+  "@trackProviderGeminiDesc": { "description": "AI translation provider blurb for Google Gemini" },
+  "trackProviderDeeplDesc": "High-quality European languages",
+  "@trackProviderDeeplDesc": { "description": "AI translation provider blurb for DeepL" },
+  "trackProviderHuggingfaceDesc": "Open-source - Offline capable",
+  "@trackProviderHuggingfaceDesc": { "description": "AI translation provider blurb for Hugging Face" },
+  "trackProviderOpenrouterDesc": "One key, many models - free tier available",
+  "@trackProviderOpenrouterDesc": { "description": "AI translation provider blurb for OpenRouter" },
+  "trackBadgeRecommended": "Recommended",
+  "@trackBadgeRecommended": { "description": "Badge shown on the recommended AI translation provider" },
+  "trackBadgeOffline": "Offline",
+  "@trackBadgeOffline": { "description": "Badge marking an AI provider that works offline" },
+  "trackBadgeFree": "Free models",
+  "@trackBadgeFree": { "description": "Badge marking an AI provider that offers free models" },
+  "setdAppearanceSectionPalette": "Palette",
+  "@setdAppearanceSectionPalette": { "description": "Appearance settings section header for theme-color palette controls" },
+  "setdAppearanceThemeStrength": "Theme color strength",
+  "@setdAppearanceThemeStrength": { "description": "Slider title controlling how strongly the theme color tints the app" },
+  "setdAppearanceThemeStrengthDesc": "How much the theme color takes over the app. 0 keeps the usual dark or light background; higher tints the whole app with the theme color.",
+  "@setdAppearanceThemeStrengthDesc": { "description": "Explanation under the Theme color strength slider" },
+  "setxBackupCreateComplete": "Backup complete",
+  "@setxBackupCreateComplete": { "description": "Snackbar shown after a backup is created successfully" },
+  "setxBackupCreateFailed": "Backup failed: {error}",
+  "@setxBackupCreateFailed": {
+    "description": "Snackbar shown when creating a backup fails",
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "setxBackupExportComplete": "Export complete",
+  "@setxBackupExportComplete": { "description": "Snackbar shown after a compatible-backup export succeeds" },
+  "setxBackupExportFailed": "Export failed: {error}",
+  "@setxBackupExportFailed": {
+    "description": "Snackbar shown when a compatible-backup export fails",
+    "placeholders": { "error": { "type": "String" } }
+  },
+  "setxBackupTargetApp": "Target app",
+  "@setxBackupTargetApp": { "description": "Dropdown label: which app the compatible backup is made for" },
+  "setxBackupIncludeLabel": "Include",
+  "@setxBackupIncludeLabel": { "description": "Label above the content-type checkboxes in the export dialog" },
+  "setxBackupTypeNovels": "Light novels",
+  "@setxBackupTypeNovels": { "description": "Content-type checkbox label for light novels in the export dialog" },
+  "setxBackupAutoTag": "auto",
+  "@setxBackupAutoTag": { "description": "Short tag in a backup row marking an automatically-created backup" },
+  "setdDownloadsChaptersAhead": "Chapters ahead",
+  "@setdDownloadsChaptersAhead": { "description": "Setting title: how many chapters to pre-download while reading" },
+  "setdLibraryNoItemsToRefresh": "No library items to refresh",
+  "@setdLibraryNoItemsToRefresh": { "description": "Snackbar when cover refresh is tapped with an empty library" },
+  "setdLibraryRefreshingCovers": "Refreshing covers",
+  "@setdLibraryRefreshingCovers": { "description": "Progress dialog title while re-fetching library covers" },
+  "setdLibraryCoverRefreshStopped": "Cover refresh stopped",
+  "@setdLibraryCoverRefreshStopped": { "description": "Snackbar when the user cancels the cover refresh" },
+  "setdLibraryCoversRefreshed": "{count, plural, =1{Refreshed 1 cover} other{Refreshed {count} covers}}",
+  "@setdLibraryCoversRefreshed": {
+    "description": "Snackbar reporting how many covers were refreshed",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "setdLibrarySectionContinueReading": "Continue reading",
+  "@setdLibrarySectionContinueReading": { "description": "Library settings section header for the continue-reading control" },
+  "setdLibraryContinueShowAs": "Show as",
+  "@setdLibraryContinueShowAs": { "description": "Choice tile title for how the continue-reading entry is displayed" },
+  "setdLibraryDefaultCategory": "Default category",
+  "@setdLibraryDefaultCategory": { "description": "Choice tile title for the default category new titles go into" },
+  "setdLibraryAlwaysAsk": "Always ask",
+  "@setdLibraryAlwaysAsk": { "description": "Default-category option meaning the app asks each time (maps to no fixed category)" },
+  "setdLibrarySkipHasUnread": "Skip titles with unread chapters",
+  "@setdLibrarySkipHasUnread": { "description": "Library-update restriction switch title" },
+  "setdLibrarySkipHasUnreadDesc": "Don't check titles you haven't caught up on yet",
+  "@setdLibrarySkipHasUnreadDesc": { "description": "Subtitle for the skip-unread restriction switch" },
+  "setdLibrarySkipCompleted": "Skip completed series",
+  "@setdLibrarySkipCompleted": { "description": "Library-update restriction switch title" },
+  "setdLibrarySkipCompletedDesc": "Finished series won't get new chapters",
+  "@setdLibrarySkipCompletedDesc": { "description": "Subtitle for the skip-completed restriction switch" },
+  "setdLibraryRefreshCovers": "Refresh library covers",
+  "@setdLibraryRefreshCovers": { "description": "Nav tile title to re-fetch all library covers" },
+  "setdLibraryRefreshCoversDesc": "Fetch covers again from source",
+  "@setdLibraryRefreshCoversDesc": { "description": "Subtitle for the refresh-library-covers nav tile" },
+  "setdActionMove": "Move",
+  "@setdActionMove": { "description": "Generic Move button in dialogs." },
+  "setdActionConfirm": "Confirm",
+  "@setdActionConfirm": { "description": "Generic Confirm button in dialogs." },
+  "setdActionRemove": "Remove",
+  "@setdActionRemove": { "description": "Generic Remove button in dialogs." },
+  "setdActionUndo": "Undo",
+  "@setdActionUndo": { "description": "Generic Undo action on a snackbar." },
+  "setxSecurityLockAfterTitle": "Lock after",
+  "@setxSecurityLockAfterTitle": { "description": "Title of the idle-timeout selector controlling how long before the app re-locks." },
+  "setxSecurityLockAfterSubtitle": "Wait this long before re-locking on reopen",
+  "@setxSecurityLockAfterSubtitle": { "description": "Subtitle explaining the lock-after delay." },
+  "setxSecurityLockAfterImmediately": "Immediately",
+  "@setxSecurityLockAfterImmediately": { "description": "Lock-after option: re-lock with no delay." },
+  "setxSecurityLockAfterMinutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@setxSecurityLockAfterMinutes": {
+    "description": "Lock-after delay option in minutes; {count} is the number of minutes.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "setdVaultChangeDecoyPassword": "Change decoy password",
+  "@setdVaultChangeDecoyPassword": { "description": "Nav tile title to change the existing decoy password." },
+  "setdVaultSetDecoyPassword": "Set decoy password",
+  "@setdVaultSetDecoyPassword": { "description": "Nav tile / dialog title to set a decoy password (used when none exists)." },
+  "setdVaultDecoyPasswordDesc": "A second password that opens a separate, empty-looking vault",
+  "@setdVaultDecoyPasswordDesc": { "description": "Subtitle under the decoy-password tile." },
+  "setdVaultBiometricUnlock": "Unlock with biometrics",
+  "@setdVaultBiometricUnlock": { "description": "Toggle title for biometric vault unlock." },
+  "setdVaultBiometricDesc": "Use Face ID / fingerprint to open the vault",
+  "@setdVaultBiometricDesc": { "description": "Subtitle under the biometric-unlock toggle." },
+  "setdVaultConfirmPasswordTitle": "Confirm vault password",
+  "@setdVaultConfirmPasswordTitle": { "description": "Dialog title prompting the user to re-enter the vault password." },
+  "setdVaultBiometricEnabled": "Biometric unlock enabled",
+  "@setdVaultBiometricEnabled": { "description": "Snackbar after enabling biometric unlock." },
+  "setdVaultShakeToExit": "Shake to exit",
+  "@setdVaultShakeToExit": { "description": "Toggle title for shake-to-exit-the-vault." },
+  "setdVaultShakeToExitDesc": "While in the vault, shake the phone to instantly leave it",
+  "@setdVaultShakeToExitDesc": { "description": "Subtitle under the shake-to-exit toggle." },
+  "setdVaultLibraryMoveAction": "Move-to-vault in library",
+  "@setdVaultLibraryMoveAction": { "description": "Toggle title to add a move-to-vault action in the library." },
+  "setdVaultLibraryMoveActionDesc": "Add a \"Move to vault\" action when selecting titles in your library",
+  "@setdVaultLibraryMoveActionDesc": { "description": "Subtitle under the library move-to-vault toggle." },
+  "setdVaultPasswordHint": "Password",
+  "@setdVaultPasswordHint": { "description": "Hint text in the vault password field." },
+  "setdVaultDecoyPasswordDialogTitle": "Decoy password",
+  "@setdVaultDecoyPasswordDialogTitle": { "description": "Title of the decoy-password dialog when a decoy already exists." },
+  "setdVaultDecoyPasswordExplain": "Entering this instead of your real password opens a separate, isolated vault - so you can hand over the phone without revealing your real content.",
+  "@setdVaultDecoyPasswordExplain": { "description": "Explanatory body text in the decoy-password dialog." },
+  "setdVaultDecoyPasswordHint": "Decoy password",
+  "@setdVaultDecoyPasswordHint": { "description": "Hint text in the decoy-password field." },
+  "setdVaultEnterPassword": "Enter a password",
+  "@setdVaultEnterPassword": { "description": "Validation error when the decoy password field is empty." },
+  "setdVaultDecoyPasswordSet": "Decoy password set",
+  "@setdVaultDecoyPasswordSet": { "description": "Snackbar after saving the decoy password." },
+  "setdVaultDecoyMustDiffer": "Must differ from your real password",
+  "@setdVaultDecoyMustDiffer": { "description": "Validation error when the decoy password equals the real password." },
+  "setdVaultContentsMovedInCount": "{count, plural, =1{Moved 1 to vault} other{Moved {count} to vault}}",
+  "@setdVaultContentsMovedInCount": {
+    "description": "Snackbar after moving items into the vault; {count} is how many moved.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "setdVaultContentsMovedOutCount": "{count, plural, =1{Moved 1 out of vault} other{Moved {count} out of vault}}",
+  "@setdVaultContentsMovedOutCount": {
+    "description": "Snackbar after moving items out of the vault; {count} is how many moved.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "setdVaultContentsMoveConfirmTitle": "Move {what}?",
+  "@setdVaultContentsMoveConfirmTitle": {
+    "description": "Move-confirmation dialog title; {what} describes the selection being moved (e.g. 'all 5 shown').",
+    "placeholders": { "what": { "type": "String" } }
+  },
+  "setdVaultContentsMoveConfirmBody": "{count, plural, =1{Move 1 title to {dest}{into}?} other{Move {count} titles to {dest}{into}?}}",
+  "@setdVaultContentsMoveConfirmBody": {
+    "description": "Move-confirmation dialog body; {count} titles, {dest} destination phrase (the vault / your library), {into} optional category suffix.",
+    "placeholders": { "count": { "type": "int" }, "dest": { "type": "String" }, "into": { "type": "String" } }
+  },
+  "setdVaultContentsDestVault": "the vault",
+  "@setdVaultContentsDestVault": { "description": "Destination phrase (into the vault) used in the move-confirmation body." },
+  "setdVaultContentsDestLibrary": "your library",
+  "@setdVaultContentsDestLibrary": { "description": "Destination phrase (into the library) used in the move-confirmation body." },
+  "setdVaultContentsIntoCategory": " → \"{name}\"",
+  "@setdVaultContentsIntoCategory": {
+    "description": "Optional category suffix appended to the move destination; {name} is the destination category. Leading space + arrow are UI punctuation.",
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "setdVaultContentsMoveAllShown": "all {count} shown",
+  "@setdVaultContentsMoveAllShown": {
+    "description": "Describes moving every shown title; used as the {what} in the confirm title. {count} is how many are shown.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "setdVaultContentsMoveEverythingIn": "everything in \"{name}\"",
+  "@setdVaultContentsMoveEverythingIn": {
+    "description": "Describes moving every title in a category; used as the {what} in the confirm title. {name} is the category.",
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "setdVaultContentsNoMatches": "No matches",
+  "@setdVaultContentsNoMatches": { "description": "Empty-state shown when a title search yields nothing." },
+  "setdVaultContentsDone": "Done",
+  "@setdVaultContentsDone": { "description": "App-bar tooltip to leave selection mode." },
+  "setdVaultContentsSelect": "Select",
+  "@setdVaultContentsSelect": { "description": "App-bar tooltip to enter selection mode." },
+  "setdVaultContentsDirToVault": "To Vault",
+  "@setdVaultContentsDirToVault": { "description": "Direction toggle: move titles into the vault." },
+  "setdVaultContentsDirFromVault": "From Vault",
+  "@setdVaultContentsDirFromVault": { "description": "Direction toggle: move titles out of the vault." },
+  "setdVaultContentsSearchHint": "Search titles",
+  "@setdVaultContentsSearchHint": { "description": "Hint text in the title search field." },
+  "setdVaultContentsMoveCategoryTooltip": "Move a category",
+  "@setdVaultContentsMoveCategoryTooltip": { "description": "Tooltip for the move-a-whole-category button." },
+  "setdVaultContentsMoveAllToVault": "Move all to vault",
+  "@setdVaultContentsMoveAllToVault": { "description": "Tooltip for the move-all button when moving into the vault." },
+  "setdVaultContentsMoveAllOut": "Move all out",
+  "@setdVaultContentsMoveAllOut": { "description": "Tooltip for the move-all button when moving out of the vault." },
+  "setdVaultContentsSelectNone": "None",
+  "@setdVaultContentsSelectNone": { "description": "Selection-bar button to deselect all." },
+  "setdVaultContentsSelectAll": "All",
+  "@setdVaultContentsSelectAll": { "description": "Selection-bar button to select all." },
+  "setdVaultContentsSelectedCount": "{count, plural, =1{1 selected} other{{count} selected}}",
+  "@setdVaultContentsSelectedCount": {
+    "description": "Count of selected items in the selection bar.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "setdVaultContentsMoveToVault": "Move to vault",
+  "@setdVaultContentsMoveToVault": { "description": "Button/tooltip to move the selection or an item into the vault." },
+  "setdVaultContentsMoveOut": "Move out",
+  "@setdVaultContentsMoveOut": { "description": "Button/tooltip to move the selection or an item out of the vault." },
+  "setdVaultContentsPickSourceLibrary": "Move which library category?",
+  "@setdVaultContentsPickSourceLibrary": { "description": "Category-picker title when choosing which library category to move." },
+  "setdVaultContentsPickSourceVault": "Move which vault category?",
+  "@setdVaultContentsPickSourceVault": { "description": "Category-picker title when choosing which vault category to move." },
+  "setdVaultContentsPickDestVault": "Into which vault category?",
+  "@setdVaultContentsPickDestVault": { "description": "Category-picker title when choosing the destination vault category." },
+  "setdVaultContentsPickDestLibrary": "Into which library category?",
+  "@setdVaultContentsPickDestLibrary": { "description": "Category-picker title when choosing the destination library category." },
+  "setdVaultContentsNoCategoriesToPick": "No categories to pick from.",
+  "@setdVaultContentsNoCategoriesToPick": { "description": "Empty state in the category picker." },
+  "setdVaultContentsNoCategory": "No category",
+  "@setdVaultContentsNoCategory": { "description": "Category-picker option to pick no category." },
+  "setdVaultContentsNothingIn": "Nothing in \"{name}\"",
+  "@setdVaultContentsNothingIn": {
+    "description": "Snackbar when a chosen category has no titles; {name} is the category.",
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "settingsHelpSubtitle": "Tutorial, Discord & quick tips",
+  "@settingsHelpSubtitle": { "description": "Subtitle for the Help & Tips entry on the main settings screen." },
+  "dictNetworkError": "Couldn't reach the dictionary. Check your connection and try again.",
+  "@dictNetworkError": { "description": "Shown in the dictionary sheet when no lookup source could be reached." },
+  "dictNoDefinition": "No definition found for \"{word}\".",
+  "@dictNoDefinition": {
+    "description": "Dictionary sheet message when the word has no entry.",
+    "placeholders": { "word": { "type": "String" } }
+  },
+  "readerAlignment": "Alignment",
+  "@readerAlignment": { "description": "Novel reader text alignment setting title." },
+  "readerBrightness": "Brightness",
+  "@readerBrightness": { "description": "Reader eye-comfort brightness slider title." },
+  "readerCalibrateSampleLine": "Sample line {n}",
+  "@readerCalibrateSampleLine": {
+    "description": "Filler line shown in the gaze-calibration scroll test.",
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "readerChapterArrowsSubtitle": "Prev / next chapter beside the page slider",
+  "@readerChapterArrowsSubtitle": { "description": "Subtitle for the radial-menu chapter-arrows toggle." },
+  "readerChapterArrowsTitle": "Chapter arrows on the slider",
+  "@readerChapterArrowsTitle": { "description": "Title for the radial-menu chapter-arrows toggle (manga)." },
+  "readerCustomizeMenu": "Customize menu",
+  "@readerCustomizeMenu": { "description": "Nav tile title opening the radial-menu action editor." },
+  "readerCustomizeMenuMangaSubtitle": "Choose and reorder the manga actions",
+  "@readerCustomizeMenuMangaSubtitle": { "description": "Subtitle for the manga radial-menu customize tile." },
+  "readerCustomizeMenuNovelSubtitle": "Choose and reorder the light novel actions",
+  "@readerCustomizeMenuNovelSubtitle": { "description": "Subtitle for the light-novel radial-menu customize tile." },
+  "readerDoublePages": "Double pages",
+  "@readerDoublePages": { "description": "Reader display toggle: show two pages side by side in landscape." },
+  "readerDoublePagesSubtitle": "Show two pages side-by-side when the phone is in landscape (page-by-page modes only)",
+  "@readerDoublePagesSubtitle": { "description": "Subtitle for the double-pages toggle." },
+  "readerHandsFreeIntro": "Scroll or turn pages without touching the screen. These share one scroll input, so turning one on turns the others off.",
+  "@readerHandsFreeIntro": { "description": "Intro paragraph on the Hands-free & motion settings page." },
+  "readerHandsFreeMotion": "Hands-free & motion",
+  "@readerHandsFreeMotion": { "description": "Title of the Hands-free & motion settings page / nav tile." },
+  "readerHandsFreeMotionSubtitle": "Volume buttons, tilt and gaze scrolling",
+  "@readerHandsFreeMotionSubtitle": { "description": "Subtitle for the Hands-free & motion nav tile." },
+  "readerHyphenation": "Hyphenation",
+  "@readerHyphenation": { "description": "Novel reader hyphenation toggle title." },
+  "readerHyphenationSubtitle": "Break long words to even out justified lines",
+  "@readerHyphenationSubtitle": { "description": "Subtitle for the hyphenation toggle." },
+  "readerLightNovel": "Light novel",
+  "@readerLightNovel": { "description": "Label for the light-novel reader (segmented control / tab)." },
+  "readerLightNovelMenu": "Light novel menu",
+  "@readerLightNovelMenu": { "description": "App bar title of the light-novel radial-menu editor." },
+  "readerLineSpacing": "Line spacing",
+  "@readerLineSpacing": { "description": "Novel reader line-spacing slider title." },
+  "readerManga": "Manga",
+  "@readerManga": { "description": "Label for the manga reader (segmented control / tab)." },
+  "readerMangaMenu": "Manga menu",
+  "@readerMangaMenu": { "description": "App bar title of the manga radial-menu editor." },
+  "readerMargins": "Margins",
+  "@readerMargins": { "description": "Novel reader margins slider title." },
+  "readerMenuStyle": "Menu style",
+  "@readerMenuStyle": { "description": "Radial-menu style choice title (wheel vs tail)." },
+  "readerMenuStyleTail": "Tail",
+  "@readerMenuStyleTail": { "description": "Radial-menu style option: tail." },
+  "readerMenuStyleWheel": "Wheel",
+  "@readerMenuStyleWheel": { "description": "Radial-menu style option: wheel." },
+  "readerModeLtrShort": "LTR",
+  "@readerModeLtrShort": { "description": "Compact reading-mode label: left-to-right." },
+  "readerModeRtlShort": "RTL",
+  "@readerModeRtlShort": { "description": "Compact reading-mode label: right-to-left." },
+  "readerModeVerticalShort": "Vertical",
+  "@readerModeVerticalShort": { "description": "Compact reading-mode label: vertical/continuous." },
+  "readerNovelLayoutPaged": "Paged",
+  "@readerNovelLayoutPaged": { "description": "Novel reading-mode option: paged." },
+  "readerNovelLayoutScroll": "Scroll",
+  "@readerNovelLayoutScroll": { "description": "Novel reading-mode option: scroll." },
+  "readerNovelRadialMenuSubtitle": "Use the wheel in the novel reader (off = classic bars)",
+  "@readerNovelRadialMenuSubtitle": { "description": "Subtitle for the novel radial-menu toggle." },
+  "readerPitch": "Pitch",
+  "@readerPitch": { "description": "Novel reader TTS pitch slider title." },
+  "readerRadialReorderHint": "Drag to reorder the wheel; toggle to show or hide. {count} shown.",
+  "@readerRadialReorderHint": {
+    "description": "Hint above the radial-menu action reorder list.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "readerReaderTheme": "Reader theme",
+  "@readerReaderTheme": { "description": "Novel reader theme choice title." },
+  "readerReset": "Reset",
+  "@readerReset": { "description": "Reset button in the radial-menu editor." },
+  "readerSectionEyeComfort": "Eye comfort",
+  "@readerSectionEyeComfort": { "description": "Reader settings section header." },
+  "readerSectionImage": "Image",
+  "@readerSectionImage": { "description": "Reader settings section header." },
+  "readerSectionLayout": "Layout",
+  "@readerSectionLayout": { "description": "Novel reader settings section header." },
+  "readerSectionListen": "Listen (text to speech)",
+  "@readerSectionListen": { "description": "Novel reader settings section header for TTS." },
+  "readerSectionText": "Text",
+  "@readerSectionText": { "description": "Novel reader settings section header." },
+  "readerSentenceHighlight": "Sentence highlight",
+  "@readerSentenceHighlight": { "description": "TTS sentence highlight colour picker title." },
+  "readerSettingsFor": "Settings for",
+  "@readerSettingsFor": { "description": "Segmented control title choosing which reader's settings to show." },
+  "readerSideLeft": "Left",
+  "@readerSideLeft": { "description": "Radial-menu wheel corner option: left." },
+  "readerSideRight": "Right",
+  "@readerSideRight": { "description": "Radial-menu wheel corner option: right." },
+  "readerSplitWidePages": "Split wide pages",
+  "@readerSplitWidePages": { "description": "Reader toggle to give wide spreads their own screen." },
+  "readerSplitWidePagesSubtitle": "Give a wide double-page spread its own screen instead of pairing it with another page",
+  "@readerSplitWidePagesSubtitle": { "description": "Subtitle for the split-wide-pages toggle." },
+  "readerTextSize": "Text size",
+  "@readerTextSize": { "description": "Novel reader text-size slider title." },
+  "readerVolumeAutoScroll": "Volume sets auto-scroll speed",
+  "@readerVolumeAutoScroll": { "description": "iOS-only volume-buttons toggle title on Hands-free page." },
+  "readerVolumeAutoScrollSubtitle": "While the manga reader auto-scrolls, the volume buttons speed it up or slow it down. They do not turn pages.",
+  "@readerVolumeAutoScrollSubtitle": { "description": "Subtitle for the iOS volume auto-scroll toggle." },
+  "readerVolumeButtons": "Volume buttons",
+  "@readerVolumeButtons": { "description": "Hands-free page section header for volume-button controls." },
+  "readerWarmFilter": "Warm filter",
+  "@readerWarmFilter": { "description": "Reader eye-comfort warm-tint slider title." },
+  "readerWordHighlight": "Word highlight",
+  "@readerWordHighlight": { "description": "TTS word highlight colour picker title." },
+  "libraryUpdateTitle": "Library update",
+  "@libraryUpdateTitle": { "description": "Title of the library-update summary bottom sheet." },
+  "libraryUpdateCounts": "{completed} completed · {skipped} skipped · {failed} failed",
+  "@libraryUpdateCounts": {
+    "description": "Summary line of a library update run (also used in the drop-down banner).",
+    "placeholders": { "completed": { "type": "int" }, "skipped": { "type": "int" }, "failed": { "type": "int" } }
+  },
+  "libraryNewChaptersCount": "{count, plural, =1{1 new chapter} other{{count} new chapters}}",
+  "@libraryNewChaptersCount": {
+    "description": "How many new chapters a title gained in an update.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "libraryUpToDate": "Up to date",
+  "@libraryUpToDate": { "description": "Subtitle for an updated title that gained no new chapters." },
+  "librarySkipped": "Skipped",
+  "@librarySkipped": { "description": "Header for titles skipped during a library update." },
+  "libraryUpdateCount": "Update {count}",
+  "@libraryUpdateCount": {
+    "description": "Button to force-update the N skipped titles.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "libraryStatusTapUpdate": "{status} · tap Update to force",
+  "@libraryStatusTapUpdate": {
+    "description": "Subtitle for a skipped title that can still be force-updated; status is the publication status.",
+    "placeholders": { "status": { "type": "String" } }
+  },
+  "libraryStatusNoNewChapters": "{status} · no new chapters expected",
+  "@libraryStatusNoNewChapters": {
+    "description": "Subtitle for a skipped title not expected to gain chapters; status is the publication status.",
+    "placeholders": { "status": { "type": "String" } }
+  },
+  "libraryUpdateThisTitle": "Update this title",
+  "@libraryUpdateThisTitle": { "description": "Tooltip on the per-title force-update icon button." },
+  "libraryFailed": "Failed",
+  "@libraryFailed": { "description": "Header for titles that failed to update." },
+  "libraryRetryAll": "Retry all",
+  "@libraryRetryAll": { "description": "Action to retry every failed title." },
+  "libraryUpdateFailedTapOpen": "Update failed · tap to open",
+  "@libraryUpdateFailedTapOpen": { "description": "Subtitle for a title whose update failed." },
+  "libraryRetryThisTitle": "Retry this title",
+  "@libraryRetryThisTitle": { "description": "Tooltip on the per-title retry icon button." },
+  "libraryNoTitlesChecked": "No titles were checked.",
+  "@libraryNoTitlesChecked": { "description": "Shown when an update run checked nothing." },
+  "libraryCategoryWithCount": "{label} ({count})",
+  "@libraryCategoryWithCount": {
+    "description": "A section header followed by its item count, e.g. 'Completed (3)'.",
+    "placeholders": { "label": { "type": "String" }, "count": { "type": "int" } }
+  },
+  "libraryEntriesWithNewChapters": "{count, plural, =1{1 entry has new chapters.} other{{count} entries have new chapters.}}",
+  "@libraryEntriesWithNewChapters": {
+    "description": "Updates-summary dialog line counting entries with new chapters.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "libraryUnlockVaultFirst": "Unlock the vault first to move titles into it",
+  "@libraryUnlockVaultFirst": { "description": "Snackbar shown when trying to move titles into a locked vault." },
+  "libraryCouldNotMoveToVault": "Could not move to vault",
+  "@libraryCouldNotMoveToVault": { "description": "Snackbar on a failed move into the vault." },
+  "libraryCouldNotMoveOutOfVault": "Could not move out of vault",
+  "@libraryCouldNotMoveOutOfVault": { "description": "Snackbar on a failed move out of the vault." },
+  "libraryMovedToVault": "Moved {count} to vault",
+  "@libraryMovedToVault": {
+    "description": "Snackbar confirming N titles moved into the vault.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "libraryMovedOutOfVault": "Moved {count} out of vault",
+  "@libraryMovedOutOfVault": {
+    "description": "Snackbar confirming N titles moved out of the vault.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "libraryMoveOut": "Move out",
+  "@libraryMoveOut": { "description": "Batch-action label: move selected titles out of the vault." },
+  "libraryToVault": "To vault",
+  "@libraryToVault": { "description": "Batch-action label: move selected titles into the vault." },
+  "libraryUpdateComplete": "Update complete",
+  "@libraryUpdateComplete": { "description": "Banner text when a library update finishes with no detail." },
+  "libraryUpdatingProgress": "Updating {title}  {checked}/{total}",
+  "@libraryUpdatingProgress": {
+    "description": "Live progress banner during a library update (title may be empty).",
+    "placeholders": { "title": { "type": "String" }, "checked": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "libraryUpdating": "Updating…",
+  "@libraryUpdating": { "description": "Banner text while a library update is starting." },
+  "libraryTapRetryUpdateSkipped": "Tap to retry / update skipped",
+  "@libraryTapRetryUpdateSkipped": { "description": "Hint under the update banner when retry/force actions are available." },
+  "librarySortBy": "Sort by",
+  "@librarySortBy": { "description": "Section header for the library sort options (shown uppercased)." },
+  "libraryCoverTitle": "Cover title",
+  "@libraryCoverTitle": { "description": "Section header for how a title is shown on a library card (shown uppercased)." },
+  "libraryBadgePlacement": "Badge placement",
+  "@libraryBadgePlacement": { "description": "Section header for where badges sit on a library card (shown uppercased)." },
+  "libraryReadingProgress": "Reading progress",
+  "@libraryReadingProgress": { "description": "Section header for the reading-progress display style on cards (shown uppercased)." },
+  "libraryLanguage": "Language",
+  "@libraryLanguage": { "description": "Label for the source-language card badge (toggle and legend)." },
+  "libraryLocal": "Local",
+  "@libraryLocal": { "description": "Label for the local-source card badge (toggle and legend)." },
+  "libraryFilterShowOnly": "show only",
+  "@libraryFilterShowOnly": { "description": "Filter legend: a check mark means show only matching entries." },
+  "libraryFilterHide": "hide",
+  "@libraryFilterHide": { "description": "Filter legend: a cross mark means hide matching entries." },
+  "libraryArchetypeNewcomer": "The Newcomer",
+  "@libraryArchetypeNewcomer": { "description": "Reading-personality archetype name for a user who hasn't started reading." },
+  "libraryArchetypeNewcomerDesc": "Just getting started - your type sharpens as you read.",
+  "@libraryArchetypeNewcomerDesc": { "description": "Description of The Newcomer archetype." },
+  "libraryArchetypeOmnivore": "The Omnivore",
+  "@libraryArchetypeOmnivore": { "description": "Reading-personality archetype name for someone reading all formats." },
+  "libraryArchetypeOmnivoreDesc": "A bit of everything - manga, anime and novels all in rotation.",
+  "@libraryArchetypeOmnivoreDesc": { "description": "Description of The Omnivore archetype." },
+  "libraryArchetypeBinger": "The Binger",
+  "@libraryArchetypeBinger": { "description": "Reading-personality archetype name for high-volume reading." },
+  "libraryArchetypeBingerDesc": "You tear through chapters in long sittings.",
+  "@libraryArchetypeBingerDesc": { "description": "Description of The Binger archetype." },
+  "libraryArchetypeCompletionist": "The Completionist",
+  "@libraryArchetypeCompletionist": { "description": "Reading-personality archetype name for deep reading of few series." },
+  "libraryArchetypeCompletionistDesc": "You go deep - few series at a time, read to the end.",
+  "@libraryArchetypeCompletionistDesc": { "description": "Description of The Completionist archetype." },
+  "libraryArchetypeDevoted": "The Devoted",
+  "@libraryArchetypeDevoted": { "description": "Reading-personality archetype name for a consistent daily habit." },
+  "libraryArchetypeDevotedDesc": "Day after day - you keep a steady habit.",
+  "@libraryArchetypeDevotedDesc": { "description": "Description of The Devoted archetype." },
+  "libraryArchetypeExplorer": "The Explorer",
+  "@libraryArchetypeExplorer": { "description": "Reading-personality archetype name for spreading across many series." },
+  "libraryArchetypeExplorerDesc": "Always something new - you spread across many series.",
+  "@libraryArchetypeExplorerDesc": { "description": "Description of The Explorer archetype." },
+  "libraryChaptersCount": "{count, plural, =1{1 chapter} other{{count} chapters}}",
+  "@libraryChaptersCount": {
+    "description": "Chapters-read chip on the reading-personality card.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "libraryBestStreakDays": "{days}-day best streak",
+  "@libraryBestStreakDays": {
+    "description": "Best reading-streak chip on the personality card.",
+    "placeholders": { "days": { "type": "int" } }
+  },
+  "librarySeriesCount": "{count} series",
+  "@librarySeriesCount": {
+    "description": "Series-started chip on the personality card (shown when there is no streak).",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "libraryReadingActivity": "Reading activity",
+  "@libraryReadingActivity": { "description": "Stats section header for the activity heatmap." },
+  "libraryChaptersPerDayHint": "Chapters read each day - brighter = more.",
+  "@libraryChaptersPerDayHint": { "description": "Caption under the activity heatmap explaining cell brightness." },
+  "libraryByType": "Library by type",
+  "@libraryByType": { "description": "Stats section header for the manga/anime/novels breakdown." },
+  "libraryByStatus": "Library by status",
+  "@libraryByStatus": { "description": "Stats section header for the reading-status breakdown." },
+  "libraryBacklog": "Backlog",
+  "@libraryBacklog": { "description": "Stats section header for titles added but never started." },
+  "libraryWaitingCount": "{count} waiting",
+  "@libraryWaitingCount": {
+    "description": "Pill badge: number of titles in the backlog.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "libraryAddedNeverStarted": "Added but never started",
+  "@libraryAddedNeverStarted": { "description": "Caption under the Backlog section header." },
+  "libraryNothingWaiting": "Nothing waiting - you've started everything.",
+  "@libraryNothingWaiting": { "description": "Shown when the backlog is empty." },
+  "libraryMilestones": "Milestones",
+  "@libraryMilestones": { "description": "Stats section header for the achievement badges." },
+  "libraryReadingPersonality": "Reading personality",
+  "@libraryReadingPersonality": { "description": "Stats section header for the archetype/radar card." },
+  "libraryTotalTimeRead": "Total time read · tap for breakdown",
+  "@libraryTotalTimeRead": { "description": "Caption under the total-time hero tile; tapping opens the podium." },
+  "libraryStatTitles": "Titles",
+  "@libraryStatTitles": { "description": "Stat tile label: number of titles in the library." },
+  "libraryStatChaptersRead": "Chapters read",
+  "@libraryStatChaptersRead": { "description": "Stat tile label: total chapters actively read." },
+  "libraryStatDayStreak": "Day streak",
+  "@libraryStatDayStreak": { "description": "Stat tile label: current consecutive-day reading streak." },
+  "libraryActivitySummary": "You read on {activeDays} of the last 35 days · {chapters} chapters this week.",
+  "@libraryActivitySummary": {
+    "description": "Summary sentence under the activity heatmap.",
+    "placeholders": { "activeDays": { "type": "int" }, "chapters": { "type": "int" } }
+  },
+  "libraryTrendVsLastWeek": "{pct}% vs last week",
+  "@libraryTrendVsLastWeek": {
+    "description": "This week's reading change versus last week (magnitude only; an arrow shows direction).",
+    "placeholders": { "pct": { "type": "int" } }
+  },
+  "libraryStatusOther": "Other",
+  "@libraryStatusOther": { "description": "Status-breakdown bucket for titles not Reading/Completed/On Hold." },
+  "libraryMostReadGenre": "Most-read genre · {genre}",
+  "@libraryMostReadGenre": {
+    "description": "Chip naming the user's most-read genre.",
+    "placeholders": { "genre": { "type": "String" } }
+  },
+  "libraryContentWordManga": "manga",
+  "@libraryContentWordManga": { "description": "Lowercase content noun inserted mid-sentence in the empty-stats message." },
+  "libraryContentWordAnime": "anime",
+  "@libraryContentWordAnime": { "description": "Lowercase content noun inserted mid-sentence in the empty-stats message." },
+  "libraryContentWordLightNovels": "light novels",
+  "@libraryContentWordLightNovels": { "description": "Lowercase content noun inserted mid-sentence in the empty-stats message." },
+  "libraryBacklogAddedAge": "Added {age} · {type}",
+  "@libraryBacklogAddedAge": {
+    "description": "Backlog row subtitle: relative time since the title was added, plus its content type.",
+    "placeholders": { "age": { "type": "String" }, "type": { "type": "String" } }
+  },
+  "libraryStart": "Start",
+  "@libraryStart": { "description": "Pill button to start reading a backlog title." },
+  "libraryAllMilestonesUnlocked": "All milestones unlocked 🎉",
+  "@libraryAllMilestonesUnlocked": { "description": "Shown on the milestones card when every badge is earned." },
+  "libraryNextUp": "NEXT UP",
+  "@libraryNextUp": { "description": "Label above the next milestone to earn (shown uppercased)." },
+  "libraryYourReadingType": "YOUR READING TYPE",
+  "@libraryYourReadingType": { "description": "Label above the reading-personality archetype (shown uppercased)." },
+  "libraryAxisVolume": "Volume",
+  "@libraryAxisVolume": { "description": "Reading-personality radar axis label." },
+  "libraryAxisDepth": "Depth",
+  "@libraryAxisDepth": { "description": "Reading-personality radar axis label." },
+  "libraryAxisConsistency": "Consist.",
+  "@libraryAxisConsistency": { "description": "Reading-personality radar axis label, abbreviation of 'Consistency' (keep short to fit)." },
+  "libraryAxisBreadth": "Breadth",
+  "@libraryAxisBreadth": { "description": "Reading-personality radar axis label." },
+  "libraryAxisVariety": "Variety",
+  "@libraryAxisVariety": { "description": "Reading-personality radar axis label." },
+  "libraryUnitChapters": "ch",
+  "@libraryUnitChapters": { "description": "Short unit for chapters in milestone captions, e.g. '500 ch'." },
+  "libraryUnitHours": "h",
+  "@libraryUnitHours": { "description": "Short unit for hours in milestone captions, e.g. '100 h'." },
+  "libraryUnitDays": "days",
+  "@libraryUnitDays": { "description": "Unit for day-streak milestone captions, e.g. '30 days'." },
+  "libraryUnitTitles": "titles",
+  "@libraryUnitTitles": { "description": "Unit for collection milestone captions, e.g. '100 titles'." },
+  "libraryUnitSources": "sources",
+  "@libraryUnitSources": { "description": "Unit for source-breadth milestone captions, e.g. '15 sources'." },
+  "libraryUnitFormats": "formats",
+  "@libraryUnitFormats": { "description": "Unit for format-variety milestone captions, e.g. '3 formats'." },
+  "libraryUnitEpisodes": "ep",
+  "@libraryUnitEpisodes": { "description": "Short unit for anime episodes in milestone captions, e.g. '250 ep'." },
+  "libraryBadgeFirstSteps": "First Steps",
+  "@libraryBadgeFirstSteps": { "description": "Milestone badge name." },
+  "libraryBadgeFirstStepsDesc": "Read your first chapter.",
+  "@libraryBadgeFirstStepsDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeGettingStarted": "Getting Started",
+  "@libraryBadgeGettingStarted": { "description": "Milestone badge name." },
+  "libraryBadgeGettingStartedDesc": "Read 10 chapters.",
+  "@libraryBadgeGettingStartedDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeBookworm": "Bookworm",
+  "@libraryBadgeBookworm": { "description": "Milestone badge name." },
+  "libraryBadgeBookwormDesc": "Read 50 chapters.",
+  "@libraryBadgeBookwormDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeCenturion": "Centurion",
+  "@libraryBadgeCenturion": { "description": "Milestone badge name." },
+  "libraryBadgeCenturionDesc": "Read 100 chapters.",
+  "@libraryBadgeCenturionDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeDevourer": "Devourer",
+  "@libraryBadgeDevourer": { "description": "Milestone badge name." },
+  "libraryBadgeDevourerDesc": "Read 250 chapters.",
+  "@libraryBadgeDevourerDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeQuincentenary": "Quincentenary",
+  "@libraryBadgeQuincentenary": { "description": "Milestone badge name (500)." },
+  "libraryBadgeQuincentenaryDesc": "Read 500 chapters.",
+  "@libraryBadgeQuincentenaryDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeMarathoner": "Marathoner",
+  "@libraryBadgeMarathoner": { "description": "Milestone badge name." },
+  "libraryBadgeMarathonerDesc": "Read 1,000 chapters.",
+  "@libraryBadgeMarathonerDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeChapterFiend": "Chapter Fiend",
+  "@libraryBadgeChapterFiend": { "description": "Milestone badge name." },
+  "libraryBadgeChapterFiendDesc": "Read 2,500 chapters.",
+  "@libraryBadgeChapterFiendDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeLoremaster": "Loremaster",
+  "@libraryBadgeLoremaster": { "description": "Milestone badge name." },
+  "libraryBadgeLoremasterDesc": "Read 5,000 chapters.",
+  "@libraryBadgeLoremasterDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeTenThousandClub": "Ten-Thousand Club",
+  "@libraryBadgeTenThousandClub": { "description": "Milestone badge name." },
+  "libraryBadgeTenThousandClubDesc": "Read 10,000 chapters.",
+  "@libraryBadgeTenThousandClubDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeFirstHour": "First Hour",
+  "@libraryBadgeFirstHour": { "description": "Milestone badge name." },
+  "libraryBadgeFirstHourDesc": "Spend 1 hour reading.",
+  "@libraryBadgeFirstHourDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeGettingComfortable": "Getting Comfortable",
+  "@libraryBadgeGettingComfortable": { "description": "Milestone badge name." },
+  "libraryBadgeGettingComfortableDesc": "Spend 10 hours reading.",
+  "@libraryBadgeGettingComfortableDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeWeekendLost": "Weekend Lost",
+  "@libraryBadgeWeekendLost": { "description": "Milestone badge name." },
+  "libraryBadgeWeekendLostDesc": "Spend 50 hours reading.",
+  "@libraryBadgeWeekendLostDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeDedicated": "Dedicated",
+  "@libraryBadgeDedicated": { "description": "Milestone badge name (hours)." },
+  "libraryBadgeDedicatedDesc": "Spend 100 hours reading.",
+  "@libraryBadgeDedicatedDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeTimeSink": "Time Sink",
+  "@libraryBadgeTimeSink": { "description": "Milestone badge name." },
+  "libraryBadgeTimeSinkDesc": "Spend 250 hours reading.",
+  "@libraryBadgeTimeSinkDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeImmersed": "Immersed",
+  "@libraryBadgeImmersed": { "description": "Milestone badge name." },
+  "libraryBadgeImmersedDesc": "Spend 500 hours reading.",
+  "@libraryBadgeImmersedDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeEternal": "Eternal",
+  "@libraryBadgeEternal": { "description": "Milestone badge name." },
+  "libraryBadgeEternalDesc": "Spend 1,000 hours reading.",
+  "@libraryBadgeEternalDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeWarmingUp": "Warming Up",
+  "@libraryBadgeWarmingUp": { "description": "Milestone badge name (streak)." },
+  "libraryBadgeWarmingUpDesc": "Read 3 days in a row.",
+  "@libraryBadgeWarmingUpDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeHotStreak": "Hot Streak",
+  "@libraryBadgeHotStreak": { "description": "Milestone badge name." },
+  "libraryBadgeHotStreakDesc": "Read 7 days in a row.",
+  "@libraryBadgeHotStreakDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeFortnight": "Fortnight",
+  "@libraryBadgeFortnight": { "description": "Milestone badge name (14-day streak)." },
+  "libraryBadgeFortnightDesc": "Read 14 days in a row.",
+  "@libraryBadgeFortnightDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeDevoted": "Devoted",
+  "@libraryBadgeDevoted": { "description": "Milestone badge name (30-day streak). Distinct from the 'The Devoted' personality archetype." },
+  "libraryBadgeDevotedDesc": "Read 30 days in a row.",
+  "@libraryBadgeDevotedDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeStarterShelf": "Starter Shelf",
+  "@libraryBadgeStarterShelf": { "description": "Milestone badge name (collection)." },
+  "libraryBadgeStarterShelfDesc": "Collect 10 titles.",
+  "@libraryBadgeStarterShelfDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeBibliophile": "Bibliophile",
+  "@libraryBadgeBibliophile": { "description": "Milestone badge name." },
+  "libraryBadgeBibliophileDesc": "Collect 50 titles.",
+  "@libraryBadgeBibliophileDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeCurator": "Curator",
+  "@libraryBadgeCurator": { "description": "Milestone badge name." },
+  "libraryBadgeCuratorDesc": "Collect 100 titles.",
+  "@libraryBadgeCuratorDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeArchivist": "Archivist",
+  "@libraryBadgeArchivist": { "description": "Milestone badge name." },
+  "libraryBadgeArchivistDesc": "Collect 250 titles.",
+  "@libraryBadgeArchivistDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeExplorer": "Explorer",
+  "@libraryBadgeExplorer": { "description": "Milestone badge name (sources). Distinct from the 'The Explorer' personality archetype." },
+  "libraryBadgeExplorerDesc": "Read from 5 sources.",
+  "@libraryBadgeExplorerDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeGlobetrotter": "Globetrotter",
+  "@libraryBadgeGlobetrotter": { "description": "Milestone badge name." },
+  "libraryBadgeGlobetrotterDesc": "Read from 15 sources.",
+  "@libraryBadgeGlobetrotterDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeBoundless": "Boundless",
+  "@libraryBadgeBoundless": { "description": "Milestone badge name." },
+  "libraryBadgeBoundlessDesc": "Read from 30 sources.",
+  "@libraryBadgeBoundlessDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeDabbler": "Dabbler",
+  "@libraryBadgeDabbler": { "description": "Milestone badge name (formats)." },
+  "libraryBadgeDabblerDesc": "Read 2 different formats.",
+  "@libraryBadgeDabblerDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeOmnivore": "Omnivore",
+  "@libraryBadgeOmnivore": { "description": "Milestone badge name. Distinct from the 'The Omnivore' personality archetype." },
+  "libraryBadgeOmnivoreDesc": "Read all 3 formats.",
+  "@libraryBadgeOmnivoreDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeMangaDevotee": "Manga Devotee",
+  "@libraryBadgeMangaDevotee": { "description": "Milestone badge name." },
+  "libraryBadgeMangaDevoteeDesc": "Read 500 manga chapters.",
+  "@libraryBadgeMangaDevoteeDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeBingeWatcher": "Binge Watcher",
+  "@libraryBadgeBingeWatcher": { "description": "Milestone badge name." },
+  "libraryBadgeBingeWatcherDesc": "Watch 250 anime episodes.",
+  "@libraryBadgeBingeWatcherDesc": { "description": "Milestone badge tooltip." },
+  "libraryBadgeNovelNerd": "Novel Nerd",
+  "@libraryBadgeNovelNerd": { "description": "Milestone badge name." },
+  "libraryBadgeNovelNerdDesc": "Read 250 novel chapters.",
+  "@libraryBadgeNovelNerdDesc": { "description": "Milestone badge tooltip." },
+  "discoverGenres": "Genres",
+  "@discoverGenres": { "description": "Collapsed label of the Discover genre-filter pill." },
+  "discoverRemovedFromWishlist": "Removed from wishlist",
+  "@discoverRemovedFromWishlist": { "description": "Snackbar after removing a saved item from the wishlist." },
+  "discoverRemove": "Remove",
+  "@discoverRemove": { "description": "Tooltip on the remove-from-wishlist icon button." },
+  "novelDefine": "Define",
+  "@novelDefine": { "description": "Novel reader text-selection action: look up the word in the dictionary." },
+  "novelTts": "Text-to-speech",
+  "@novelTts": { "description": "Title of the novel reader's Listen (TTS) tuning sheet." },
+  "novelVoice": "Voice",
+  "@novelVoice": { "description": "Row title that opens the TTS voice picker." },
+  "novelVoiceSystemDefault": "System default",
+  "@novelVoiceSystemDefault": { "description": "Shown as the voice name when no specific TTS voice is chosen." },
+  "novelVoiceEngine": "Voice engine (experimental)",
+  "@novelVoiceEngine": { "description": "Header for the experimental device-vs-neural TTS engine picker." },
+  "novelVoiceDevice": "Device",
+  "@novelVoiceDevice": { "description": "TTS engine option: the device's built-in voices." },
+  "novelSearchVoices": "Search voices",
+  "@novelSearchVoices": { "description": "Hint text in the TTS voice-picker search field." },
+  "novelResetPill": "Reset pill position",
+  "@novelResetPill": { "description": "Button that moves the floating Listen pill back to its default spot." },
+  "novelMoreVoices": "More voices & tuning →",
+  "@novelMoreVoices": { "description": "Link opening the full TTS tuning sheet from the Listen panel." },
+  "novelActionSize": "Size",
+  "@novelActionSize": { "description": "Novel reader wheel action: text size panel." },
+  "novelActionTheme": "Theme",
+  "@novelActionTheme": { "description": "Novel reader wheel action: reader theme panel." },
+  "novelActionAlign": "Align",
+  "@novelActionAlign": { "description": "Novel reader wheel action: text alignment panel." },
+  "novelActionSpacing": "Spacing",
+  "@novelActionSpacing": { "description": "Novel reader wheel action: line/paragraph spacing panel." },
+  "novelActionListen": "Listen",
+  "@novelActionListen": { "description": "Novel reader wheel action: text-to-speech (Listen) panel." },
+  "novelHighlightColours": "Highlight colours",
+  "@novelHighlightColours": { "description": "Title of the TTS highlight-colour picker sheet." },
+  "novelHighlightSentence": "Sentence",
+  "@novelHighlightSentence": { "description": "Label for the current-sentence TTS highlight colour." },
+  "novelHighlightWord": "Word",
+  "@novelHighlightWord": { "description": "Label for the current-word TTS highlight colour." },
   "readerExperimentalOnIos": "Experimental on iOS",
   "@readerExperimentalOnIos": {
     "description": "Small badge/label marking the volume-key feature as experimental on iOS, in reader settings"
@@ -1268,10 +2029,6 @@
   "@readerFontSize": {
     "description": "Setting label for reader text/font size"
   },
-  "readerImageZoom": "Image Zoom",
-  "@readerImageZoom": {
-    "description": "Setting label controlling how much pages are zoomed"
-  },
   "readerAutoPreloadNextChapter": "Auto-Preload Next Chapter",
   "@readerAutoPreloadNextChapter": {
     "description": "Toggle label for preloading the next chapter automatically"
@@ -1279,14 +2036,6 @@
   "readerAutoPreloadNextChapterSubtitle": "Load next chapter in background",
   "@readerAutoPreloadNextChapterSubtitle": {
     "description": "Subtitle under the auto-preload toggle explaining it loads the next chapter in the background"
-  },
-  "readerCropBorders": "Crop Borders",
-  "@readerCropBorders": {
-    "description": "Toggle label for cropping page borders"
-  },
-  "readerCropBordersSubtitle": "Remove white borders from pages",
-  "@readerCropBordersSubtitle": {
-    "description": "Subtitle explaining crop-borders removes white margins from pages"
   },
   "readerGrayscale": "Grayscale",
   "@readerGrayscale": {
@@ -1299,6 +2048,66 @@
   "readerAutoCrop": "Auto-crop borders",
   "@readerAutoCrop": {
     "description": "Reader toggle: trim solid page margins."
+  },
+  "readerAutoScroll": "Auto-scroll",
+  "@readerAutoScroll": {
+    "description": "Label/toggle for the reader's automatic scrolling"
+  },
+  "readerAutoScrollSpeed": "Auto-scroll speed",
+  "@readerAutoScrollSpeed": {
+    "description": "Label for the auto-scroll speed stepper in the reader controls"
+  },
+  "readerFilterReset": "Reset",
+  "@readerFilterReset": {
+    "description": "Chip that resets the reader's colour filter to default"
+  },
+  "readerFilterPaper": "Paper",
+  "@readerFilterPaper": {
+    "description": "Colour-filter preset name: a warm, paper-like tone"
+  },
+  "readerFilterNight": "Night",
+  "@readerFilterNight": {
+    "description": "Colour-filter preset name: a warm, dim night tone"
+  },
+  "readerFilterVivid": "Vivid",
+  "@readerFilterVivid": {
+    "description": "Colour-filter preset name: boosted contrast and saturation"
+  },
+  "readerFilterSepia": "Sepia",
+  "@readerFilterSepia": {
+    "description": "Colour-filter slider label: sepia amount"
+  },
+  "readerFilterContrast": "Contrast",
+  "@readerFilterContrast": {
+    "description": "Colour-filter slider label: contrast amount"
+  },
+  "readerFilterSaturation": "Saturation",
+  "@readerFilterSaturation": {
+    "description": "Colour-filter slider label: saturation amount"
+  },
+  "readerEyeComfort": "Eye comfort",
+  "@readerEyeComfort": {
+    "description": "Section header for the reader's warm-tint and brightness controls"
+  },
+  "readerEyeComfortWarm": "Warm",
+  "@readerEyeComfortWarm": {
+    "description": "Slider label for the reader's warm-tint (blue-light reduction) amount"
+  },
+  "readerEyeComfortBrightness": "Brightness",
+  "@readerEyeComfortBrightness": {
+    "description": "Slider label for the reader's in-app brightness dimming"
+  },
+  "readerGazeModeEyes": "Eyes",
+  "@readerGazeModeEyes": {
+    "description": "Hands-free gaze mode option: track the eyes only"
+  },
+  "readerGazeModeHead": "Head",
+  "@readerGazeModeHead": {
+    "description": "Hands-free gaze mode option: track head tilt only"
+  },
+  "readerGazeModeBoth": "Both",
+  "@readerGazeModeBoth": {
+    "description": "Hands-free gaze mode option: track both eyes and head"
   },
   "readerAutoCropSubtitle": "Trim solid white/black margins so pages fill the screen",
   "@readerAutoCropSubtitle": {
@@ -1319,10 +2128,6 @@
   "readerScaleType": "Scale Type",
   "@readerScaleType": {
     "description": "Setting label for how pages are scaled/fitted to the screen"
-  },
-  "readerZoomStartPosition": "Zoom Start Position",
-  "@readerZoomStartPosition": {
-    "description": "Setting label for where a zoomed page is anchored when it first appears"
   },
   "readerBackgroundColor": "Background Color",
   "@readerBackgroundColor": {
@@ -1380,14 +2185,6 @@
   "@readerHoldScrollSpeed": {
     "description": "Setting label for the scroll speed when holding a volume key"
   },
-  "readerTransitions": "Transitions",
-  "@readerTransitions": {
-    "description": "Section header grouping page transition options"
-  },
-  "readerPageTransition": "Page Transition",
-  "@readerPageTransition": {
-    "description": "Setting label for the page-turn transition/animation style"
-  },
   "readerSourceNotInstalled": "Source not installed",
   "@readerSourceNotInstalled": {
     "description": "Error/snackbar shown when the content source extension is missing"
@@ -1431,15 +2228,6 @@
   "readerLoadingNextChapter": "Loading next chapter...",
   "@readerLoadingNextChapter": {
     "description": "Status shown while the next chapter is loading"
-  },
-  "readerFinishedChapter": "Finished: {name}",
-  "@readerFinishedChapter": {
-    "placeholders": {
-      "name": {
-        "type": "Object"
-      }
-    },
-    "description": "Snackbar confirming a chapter was finished; {name} is the chapter title"
   },
   "readerAllCaughtUp": "You're all caught up!",
   "@readerAllCaughtUp": {
@@ -1617,10 +2405,6 @@
   "browseSearch": "Search",
   "@browseSearch": {
     "description": "Tooltip/label for the search icon button"
-  },
-  "browseRepoForgeTooltip": "RepoForge — build & manage sources",
-  "@browseRepoForgeTooltip": {
-    "description": "Tooltip for the source-builder tool button; RepoForge is a feature name, keep it"
   },
   "browseAddRepo": "Add repo",
   "@browseAddRepo": {
@@ -2043,6 +2827,18 @@
     },
     "description": "Error status for a failed action; {error} is the error message"
   },
+  "browseNoLanguagesMatch": "No languages match",
+  "@browseNoLanguagesMatch": {
+    "description": "Empty state in the Browse language-filter search when the query matches no language"
+  },
+  "browseYourLanguages": "Your languages",
+  "@browseYourLanguages": {
+    "description": "Section header in the Browse language filter for the user's pinned and device languages (shown uppercased in the UI)"
+  },
+  "browseSearchLanguages": "Search languages",
+  "@browseSearchLanguages": {
+    "description": "Hint text in the Browse language-filter search field"
+  },
   "browseUpdating": "Updating...",
   "@browseUpdating": {
     "description": "Transient status shown while an extension is updating"
@@ -2191,10 +2987,6 @@
   "@browseSeeAll": {
     "description": "Action to expand and see all results from a source"
   },
-  "browseNoResultsFound": "No results found",
-  "@browseNoResultsFound": {
-    "description": "Empty-state when a search returns nothing"
-  },
   "globalSearchSourceNoResults": "No results",
   "@globalSearchSourceNoResults": {
     "description": "Shown under a source in global search when it returned no matches"
@@ -2295,6 +3087,45 @@
   "@setxAdvancedDnsProviderTitle": {
     "description": "Row label to pick which DNS-over-HTTPS provider to use"
   },
+  "setxAdvancedDnsAddCustom": "Add custom DNS",
+  "@setxAdvancedDnsAddCustom": {
+    "description": "Button and dialog title to add a user-defined DNS-over-HTTPS provider"
+  },
+  "setxAdvancedDnsName": "Name",
+  "@setxAdvancedDnsName": {
+    "description": "Text-field label for a custom DNS provider's display name"
+  },
+  "setxAdvancedDnsNameHint": "My DNS",
+  "@setxAdvancedDnsNameHint": {
+    "description": "Placeholder example shown in the custom DNS name field"
+  },
+  "setxAdvancedDnsUrlLabel": "DoH URL",
+  "@setxAdvancedDnsUrlLabel": {
+    "description": "Text-field label for a custom DNS-over-HTTPS endpoint URL"
+  },
+  "setxAdvancedDnsInvalidUrl": "Enter a valid https:// URL",
+  "@setxAdvancedDnsInvalidUrl": {
+    "description": "Validation error shown when the entered custom DNS URL is not a valid https URL"
+  },
+  "setxAdvancedDnsAdd": "Add",
+  "@setxAdvancedDnsAdd": {
+    "description": "Button to confirm adding a custom DNS provider"
+  },
+  "setxAdvancedDnsDelete": "Delete",
+  "@setxAdvancedDnsDelete": {
+    "description": "Delete action for a custom DNS provider, used as both the tooltip and the confirm button"
+  },
+  "setxAdvancedDnsDeleteTitle": "Delete custom DNS?",
+  "@setxAdvancedDnsDeleteTitle": {
+    "description": "Title of the confirmation dialog for removing a custom DNS provider"
+  },
+  "setxAdvancedDnsDeleteBody": "Remove \"{name}\" from your DNS providers?",
+  "@setxAdvancedDnsDeleteBody": {
+    "description": "Confirmation-dialog body for removing a custom DNS provider; {name} is the provider's name",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "commonBeta": "BETA",
   "@commonBeta": {
     "description": "Small badge label marking an experimental/beta feature."
@@ -2307,7 +3138,7 @@
   "@setxAdvancedBeta": {
     "description": "Toggle to show experimental features."
   },
-  "setxAdvancedBetaDesc": "Show experimental features — hands-free & volume-key scrolling, RepoForge, AI translation and auto-crop. They may be unstable or change.",
+  "setxAdvancedBetaDesc": "Show experimental features: hands-free and volume-key scrolling, AI translation and auto-crop. They may be unstable or change.",
   "@setxAdvancedBetaDesc": {
     "description": "Subtitle under the Beta features toggle."
   },
@@ -2402,6 +3233,50 @@
   "setxAdvancedFilterLevel": "Level",
   "@setxAdvancedFilterLevel": {
     "description": "Label for the log filter dropdown by severity level"
+  },
+  "setxAdvancedLogAll": "All",
+  "@setxAdvancedLogAll": {
+    "description": "Log filter option meaning no category/level filter (show everything)"
+  },
+  "setxAdvancedLogCatRepo": "Repo",
+  "@setxAdvancedLogCatRepo": {
+    "description": "Debug-log category filter: repository/source-repo events"
+  },
+  "setxAdvancedLogCatExtension": "Extension",
+  "@setxAdvancedLogCatExtension": {
+    "description": "Debug-log category filter: extension events"
+  },
+  "setxAdvancedLogCatNetwork": "Network",
+  "@setxAdvancedLogCatNetwork": {
+    "description": "Debug-log category filter: network events"
+  },
+  "setxAdvancedLogCatInstall": "Install",
+  "@setxAdvancedLogCatInstall": {
+    "description": "Debug-log category filter: install events"
+  },
+  "setxAdvancedLogCatLibrary": "Library",
+  "@setxAdvancedLogCatLibrary": {
+    "description": "Debug-log category filter: library events"
+  },
+  "setxAdvancedLogCatGeneral": "General",
+  "@setxAdvancedLogCatGeneral": {
+    "description": "Debug-log category filter: general/uncategorised events"
+  },
+  "setxAdvancedLogLvlDebug": "Debug",
+  "@setxAdvancedLogLvlDebug": {
+    "description": "Debug-log severity level: debug"
+  },
+  "setxAdvancedLogLvlInfo": "Info",
+  "@setxAdvancedLogLvlInfo": {
+    "description": "Debug-log severity level: info"
+  },
+  "setxAdvancedLogLvlWarning": "Warning",
+  "@setxAdvancedLogLvlWarning": {
+    "description": "Debug-log severity level: warning"
+  },
+  "setxAdvancedLogLvlError": "Error",
+  "@setxAdvancedLogLvlError": {
+    "description": "Debug-log severity level: error"
   },
   "setxAdvancedNoLogs": "No logs yet",
   "@setxAdvancedNoLogs": {
@@ -2909,6 +3784,138 @@
   "@setxAboutClose": {
     "description": "Close button on the What's New / changelog dialog"
   },
+  "setxAboutVersionBuild": "Version {version} (Build {build})",
+  "@setxAboutVersionBuild": {
+    "description": "Version line under the app name on the About page; {version} is like 1.2.99 and {build} is like 285",
+    "placeholders": {
+      "version": { "type": "String" },
+      "build": { "type": "String" }
+    }
+  },
+  "setxAboutDiscordSubtitle": "Join the community",
+  "@setxAboutDiscordSubtitle": {
+    "description": "Subtitle under the Discord row on the About page"
+  },
+  "helpTipsTitle": "Help & Tips",
+  "@helpTipsTitle": {
+    "description": "Title of the Settings > Help & Tips page"
+  },
+  "helpTipsViewTutorial": "View tutorial",
+  "@helpTipsViewTutorial": {
+    "description": "Row that replays the first-launch tutorial"
+  },
+  "helpTipsViewTutorialSub": "A quick tour of the app",
+  "@helpTipsViewTutorialSub": {
+    "description": "Subtitle under the View tutorial row"
+  },
+  "helpTipsDiscord": "Join our Discord",
+  "@helpTipsDiscord": {
+    "description": "Row that opens the community Discord invite"
+  },
+  "helpTipsDiscordSub": "Help, requests & community",
+  "@helpTipsDiscordSub": {
+    "description": "Subtitle under the Join our Discord row"
+  },
+  "helpTipsSectionTips": "Tips",
+  "@helpTipsSectionTips": {
+    "description": "Section header above the list of quick tips"
+  },
+  "helpTipsNoContentTitle": "No content showing?",
+  "@helpTipsNoContentTitle": {
+    "description": "Tip title: what to do when the app shows no manga/sources"
+  },
+  "helpTipsNoContentBody": "Add an extension repository in Browse → ⋯ to install sources first.",
+  "@helpTipsNoContentBody": {
+    "description": "Tip body telling the user to add a source repository from the Browse overflow menu"
+  },
+  "helpTipsGesturesTitle": "Reader gestures",
+  "@helpTipsGesturesTitle": {
+    "description": "Tip title about reader touch gestures"
+  },
+  "helpTipsGesturesBody": "Tap the edges to turn pages, the center to show controls; long-press a page for more.",
+  "@helpTipsGesturesBody": {
+    "description": "Tip body explaining reader tap zones and long-press"
+  },
+  "helpTipsVaultTitle": "The Vault",
+  "@helpTipsVaultTitle": {
+    "description": "Tip title about the private Vault feature"
+  },
+  "helpTipsVaultBody": "Move private titles into the Vault to keep them behind a lock.",
+  "@helpTipsVaultBody": {
+    "description": "Tip body explaining the Vault keeps titles behind a lock"
+  },
+  "helpTipsUpdateTitle": "Keep up to date",
+  "@helpTipsUpdateTitle": {
+    "description": "Tip title about keeping the library updated"
+  },
+  "helpTipsUpdateBody": "Pull down on the Library to check for new chapters; set a schedule in Library settings.",
+  "@helpTipsUpdateBody": {
+    "description": "Tip body explaining pull-to-refresh and the update schedule setting"
+  },
+  "tutorialSkip": "Skip",
+  "@tutorialSkip": {
+    "description": "Button that skips the first-launch tutorial"
+  },
+  "tutorialNext": "Next",
+  "@tutorialNext": {
+    "description": "Button to advance to the next tutorial slide"
+  },
+  "tutorialGetStarted": "Get started",
+  "@tutorialGetStarted": {
+    "description": "Button on the last tutorial slide that finishes the tour"
+  },
+  "tutorialJoinDiscord": "Join Discord",
+  "@tutorialJoinDiscord": {
+    "description": "Button on the tutorial community slide that opens the Discord invite"
+  },
+  "tutorialSlide1Title": "Welcome to Foxlations",
+  "@tutorialSlide1Title": {
+    "description": "Tutorial slide 1 title (Foxlations is the app's brand name, keep it)"
+  },
+  "tutorialSlide1Body": "One app for manga and manhwa, anime, and light novels - read, watch and listen, all from sources you add yourself. No account, no ads, nothing phoning home.",
+  "@tutorialSlide1Body": {
+    "description": "Tutorial slide 1 body: what the app is"
+  },
+  "tutorialSlide2Title": "Get your content",
+  "@tutorialSlide2Title": {
+    "description": "Tutorial slide 2 title"
+  },
+  "tutorialSlide2Body": "Foxlations ships empty - you choose the sources. In the Browse tab, open the ⋯ menu to add an extension repository (a link your community shares). Installed sources show up ready to search.",
+  "@tutorialSlide2Body": {
+    "description": "Tutorial slide 2 body: how to add source repositories"
+  },
+  "tutorialSlide3Title": "Build your library",
+  "@tutorialSlide3Title": {
+    "description": "Tutorial slide 3 title"
+  },
+  "tutorialSlide3Body": "Search a source or use global search across all of them, open a title, and tap the heart to add it. Your library is organized with categories (Reading, On-hold, your own…) and a “Continue reading” shortcut right up top.",
+  "@tutorialSlide3Body": {
+    "description": "Tutorial slide 3 body: searching and adding titles to the library"
+  },
+  "tutorialSlide4Title": "Read your way",
+  "@tutorialSlide4Title": {
+    "description": "Tutorial slide 4 title"
+  },
+  "tutorialSlide4Body": "Paged, webtoon or double-page; tap the edges to turn pages and the centre for controls. Dial in eye-comfort (warm filter + dim), customise the novel reader, let it read novels aloud, and skip anime intros automatically.",
+  "@tutorialSlide4Body": {
+    "description": "Tutorial slide 4 body: reader modes and options"
+  },
+  "tutorialSlide5Title": "Private & offline",
+  "@tutorialSlide5Title": {
+    "description": "Tutorial slide 5 title"
+  },
+  "tutorialSlide5Body": "Download chapters and episodes to read with no connection, back up your whole library, and keep private titles locked away in the Vault. There’s incognito mode and an app lock too.",
+  "@tutorialSlide5Body": {
+    "description": "Tutorial slide 5 body: downloads, backup, Vault, privacy"
+  },
+  "tutorialSlide6Title": "Join the community",
+  "@tutorialSlide6Title": {
+    "description": "Tutorial slide 6 title"
+  },
+  "tutorialSlide6Body": "Questions, source help, feature requests, or just want to chat? Come say hi on our Discord - and you can reopen this tour any time from Settings → Help & Tips.",
+  "@tutorialSlide6Body": {
+    "description": "Tutorial slide 6 body: inviting the user to the community Discord"
+  },
   "setxAboutWhatsNewVersioned": "What's New in v{version}",
   "@setxAboutWhatsNewVersioned": {
     "placeholders": {
@@ -3014,6 +4021,35 @@
   "miscAdd": "Add",
   "@miscAdd": {
     "description": "Generic Add button, here to add a repository."
+  },
+  "deeplinkAddRepoTitle": "Add source repo?",
+  "@deeplinkAddRepoTitle": {
+    "description": "Title of the confirmation dialog shown when a foxlations:// link asks to add a source repository"
+  },
+  "deeplinkFromHost": "From {host}",
+  "@deeplinkFromHost": {
+    "description": "Shows which site a deep-linked repo comes from; {host} is the domain",
+    "placeholders": {
+      "host": { "type": "String" }
+    }
+  },
+  "deeplinkAddedNamed": "Added \"{name}\" - see Browse > Extensions",
+  "@deeplinkAddedNamed": {
+    "description": "Snackbar after adding a named repo via deep link; {name} is the repo name",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "deeplinkAdded": "Repo added - see Browse > Extensions",
+  "@deeplinkAdded": {
+    "description": "Snackbar after adding an unnamed repo via deep link"
+  },
+  "deeplinkAddFailed": "Couldn't add repo: {error}",
+  "@deeplinkAddFailed": {
+    "description": "Snackbar when adding a deep-linked repo fails; {error} is the error detail",
+    "placeholders": {
+      "error": { "type": "String" }
+    }
   },
   "miscRepositoriesHeader": "REPOSITORIES",
   "@miscRepositoriesHeader": {
@@ -3327,377 +4363,88 @@
   "@trackDeleteFailed": {
     "description": "Error snackbar when deleting a language pack fails; {error} is the failure reason."
   },
-  "repoDeleteSourceTitle": "Delete source?",
-  "@repoDeleteSourceTitle": {
-    "description": "Title of the confirmation dialog shown before removing a source from My Sources."
+  "repoReinstallSources": "Reinstall sources",
+  "@repoReinstallSources": {
+    "description": "Menu item in the repository options sheet that re-downloads a repo's sources"
   },
-  "repoDeleteSourceBody": "\"{name}\" will be removed from My Sources.",
-  "@repoDeleteSourceBody": {
-    "description": "Body of the delete-source confirmation dialog; {name} is the source's display name."
+  "repoCopyUrl": "Copy repo URL",
+  "@repoCopyUrl": {
+    "description": "Menu item in the repository options sheet that copies the repo URL to the clipboard"
+  },
+  "repoOpenGithubPage": "Open GitHub page",
+  "@repoOpenGithubPage": {
+    "description": "Menu item that opens the repo's GitHub page in a browser"
+  },
+  "repoOpenWebsite": "Open website",
+  "@repoOpenWebsite": {
+    "description": "Menu item that opens the repo's website in a browser"
+  },
+  "repoOpenDiscord": "Open Discord",
+  "@repoOpenDiscord": {
+    "description": "Menu item that opens the repo's Discord invite"
+  },
+  "repoDeleteRepo": "Delete repo",
+  "@repoDeleteRepo": {
+    "description": "Destructive menu item in the repository options sheet that removes the repository"
+  },
+  "repoCouldNotOpen": "Couldn't open {url}",
+  "@repoCouldNotOpen": {
+    "description": "Snackbar shown when a link fails to open; {url} is the URL that could not be opened",
+    "placeholders": {
+      "url": { "type": "String" }
+    }
+  },
+  "repoReinstalling": "Reinstalling sources…",
+  "@repoReinstalling": {
+    "description": "Snackbar shown while a repository's sources are being reinstalled (value ends with an ellipsis)"
+  },
+  "repoRefreshed": "Repo refreshed",
+  "@repoRefreshed": {
+    "description": "Snackbar shown when a reinstall found nothing new to install but refreshed the repo"
+  },
+  "repoReinstalledCount": "{count, plural, =1{Reinstalled 1 source} other{Reinstalled {count} sources}}",
+  "@repoReinstalledCount": {
+    "description": "Snackbar reporting how many sources were reinstalled from a repo",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "repoReinstallFailed": "Reinstall failed: {error}",
+  "@repoReinstallFailed": {
+    "description": "Snackbar shown when reinstalling a repo's sources fails; {error} is the error message",
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "repoDeleteTitle": "Delete repo?",
+  "@repoDeleteTitle": {
+    "description": "Title of the confirmation dialog before deleting a repository"
+  },
+  "repoDeleteBody": "Remove \"{name}\" and uninstall its sources?",
+  "@repoDeleteBody": {
+    "description": "Body of the delete-repo confirmation dialog; {name} is the repository name",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "repoDeleteConfirm": "Delete",
+  "@repoDeleteConfirm": {
+    "description": "Confirm button in the delete-repo confirmation dialog"
+  },
+  "repoSourceCount": "{count, plural, =1{1 source} other{{count} sources}}",
+  "@repoSourceCount": {
+    "description": "Subtitle under a repository row showing how many sources it provides",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
   },
   "repoCancel": "Cancel",
   "@repoCancel": {
     "description": "Button that dismisses a dialog without acting; generic Cancel."
   },
-  "repoDelete": "Delete",
-  "@repoDelete": {
-    "description": "Confirm button in the delete-source dialog; performs the removal."
-  },
-  "repoDeletedSource": "Deleted \"{name}\"",
-  "@repoDeletedSource": {
-    "description": "Snackbar confirming a source was removed; {name} is the deleted source's name."
-  },
-  "repoNoSourcesToExport": "No sources to export",
-  "@repoNoSourcesToExport": {
-    "description": "Snackbar shown when tapping Export All while My Sources is empty."
-  },
-  "repoExportDialogTitle": "Export RepoForge sources",
-  "@repoExportDialogTitle": {
-    "description": "Title of the file-save dialog for exporting RepoForge sources to a file."
-  },
-  "repoExportedSources": "Exported {count} sources",
-  "@repoExportedSources": {
-    "description": "Snackbar after a successful export; {count} is the number of sources written."
-  },
-  "repoExportFailed": "Export failed: {error}",
-  "@repoExportFailed": {
-    "description": "Snackbar when exporting sources fails; {error} is the error message."
-  },
-  "repoImportedSources": "Imported {count} source(s)",
-  "@repoImportedSources": {
-    "description": "Snackbar after importing sources from a file; {count} is how many were imported."
-  },
-  "repoImportFailed": "Import failed: {error}",
-  "@repoImportFailed": {
-    "description": "Snackbar when importing sources fails; {error} is the error message."
-  },
-  "repoBuildFromUrl": "Build sources from any URL",
-  "@repoBuildFromUrl": {
-    "description": "Tagline/subtitle for the RepoForge feature: build sources from any URL."
-  },
-  "repoBeta": "BETA",
-  "@repoBeta": {
-    "description": "Small BETA badge label next to the RepoForge title."
-  },
-  "repoHeroDescription": "Detect a site's framework, tune selectors, and install a working manga / anime / novel source — no server, all on-device. RepoForge is in beta, so it won't always get a source right — check the result and tweak the selectors if a site doesn't come out correct.",
-  "@repoHeroDescription": {
-    "description": "Intro paragraph on the RepoForge home screen explaining what it does and its beta caveats."
-  },
-  "repoCoverageSummary": "{frameworks} frameworks · {manga} manga + {novel} novel sites known",
-  "@repoCoverageSummary": {
-    "description": "Coverage stat line; {frameworks}, {manga}, {novel} are counts of known frameworks and sites."
-  },
-  "repoNewSource": "New Source",
-  "@repoNewSource": {
-    "description": "Primary button that opens the wizard to generate a new source from a URL."
-  },
-  "repoImport": "Import",
-  "@repoImport": {
-    "description": "Button to import previously exported sources from a file."
-  },
-  "repoMySources": "MY SOURCES",
-  "@repoMySources": {
-    "description": "Section header (all-caps) listing the user's generated/installed sources."
-  },
-  "repoExportAll": "Export all",
-  "@repoExportAll": {
-    "description": "Button that exports all sources in My Sources to a file."
-  },
-  "repoNoSourcesYet": "No sources yet",
-  "@repoNoSourcesYet": {
-    "description": "Empty-state heading shown when the user has no sources."
-  },
-  "repoEmptyStateHint": "Tap \"New Source\" to generate one from a site URL.",
-  "@repoEmptyStateHint": {
-    "description": "Empty-state hint prompting the user to tap New Source."
-  },
-  "repoNotInstalled": "not installed",
-  "@repoNotInstalled": {
-    "description": "Small status label on a source card meaning it is generated but not installed."
-  },
-  "repoOpenInBrowse": "Open in browse",
-  "@repoOpenInBrowse": {
-    "description": "Menu action to open the source in the app's Browse tab."
-  },
-  "repoEditRedetect": "Edit / re-detect",
-  "@repoEditRedetect": {
-    "description": "Menu action to reopen a source in the wizard to edit or re-run detection."
-  },
-  "repoKnownNovelSite": "Known light-novel site",
-  "@repoKnownNovelSite": {
-    "description": "Badge/heading: the checked site is a recognized light-novel site."
-  },
-  "repoNovelGenericDetail": "Recognized as a novel site — generated with the generic novel body (browse may need selector tuning).",
-  "@repoNovelGenericDetail": {
-    "description": "Detail line explaining a novel site was built with the generic novel template."
-  },
-  "repoNovelFrameworkDetail": "Generated as a Novel source using the {framework} body — browsing + reader work out of the box.",
-  "@repoNovelFrameworkDetail": {
-    "description": "Detail line: novel source built from a known framework; {framework} is its name."
-  },
-  "repoKnownMangaSite": "Known manga site",
-  "@repoKnownMangaSite": {
-    "description": "Badge/heading: the checked site is a recognized manga site."
-  },
-  "repoMangaApiDetail": "Community-verified API source — RepoForge builds it from the site's API.",
-  "@repoMangaApiDetail": {
-    "description": "Detail line explaining the source is built from the site's community-verified API."
-  },
-  "repoMangaThemeDetail": "Community-verified theme: {theme} — selectors are known.",
-  "@repoMangaThemeDetail": {
-    "description": "Detail line: source uses a known theme's selectors; {theme} is the theme name."
-  },
-  "repoMangaCustomDetail": "Community-verified custom selectors are on file for this site.",
-  "@repoMangaCustomDetail": {
-    "description": "Detail line: community-verified custom selectors exist for this site."
-  },
-  "repoNotInKb": "Not in the knowledge base",
-  "@repoNotInKb": {
-    "description": "Badge/heading: the checked site is not in RepoForge's knowledge base."
-  },
-  "repoNotInKbDetail": "RepoForge will detect its framework live when you add it, then fall back to heuristic \"what-is-what\" scraping if it's bespoke.",
-  "@repoNotInKbDetail": {
-    "description": "Detail line explaining RepoForge will detect the framework live and fall back to heuristics."
-  },
-  "repoCoverage": "Coverage",
-  "@repoCoverage": {
-    "description": "Tab/section title for the Coverage view of supported sites and frameworks."
-  },
-  "repoCheckASite": "Check a site",
-  "@repoCheckASite": {
-    "description": "Heading for the tool to check whether a given site URL is supported."
-  },
-  "repoPasteSiteUrlHint": "paste a site URL",
-  "@repoPasteSiteUrlHint": {
-    "description": "Placeholder text in the URL field of the Check-a-site tool."
-  },
-  "repoCheck": "Check",
-  "@repoCheck": {
-    "description": "Button that runs the coverage check on the entered site URL."
-  },
-  "repoSupportedFrameworks": "Supported frameworks",
-  "@repoSupportedFrameworks": {
-    "description": "Section header listing frameworks RepoForge can generate sources for."
-  },
-  "repoMangaSites": "manga sites",
-  "@repoMangaSites": {
-    "description": "Label for the count/list of supported manga sites."
-  },
-  "repoNovelSites": "novel sites",
-  "@repoNovelSites": {
-    "description": "Label for the count/list of supported novel sites."
-  },
-  "repoFrameworks": "frameworks",
-  "@repoFrameworks": {
-    "description": "Label for the count/list of supported frameworks."
-  },
-  "repoRoleItem": "List item (each card)",
-  "@repoRoleItem": {
-    "description": "Selector-role label: the repeating list item / card in browse results."
-  },
-  "repoRoleTitle": "Title",
-  "@repoRoleTitle": {
-    "description": "Selector-role label: the title of each browse list item."
-  },
-  "repoRoleCover": "Cover image",
-  "@repoRoleCover": {
-    "description": "Selector-role label: the cover/thumbnail image of each item."
-  },
-  "repoRoleNextPage": "Next-page link",
-  "@repoRoleNextPage": {
-    "description": "Selector-role label: the link to the next page of results."
-  },
-  "repoRoleDetailTitle": "Detail — title",
-  "@repoRoleDetailTitle": {
-    "description": "Selector-role label: the title on a series/detail page."
-  },
-  "repoRoleChapters": "Chapter list item",
-  "@repoRoleChapters": {
-    "description": "Selector-role label: each chapter entry in the chapter list."
-  },
-  "repoRolePageImages": "Reader page images",
-  "@repoRolePageImages": {
-    "description": "Selector-role label: the page images shown in the reader."
-  },
-  "repoRoleEpisodes": "Episode list (anime)",
-  "@repoRoleEpisodes": {
-    "description": "Selector-role label: each episode in an anime episode list."
-  },
-  "repoStepFetching": "Fetching page…",
-  "@repoStepFetching": {
-    "description": "Progress status shown while the detector downloads the page."
-  },
-  "repoStepMatching": "Matching framework signatures…",
-  "@repoStepMatching": {
-    "description": "Progress status while comparing the page against known framework signatures."
-  },
-  "repoStepExtracting": "Extracting selectors…",
-  "@repoStepExtracting": {
-    "description": "Progress status while deriving CSS selectors from the page."
-  },
-  "repoStepFinalizing": "Finalizing…",
-  "@repoStepFinalizing": {
-    "description": "Progress status shown at the end of detection before results appear."
-  },
-  "repoEnterUrlFirst": "Enter a site URL first.",
-  "@repoEnterUrlFirst": {
-    "description": "Validation snackbar shown when Detect is tapped with no URL entered."
-  },
-  "repoDetectionFailed": "Detection failed: {error}",
-  "@repoDetectionFailed": {
-    "description": "Snackbar when site detection fails; {error} is the error message."
-  },
-  "repoFetchFailed": "Fetch failed",
-  "@repoFetchFailed": {
-    "description": "Short error label/snackbar when a page fetch fails."
-  },
-  "repoFetchedChars": "Fetched {count} chars — now test selectors",
-  "@repoFetchedChars": {
-    "description": "Snackbar after fetching a page; {count} is the number of characters loaded."
-  },
-  "repoFetchPageFirst": "Fetch a page first",
-  "@repoFetchPageFirst": {
-    "description": "Snackbar prompting the user to fetch a page before testing selectors."
-  },
-  "repoGenerationFailed": "Generation failed: {error}",
-  "@repoGenerationFailed": {
-    "description": "Snackbar when source code generation fails; {error} is the error message."
-  },
-  "repoDetectSiteFirst": "Detect a site first",
-  "@repoDetectSiteFirst": {
-    "description": "Snackbar prompting the user to run detection before this step."
-  },
-  "repoCreatedInstalled": "Created & installed \"{name}\"",
-  "@repoCreatedInstalled": {
-    "description": "Snackbar confirming a new source was created and installed; {name} is its name."
-  },
-  "repoSaveFailed": "Save failed: {error}",
-  "@repoSaveFailed": {
-    "description": "Snackbar when saving the source fails; {error} is the error message."
-  },
-  "repoCreateSource": "Create Source",
-  "@repoCreateSource": {
-    "description": "Wizard step title / button for creating the source."
-  },
-  "repoSiteUrl": "Site URL",
-  "@repoSiteUrl": {
-    "description": "Field label for the website URL to generate a source from."
-  },
-  "repoDetect": "Detect",
-  "@repoDetect": {
-    "description": "Button that runs framework detection on the entered Site URL."
-  },
-  "repoConfidence": "confidence {pct}%",
-  "@repoConfidence": {
-    "description": "Small label showing detection confidence; {pct} is the percentage."
-  },
-  "repoApiSource": "API source",
-  "@repoApiSource": {
-    "description": "Badge indicating the detected source uses the site's API rather than scraping."
-  },
-  "repoDetails": "Details",
-  "@repoDetails": {
-    "description": "Section header for the source's details/metadata fields."
-  },
-  "repoSourceNameHint": "Source name",
-  "@repoSourceNameHint": {
-    "description": "Placeholder text in the source name input field."
-  },
   "repoName": "Name",
   "@repoName": {
     "description": "Field label for the source's display name."
-  },
-  "repoLang": "Lang",
-  "@repoLang": {
-    "description": "Field label for the source's language code (abbreviated Language)."
-  },
-  "repoManga": "Manga",
-  "@repoManga": {
-    "description": "Content-type toggle/label: Manga."
-  },
-  "repoAnime": "Anime",
-  "@repoAnime": {
-    "description": "Content-type toggle/label: Anime."
-  },
-  "repoNovel": "Novel",
-  "@repoNovel": {
-    "description": "Content-type toggle/label: Novel."
-  },
-  "repoNsfw": "NSFW",
-  "@repoNsfw": {
-    "description": "Toggle/label marking the source as NSFW (adult content)."
-  },
-  "repoScrapingStudio": "Scraping Studio",
-  "@repoScrapingStudio": {
-    "description": "Title of the panel for testing and tuning CSS selectors."
-  },
-  "repoScrapingStudioHint": "Fetch a page, then test each selector to see how many elements it matches.",
-  "@repoScrapingStudioHint": {
-    "description": "Hint under the Scraping Studio title explaining the fetch-then-test flow."
-  },
-  "repoUrlToTestHint": "URL to test against",
-  "@repoUrlToTestHint": {
-    "description": "Placeholder in the field for the URL to fetch and test selectors against."
-  },
-  "repoFetch": "Fetch",
-  "@repoFetch": {
-    "description": "Button that downloads the test URL's page in Scraping Studio."
-  },
-  "repoFetchFailedBlocked": "Fetch failed — the site may block automated access.",
-  "@repoFetchFailedBlocked": {
-    "description": "Snackbar when a fetch fails, hinting the site may block automated access."
-  },
-  "repoLoadedChars": "Loaded {count} chars.",
-  "@repoLoadedChars": {
-    "description": "Status after fetching a test page; {count} is the number of characters loaded."
-  },
-  "repoPreviewJs": "Preview JS",
-  "@repoPreviewJs": {
-    "description": "Button to preview the generated source's JavaScript/Dart code."
-  },
-  "repoCreateInstall": "Create & Install",
-  "@repoCreateInstall": {
-    "description": "Primary button that creates the source and installs it into the app."
-  },
-  "repoPickKnownSelector": "Pick a known selector",
-  "@repoPickKnownSelector": {
-    "description": "Button/label to choose from a catalog of known selectors for a role."
-  },
-  "repoTest": "Test",
-  "@repoTest": {
-    "description": "Button that runs a selector against the fetched page to count matches."
-  },
-  "repoNoCatalogedSelectors": "No cataloged selectors for \"{label}\"",
-  "@repoNoCatalogedSelectors": {
-    "description": "Message when no known selectors exist for a role; {label} is the role name."
-  },
-  "repoInvalid": "invalid",
-  "@repoInvalid": {
-    "description": "Inline result label when a tested selector is syntactically invalid."
-  },
-  "repoNoMatch": "no match",
-  "@repoNoMatch": {
-    "description": "Inline result label when a tested selector matches no elements."
-  },
-  "repoGeneratedSource": "Generated source",
-  "@repoGeneratedSource": {
-    "description": "Heading of the panel showing the generated source code."
-  },
-  "repoCopy": "Copy",
-  "@repoCopy": {
-    "description": "Button to copy the generated source code to the clipboard."
-  },
-  "repoCopiedToClipboard": "Copied source to clipboard",
-  "@repoCopiedToClipboard": {
-    "description": "Snackbar confirming the source code was copied to the clipboard."
-  },
-  "repoSelectorFor": "Selector for {field}",
-  "@repoSelectorFor": {
-    "description": "Label/heading for a selector input; {field} is the role it targets."
-  },
-  "repoSearchSelectors": "Search selectors…",
-  "@repoSearchSelectors": {
-    "description": "Placeholder in the search box for filtering the selector catalog."
   },
   "repoImportedSource": "Imported source · {id}",
   "@repoImportedSource": {
@@ -4227,22 +4974,6 @@
   "@setdVaultContentsTabNovels": {
     "description": "Tab label for novels in the vault contents manager."
   },
-  "setdVaultContentsInLibrary": "In your library",
-  "@setdVaultContentsInLibrary": {
-    "description": "List header for items currently in the main library."
-  },
-  "setdVaultContentsMoveIntoHint": "→ move into vault",
-  "@setdVaultContentsMoveIntoHint": {
-    "description": "Hint next to a library item; tapping moves it into the vault (arrow points right)."
-  },
-  "setdVaultContentsInVault": "In the vault",
-  "@setdVaultContentsInVault": {
-    "description": "List header for items currently in the vault."
-  },
-  "setdVaultContentsMoveOutHint": "← move back out",
-  "@setdVaultContentsMoveOutHint": {
-    "description": "Hint next to a vault item; tapping moves it back to library (arrow points left)."
-  },
   "setdVaultContentsEmptyLibrary": "No {type} in your library",
   "@setdVaultContentsEmptyLibrary": {
     "placeholders": {
@@ -4517,6 +5248,14 @@
   "@setdAppearanceNavOrderReset": {
     "description": "Button to reset the nav tab order to default."
   },
+  "setdAppearanceStartTab": "Open to",
+  "@setdAppearanceStartTab": {
+    "description": "Title for the setting that picks which tab the app opens on at launch."
+  },
+  "setdAppearanceStartTabDesc": "Which screen the app opens on at launch",
+  "@setdAppearanceStartTabDesc": {
+    "description": "Subtitle under the 'Open to' setting."
+  },
   "setdAppearanceDarkMode": "Dark Mode",
   "@setdAppearanceDarkMode": {
     "description": "Option label selecting the dark theme."
@@ -4757,6 +5496,14 @@
   "@readerRadialMenu": { "description": "Setting title for the opt-in in-reader radial control." },
   "readerRadialMenuSubtitle": "Replace the reader bars with a back button and a corner wheel. Hold the wheel for quick actions and the page slider.",
   "@readerRadialMenuSubtitle": { "description": "Explanation of the radial menu reader setting." },
+  "readerShiftPages": "Shift double pages",
+  "@readerShiftPages": { "description": "In-reader toggle (dual-page landscape) that offsets which pages pair into a two-page spread." },
+  "readerShiftPagesDesc": "Nudge the pairing by one if two-page spreads land split across the middle.",
+  "@readerShiftPagesDesc": { "description": "Explanation of the shift-double-pages reader toggle." },
+  "readerFinishedLabel": "Finished",
+  "@readerFinishedLabel": { "description": "Small caps label above the just-finished chapter's name at a continuous-reader chapter break." },
+  "readerUpNextLabel": "Up next",
+  "@readerUpNextLabel": { "description": "Small caps label above the next chapter's name at a continuous-reader chapter break." },
   "readerRadialCorner": "Wheel corner",
   "@readerRadialCorner": { "description": "Setting to choose which bottom corner the radial wheel sits in (Left or Right)." },
   "readerCalibrateGetReady": "Follow the dot to each corner",

@@ -1,13 +1,13 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/providers/download_provider.dart';
 import '../../../core/services/download_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
+import '../../widgets/ds/ds.dart';
 
 class DownloadsSettingsPage extends StatefulWidget {
   const DownloadsSettingsPage({super.key});
@@ -36,7 +36,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
         ),
         title: Text(
           t.setdDownloadsTitle,
-          style: GoogleFonts.manrope(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: cs.onSurface,
@@ -44,12 +44,12 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
         ),
       ),
       body: Consumer<DownloadProvider>(
-        builder: (_, dl, __) => ListView(
+        builder: (_, dl, _) => ListView(
           padding: EdgeInsets.only(
-              top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
+              top: 8, bottom: 8 + MediaQuery.viewPaddingOf(context).bottom),
           children: [
-            _SectionHeader(title: t.setdDownloadsSectionAutomatic),
-            _SwitchTile(
+            AppSettingsSectionHeader(title: t.setdDownloadsSectionAutomatic),
+            AppSettingsSwitchTile(
               icon: Icons.download_rounded,
               iconColor: cs.primary,
               title: t.setdDownloadsNewChapters,
@@ -57,7 +57,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               value: dl.autoDownload,
               onChanged: (v) => dl.saveSetting('dl_auto', v),
             ),
-            _SwitchTile(
+            AppSettingsSwitchTile(
               icon: Icons.wifi_rounded,
               iconColor: cs.primary,
               title: t.setdDownloadsWifiOnly,
@@ -65,7 +65,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               value: dl.wifiOnly,
               onChanged: (v) => dl.saveSetting('dl_wifi_only', v),
             ),
-            _SwitchTile(
+            AppSettingsSwitchTile(
               icon: Icons.battery_charging_full_rounded,
               iconColor: cs.primary,
               title: t.setdDownloadsChargingOnly,
@@ -73,7 +73,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               value: dl.onlyWhenCharging,
               onChanged: (v) => dl.saveSetting('dl_only_charging', v),
             ),
-            _SwitchTile(
+            AppSettingsSwitchTile(
               icon: Icons.play_circle_outline_rounded,
               iconColor: cs.primary,
               title: t.setdDownloadsAhead,
@@ -82,36 +82,36 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               onChanged: (v) => dl.saveSetting('dl_while_reading', v),
             ),
             if (dl.downloadWhileReading)
-              _ChoiceTile(
+              AppSettingsChoiceTile(
                 icon: Icons.format_list_numbered_rounded,
                 iconColor: cs.primary,
-                title: 'Chapters ahead',
+                title: t.setdDownloadsChaptersAhead,
                 value: '${dl.downloadAheadCount}',
-                choices: const ['1', '2', '3', '5', '10'],
+                options: const ['1', '2', '3', '5', '10'],
                 onChanged: (v) =>
                     dl.setDownloadAheadCount(int.tryParse(v) ?? 1),
               ),
             const SizedBox(height: 8),
-            _SectionHeader(title: t.setdDownloadsSectionQueue),
-            _ChoiceTile(
+            AppSettingsSectionHeader(title: t.setdDownloadsSectionQueue),
+            AppSettingsChoiceTile(
               icon: Icons.queue_rounded,
-              iconColor: const Color(0xFF4CAF82),
+              iconColor: AppTheme.success,
               title: t.setdDownloadsSimultaneous,
               value: dl.simultaneousDownloads,
-              choices: const ['1', '2', '3', '5', '10'],
+              options: const ['1', '2', '3', '5', '10'],
               onChanged: (v) => dl.saveStringSetting('dl_simultaneous', v),
             ),
-            _ChoiceTile(
+            AppSettingsChoiceTile(
               icon: Icons.high_quality_rounded,
-              iconColor: const Color(0xFF4CAF82),
+              iconColor: AppTheme.success,
               title: t.setdDownloadsQuality,
               value: dl.downloadQuality,
-              choices: const ['Original', 'High', 'Medium', 'Low'],
+              options: const ['Original', 'High', 'Medium', 'Low'],
               onChanged: (v) => dl.saveStringSetting('dl_quality', v),
             ),
             const SizedBox(height: 8),
-            _SectionHeader(title: t.setdDownloadsSectionDelete),
-            _SwitchTile(
+            AppSettingsSectionHeader(title: t.setdDownloadsSectionDelete),
+            AppSettingsSwitchTile(
               icon: Icons.auto_delete_rounded,
               iconColor: AppTheme.secondary,
               title: t.setdDownloadsAfterReading,
@@ -119,7 +119,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               value: dl.deleteAfterRead,
               onChanged: (v) => dl.saveSetting('dl_delete_after_read', v),
             ),
-            _SwitchTile(
+            AppSettingsSwitchTile(
               icon: Icons.bookmark_remove_rounded,
               iconColor: AppTheme.secondary,
               title: t.setdDownloadsIncludeBookmarked,
@@ -127,12 +127,12 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               value: dl.removeBookmarked,
               onChanged: (v) => dl.saveSetting('dl_remove_bookmarked', v),
             ),
-            _ChoiceTile(
+            AppSettingsChoiceTile(
               icon: Icons.history_toggle_off_rounded,
               iconColor: AppTheme.secondary,
               title: t.setdDownloadsAutoDelete,
               value: dl.autoDeleteAfter,
-              choices: const [
+              options: const [
                 'Disabled',
                 'After 1 chapter',
                 'After 2 chapters',
@@ -142,8 +142,8 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               onChanged: (v) => dl.saveStringSetting('dl_auto_delete', v),
             ),
             const SizedBox(height: 8),
-            _SectionHeader(title: t.setdDownloadsSectionFormat),
-            _SwitchTile(
+            AppSettingsSectionHeader(title: t.setdDownloadsSectionFormat),
+            AppSettingsSwitchTile(
               icon: Icons.archive_rounded,
               iconColor: AppTheme.secondary,
               title: t.setdDownloadsSaveCbz,
@@ -151,7 +151,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               value: dl.saveAsCbz,
               onChanged: (v) => dl.saveSetting('dl_save_cbz', v),
             ),
-            _SwitchTile(
+            AppSettingsSwitchTile(
               icon: Icons.picture_as_pdf_rounded,
               iconColor: AppTheme.secondary,
               title: t.setdDownloadsSavePdf,
@@ -160,7 +160,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               onChanged: (v) => dl.saveSetting('dl_save_pdf', v),
             ),
             const SizedBox(height: 8),
-            _SectionHeader(title: t.setdDownloadsSectionLocation),
+            AppSettingsSectionHeader(title: t.setdDownloadsSectionLocation),
             FutureBuilder<List<String>>(
               key: ValueKey(_rebuildKey),
               future: Future.wait([
@@ -182,10 +182,10 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                     Row(children: [
                       Container(
                         width: 36, height: 36,
-                        decoration: BoxDecoration(
-                          color: cs.primary.withAlpha(25),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        decoration: oledIconChip(context,
+                            color: cs.primary,
+                            fill: cs.primary.withAlpha(25),
+                            radius: 10),
                         child: Icon(Icons.folder_rounded, color: cs.primary, size: 18),
                       ),
                       const SizedBox(width: 12),
@@ -193,8 +193,8 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(custom.isEmpty ? t.setdDownloadsDefaultLocation : t.setdDownloadsCustomLocation,
-                              style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
-                          Text(current, style: GoogleFonts.manrope(fontSize: 11, color: cs.outline),
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface)),
+                          Text(current, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w400, color: cs.outline),
                               maxLines: 2, overflow: TextOverflow.ellipsis),
                         ],
                       )),
@@ -203,7 +203,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                     Row(children: [
                       Expanded(child: OutlinedButton.icon(
                         icon: const Icon(Icons.folder_open_rounded, size: 16),
-                        label: Text(t.setdDownloadsChooseFolder, style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600)),
+                        label: Text(t.setdDownloadsChooseFolder, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: cs.primary,
                           side: BorderSide(color: cs.primary.withAlpha(80)),
@@ -233,7 +233,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                       if (custom.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         OutlinedButton(
-                          child: Text(t.setdDownloadsReset, style: GoogleFonts.manrope(fontSize: 12, fontWeight: FontWeight.w600)),
+                          child: Text(t.setdDownloadsReset, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: cs.outline,
                             side: BorderSide(color: cs.outlineVariant),
@@ -251,7 +251,7 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
               },
             ),
             const SizedBox(height: 8),
-            _SectionHeader(title: t.setdDownloadsSectionStorage),
+            AppSettingsSectionHeader(title: t.setdDownloadsSectionStorage),
             FutureBuilder<List<int>>(
               future: Future.wait([
                 DownloadService().getTotalSize(isVault: false),
@@ -266,10 +266,10 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(t.setdDownloadsTotalSize(totalMb), style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurface, fontWeight: FontWeight.w600)),
+                    Text(t.setdDownloadsTotalSize(totalMb), style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurface, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Text(t.setdDownloadsLibraryVaultSize(libMb, vaultMb),
-                        style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline)),
                   ]),
                 );
               },
@@ -277,214 +277,6 @@ class _DownloadsSettingsPageState extends State<DownloadsSettingsPage> {
             const SizedBox(height: 24),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(
-        title.toUpperCase(),
-        style: GoogleFonts.manrope(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.0,
-          color: cs.primary,
-        ),
-      ),
-    );
-  }
-}
-
-class _SwitchTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SwitchTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(color: cs.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: iconColor.withAlpha(25),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: GoogleFonts.manrope(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: cs.onSurface)),
-                Text(subtitle,
-                    style: GoogleFonts.manrope(
-                        fontSize: 12, color: cs.outline)),
-              ],
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: cs.onPrimary,
-            activeTrackColor: cs.primary,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChoiceTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String value;
-  final List<String> choices;
-  final ValueChanged<String> onChanged;
-
-  const _ChoiceTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.value,
-    required this.choices,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () => _showPicker(context),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: cs.outlineVariant),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: iconColor.withAlpha(25),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: iconColor, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: GoogleFonts.manrope(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: cs.onSurface,
-                ),
-              ),
-            ),
-            Text(
-              value,
-              style: GoogleFonts.manrope(fontSize: 13, color: cs.outline),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.chevron_right_rounded, color: cs.outline, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showPicker(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cs.surfaceContainerHighest,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 8),
-          Container(
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: cs.outline,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text(
-              title,
-              style: GoogleFonts.manrope(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: cs.onSurface,
-              ),
-            ),
-          ),
-          Divider(color: cs.outlineVariant),
-          ...choices.map(
-            (c) => ListTile(
-              title: Text(
-                c,
-                style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
-              ),
-              trailing: c == value
-                  ? Icon(Icons.check_rounded, color: cs.primary, size: 20)
-                  : null,
-              onTap: () {
-                Navigator.pop(context);
-                onChanged(c);
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
       ),
     );
   }

@@ -3,15 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/services/settings_store.dart';
+import '../../l10n/app_localizations.dart';
 
-/// Discord invite — also shown in About and the Help & Tips page.
+/// Discord invite - also shown in About and the Help & Tips page.
 const String discordInviteUrl = 'https://discord.gg/qmGB7h7vsn';
 
 /// Persisted once the user has seen (or skipped) the first-launch tutorial, so
 /// it never auto-opens again. See the new-vs-existing-user check in AppShell.
 const String tutorialSeenKey = 'tutorial_seen';
 
-/// Swipeable, illustrated first-run tutorial — each slide has a small mockup of
+/// Swipeable, illustrated first-run tutorial - each slide has a small mockup of
 /// the relevant screen. Also replayable from Settings → Help & Tips.
 class TutorialScreen extends StatefulWidget {
   const TutorialScreen({super.key});
@@ -56,53 +57,39 @@ class _TutorialScreenState extends State<TutorialScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final isLast = _page == _count - 1;
 
     final slides = <Widget>[
       _slide(cs,
           art: _WelcomeArt(cs),
-          title: 'Welcome to Foxlations',
-          body: 'One app for manga and manhwa, anime, and light novels — read, '
-              'watch and listen, all from sources you add yourself. No account, '
-              'no ads, nothing phoning home.'),
+          title: t.tutorialSlide1Title,
+          body: t.tutorialSlide1Body),
       _slide(cs,
           art: _BrowseArt(cs),
-          title: 'Get your content',
-          body: 'Foxlations ships empty — you choose the sources. In the Browse '
-              'tab, open the ⋯ menu to add an extension repository (a link your '
-              'community shares), or build one for almost any site with RepoForge. '
-              'Installed sources show up ready to search.'),
+          title: t.tutorialSlide2Title,
+          body: t.tutorialSlide2Body),
       _slide(cs,
           art: _LibraryArt(cs),
-          title: 'Build your library',
-          body: 'Search a source or use global search across all of them, open a '
-              'title, and tap the heart to add it. Your library is organized with '
-              'categories (Reading, On-hold, your own…) and a “Continue reading” '
-              'shortcut right up top.'),
+          title: t.tutorialSlide3Title,
+          body: t.tutorialSlide3Body),
       _slide(cs,
           art: _ReaderArt(cs),
-          title: 'Read your way',
-          body: 'Paged, webtoon or double-page; tap the edges to turn pages and '
-              'the centre for controls. Dial in eye-comfort (warm filter + dim), '
-              'customise the novel reader, let it read novels aloud, and skip '
-              'anime intros automatically.'),
+          title: t.tutorialSlide4Title,
+          body: t.tutorialSlide4Body),
       _slide(cs,
           art: _VaultArt(cs),
-          title: 'Private & offline',
-          body: 'Download chapters and episodes to read with no connection, back '
-              'up your whole library, and keep private titles locked away in the '
-              'Vault. There’s incognito mode and an app lock too.'),
+          title: t.tutorialSlide5Title,
+          body: t.tutorialSlide5Body),
       _slide(cs,
           art: _CommunityArt(cs),
-          title: 'Join the community',
-          body: 'Questions, source help, feature requests, or just want to chat? '
-              'Come say hi on our Discord — and you can reopen this tour any time '
-              'from Settings → Help & Tips.',
+          title: t.tutorialSlide6Title,
+          body: t.tutorialSlide6Body,
           extra: OutlinedButton.icon(
             onPressed: _openDiscord,
             icon: const Icon(Icons.open_in_new_rounded, size: 18),
-            label: Text('Join Discord',
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+            label: Text(t.tutorialJoinDiscord,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
           )),
     ];
 
@@ -115,8 +102,8 @@ class _TutorialScreenState extends State<TutorialScreen> {
               alignment: Alignment.centerRight,
               child: TextButton(
                 onPressed: _finish,
-                child: Text(isLast ? '' : 'Skip',
-                    style: GoogleFonts.manrope(
+                child: Text(isLast ? '' : t.tutorialSkip,
+                    style: TextStyle(
                         fontWeight: FontWeight.w600, color: cs.outline)),
               ),
             ),
@@ -151,9 +138,9 @@ class _TutorialScreenState extends State<TutorialScreen> {
                   onPressed: _next,
                   style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14)),
-                  child: Text(isLast ? 'Get started' : 'Next',
-                      style: GoogleFonts.manrope(
-                          fontWeight: FontWeight.w700, fontSize: 15)),
+                  child: Text(isLast ? t.tutorialGetStarted : t.tutorialNext,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontSize: 15, fontWeight: FontWeight.w700, color: cs.onPrimary)),
                 ),
               ),
             ),
@@ -178,15 +165,15 @@ class _TutorialScreenState extends State<TutorialScreen> {
           const SizedBox(height: 28),
           Text(title,
               textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: cs.onSurface)),
           const SizedBox(height: 12),
           Text(body,
               textAlign: TextAlign.center,
-              style: GoogleFonts.manrope(
-                  fontSize: 14, height: 1.55, color: cs.outline)),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  height: 1.55, color: cs.outline)),
           if (extra != null) ...[const SizedBox(height: 18), extra],
           const SizedBox(height: 8),
         ],
@@ -261,23 +248,22 @@ class _WelcomeArt extends StatelessWidget {
         Wrap(
           spacing: 8,
           children: [
-            _pill(cs, 'Manga'),
-            _pill(cs, 'Anime'),
-            _pill(cs, 'Novels'),
+            _pill(context, cs, AppLocalizations.of(context).browseManga),
+            _pill(context, cs, AppLocalizations.of(context).browseAnime),
+            _pill(context, cs, AppLocalizations.of(context).browseNovels),
           ],
         ),
       ],
     );
   }
 
-  Widget _pill(ColorScheme cs, String s) => Container(
+  Widget _pill(BuildContext context, ColorScheme cs, String s) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
             color: cs.primary.withAlpha(26),
             borderRadius: BorderRadius.circular(20)),
         child: Text(s,
-            style: GoogleFonts.manrope(
-                fontSize: 12,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: cs.primary)),
       );

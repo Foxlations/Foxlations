@@ -1,24 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../l10n/app_localizations.dart';
+import '../../../theme/app_tokens.dart';
+import '../../widgets/ds/ds.dart';
 import '../../tutorial/tutorial_screen.dart';
 
 /// Settings → Help & Tips: replay the tutorial, join the community, and a few
 /// quick pointers.
 class HelpTipsPage extends StatelessWidget {
   const HelpTipsPage({super.key});
-
-  static const _tips = <(IconData, String, String)>[
-    (Icons.extension_rounded, 'No content showing?',
-        'Add an extension repository in Browse → ⋯ to install sources first.'),
-    (Icons.swipe_rounded, 'Reader gestures',
-        'Tap the edges to turn pages, the center to show controls; long-press a page for more.'),
-    (Icons.lock_rounded, 'The Vault',
-        'Move private titles into the Vault to keep them behind a lock.'),
-    (Icons.sync_rounded, 'Keep up to date',
-        'Pull down on the Library to check for new chapters; set a schedule in Library settings.'),
-  ];
 
   Future<void> _openDiscord() async {
     try {
@@ -30,50 +21,65 @@ class HelpTipsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
+    final tips = <(IconData, String, String)>[
+      (Icons.extension_rounded, t.helpTipsNoContentTitle, t.helpTipsNoContentBody),
+      (Icons.swipe_rounded, t.helpTipsGesturesTitle, t.helpTipsGesturesBody),
+      (Icons.lock_rounded, t.helpTipsVaultTitle, t.helpTipsVaultBody),
+      (Icons.sync_rounded, t.helpTipsUpdateTitle, t.helpTipsUpdateBody),
+    ];
     return Scaffold(
       appBar: AppBar(
-        title: Text('Help & Tips',
-            style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        title: Text(t.helpTipsTitle,
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w700)),
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         children: [
           ListTile(
             leading: Icon(Icons.school_rounded, color: cs.primary),
-            title: Text('View tutorial',
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
-            subtitle: Text('A quick tour of the app',
-                style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+            title: Text(t.helpTipsViewTutorial,
+                style: Theme.of(context).textTheme.titleSmall),
+            subtitle: Text(t.helpTipsViewTutorialSub,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: cs.outline)),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const TutorialScreen())),
           ),
           ListTile(
             leading: Icon(Icons.forum_rounded, color: cs.primary),
-            title: Text('Join our Discord',
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
-            subtitle: Text('Help, requests & community',
-                style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+            title: Text(t.helpTipsDiscord,
+                style: Theme.of(context).textTheme.titleSmall),
+            subtitle: Text(t.helpTipsDiscordSub,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: cs.outline)),
             trailing: const Icon(Icons.open_in_new_rounded, size: 18),
             onTap: _openDiscord,
           ),
           const Divider(height: 24),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text('TIPS',
-                style: GoogleFonts.manrope(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: cs.outline,
-                    letterSpacing: 0.5)),
+          AppSectionLabel(
+            t.helpTipsSectionTips,
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
           ),
-          for (final (icon, title, body) in _tips)
+          for (final (icon, title, body) in tips)
             ListTile(
               leading: Icon(icon, color: cs.outline),
               title: Text(title,
-                  style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+                  style: Theme.of(context).textTheme.titleSmall),
               subtitle: Text(body,
-                  style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(fontSize: 12.5, color: cs.outline)),
             ),
         ],
       ),

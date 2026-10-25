@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:collection/collection.dart';
 import 'package:path_provider/path_provider.dart';
 import '../utils/portable_path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,7 +18,7 @@ class SourceManager {
   /// id. MUST be empty in shipped builds: it previously held a developer's
   /// Windows checkout paths (D:/projects/foxlations-extensions/…), which don't
   /// exist on any user's machine. Those entries were guarded by File.exists()
-  /// so they failed silently — but they are exactly the kind of hardcoded path
+  /// so they failed silently - but they are exactly the kind of hardcoded path
   /// that has no business in a release, so they're gone. Sources load from
   /// their repo's sourceCodeUrl instead.
   static const Map<String, String> _devOverrides = <String, String>{};
@@ -50,7 +51,7 @@ class SourceManager {
         var source = MangaSource.fromJson(map, repoUrl);
         // Re-expand the Kotlin jar path to the current app container. iOS moves the
         // Documents container (new UUID) on every re-sign, so a persisted absolute
-        // path goes stale — PortablePath repairs both the tokenised form and a legacy
+        // path goes stale - PortablePath repairs both the tokenised form and a legacy
         // absolute path whose file still exists under today's container.
         final storedJar = source.config['jar'];
         if (source.isKotlinBased && storedJar is String && storedJar.isNotEmpty) {
@@ -111,7 +112,7 @@ class SourceManager {
       map['_repoUrl'] = inst.source.repoUrl;
       map['_installedAt'] = inst.installedAt.toIso8601String();
       // Persist the container-specific Kotlin jar path in tokenised form so it
-      // survives an iOS re-sign. Copy the config first — toJson reuses the live
+      // survives an iOS re-sign. Copy the config first - toJson reuses the live
       // config map, and mutating it would tokenise the in-memory (absolute) path too.
       final jar = inst.source.config['jar'];
       if (jar is String && jar.isNotEmpty) {
@@ -138,7 +139,7 @@ class SourceManager {
       return url;
     }
 
-    // Relative path — resolve against the repo URL's directory
+    // Relative path - resolve against the repo URL's directory
     final repoUrl = source.repoUrl;
     if (repoUrl.isEmpty) return url;
 
@@ -174,7 +175,7 @@ class SourceManager {
     // interpretable code. Download the apk/jar, convert an apk to a loadable jar
     // via the embedded JVM (which also decodes the entry class from the binary
     // manifest), record {jar,entry} on the source, and route by the manifest's
-    // real content type. This is what makes anime (Aniyomi) sources work — the
+    // real content type. This is what makes anime (Aniyomi) sources work - the
     // app is a compatibility layer; the user supplies the source.
     if (source.isKotlinBased) {
       return _installKotlin(source);
@@ -187,7 +188,7 @@ class SourceManager {
     // handled above). Refuse at install time with an honest message.
     if (sourceCode.isEmpty && resolvedUrl.isEmpty) {
       throw Exception(
-          'This source has no runnable code — no source URL and no Kotlin '
+          'This source has no runnable code - no source URL and no Kotlin '
           'apk/jar to convert. Try a Mangayomi- or Aniyomi-compatible repo.');
     }
 
@@ -282,7 +283,7 @@ class SourceManager {
     String itemType = source.itemType;
 
     if (Platform.isAndroid) {
-      // Android loads the extension APK's dex DIRECTLY on ART — no jar and
+      // Android loads the extension APK's dex DIRECTLY on ART - no jar and
       // no dex2jar. keiyoushi's jarUrl is JVM bytecode (not loadable on ART), so always
       // use the apk; the native host reads the entry class from the apk manifest.
       final apkPath = '${dir.path}/$safeId.apk';
@@ -294,7 +295,7 @@ class SourceManager {
       cfg['jar'] = apkPath;
     } else if (jarUrl.isNotEmpty) {
       // Embedded-JVM platforms (iOS/desktop): keiyoushi 1.6 ships a ready-to-load jar
-      // with a plaintext AndroidManifest — no on-device dex→jar needed.
+      // with a plaintext AndroidManifest - no on-device dex→jar needed.
       await _download(jarUrl, jarPath);
       cfg['jar'] = jarPath;
     } else {
@@ -351,13 +352,20 @@ class SourceManager {
     final bytes = resp.data ?? const <int>[];
     if (bytes.isEmpty) throw Exception('Empty download from $url');
     // A previously-loaded extension apk was marked read-only (Android 14+ won't load
-    // a writable dex — see ExtensionHost), so overwriting it in place would fail.
+    // a writable dex - see ExtensionHost), so overwriting it in place would fail.
     // Delete first: removing a read-only file is allowed (the parent dir is writable).
     final out = File(outPath);
     if (await out.exists()) {
       try {
         await out.delete();
-      } catch (_) {}
+      } catch (e) {
+        // A pre-overwrite delete is expected to succeed (the dir is writable);
+        // if it doesn't, writeAsBytes below usually fails with a less obvious
+        // error, so surface this to Debug logs. Not in a loop - fires at most
+        // once per extension download.
+        await logger.warning('Could not remove existing extension file before overwrite',
+            category: LogCategory.install, detail: '$outPath: $e');
+      }
     }
     await out.writeAsBytes(bytes);
   }
@@ -476,10 +484,6 @@ class SourceManager {
 
   Future<InstalledSource?> getInstalledSource(String sourceId) async {
     await _ensureLoaded();
-    try {
-      return _installed.firstWhere((s) => s.source.id == sourceId);
-    } catch (_) {
-      return null;
-    }
+    return _installed.firstWhereOrNull((s) => s.source.id == sourceId);
   }
 }

@@ -25,7 +25,7 @@ class TrackingService {
 
   List<Tracker> get all => trackers.values.toList();
 
-  /// Trackers that can power the Discover feed and are usable right now — AniList
+  /// Trackers that can power the Discover feed and are usable right now - AniList
   /// always (public API), MAL only once connected. Ordered with the public one
   /// first so Discover has a working default before any login.
   List<MetadataDiscovery> get discoverySources {

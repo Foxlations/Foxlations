@@ -2,7 +2,7 @@ import 'tracker_models.dart';
 
 /// How a tracker authenticates.
 enum TrackerAuthType {
-  /// OAuth — open [Tracker.authorizeUrl] in a browser/WebView, then hand the
+  /// OAuth - open [Tracker.authorizeUrl] in a browser/WebView, then hand the
   /// resulting access token back via [Tracker.authenticateWithToken].
   oauth,
 

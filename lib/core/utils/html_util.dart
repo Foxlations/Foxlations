@@ -44,8 +44,8 @@ String stripHtml(String input) {
       .replaceAll('&apos;', "'")
       .replaceAll('&nbsp;', ' ')
       .replaceAll('&hellip;', '…')
-      .replaceAll('&mdash;', '—')
-      .replaceAll('&ndash;', '–');
+      .replaceAll('&mdash;', ' - ')
+      .replaceAll('&ndash;', '-');
   s = s
       .replaceAll(RegExp(r'[ \t]+'), ' ')
       .replaceAll(RegExp(r' *\n *'), '\n')

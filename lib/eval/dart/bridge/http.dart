@@ -21,7 +21,7 @@ class HttpBridge {
       nativeType: _HttpClient,
       name: 'Client',
       constructors: {
-        // Client() — no base. Client(source) — resolve relative URLs against
+        // Client() - no base. Client(source) - resolve relative URLs against
         // the source's baseUrl (Mangayomi-format sources rely on this).
         '': (visitor, positionalArgs, namedArgs) {
           String? base;
@@ -125,7 +125,7 @@ class _HttpClient {
       settings: rhttp.ClientSettings(
         throwOnStatusCode: false,
         // DNS-over-HTTPS when enabled; null = system DNS. TLS stays verified
-        // (see above) — DoH only changes how the hostname resolves.
+        // (see above) - DoH only changes how the hostname resolves.
         dnsSettings: dohDnsSettingsOrNull(),
       ),
     );
@@ -175,7 +175,7 @@ class _HttpClient {
       debugPrint('[HTTP] GET $url → ${response.statusCode} (${response.body.length} bytes)');
       if (response.statusCode == 403) {
         if (!_isCloudflare(response.body, response.headerMap)) {
-          debugPrint('[HTTP] 403 for $url — not Cloudflare, returning as-is');
+          debugPrint('[HTTP] 403 for $url - not Cloudflare, returning as-is');
           return _HttpResponse(body: response.body, statusCode: 403, headers: response.headerMap);
         }
         return await _handleCloudflare(url, headers, 'GET');
@@ -231,7 +231,7 @@ class _HttpClient {
   /// response stream into a single `List<int>` without any text decoding.
   Future<List<int>> _dartGetBytes(
       String url, Map<String, String> headers) async {
-    // No badCertificateCallback override — a bad cert must fail, not be
+    // No badCertificateCallback override - a bad cert must fail, not be
     // accepted (this request carries the user's session cookies).
     final httpClient = HttpClient();
     try {
@@ -309,10 +309,10 @@ class _HttpClient {
     String method, {
     dynamic body,
   }) async {
-    // On Windows, WebView can't extract HttpOnly cookies — skip all WebView steps.
+    // On Windows, WebView can't extract HttpOnly cookies - skip all WebView steps.
     // Try once with cached cookies; if still blocked, fail fast with a clear message.
     if (Platform.isWindows) {
-      debugPrint('[HTTP] 403 CF on Windows for $url — trying cached cookies only');
+      debugPrint('[HTTP] 403 CF on Windows for $url - trying cached cookies only');
       final mergedHeaders = await _buildHeaders(url, originalHeaders);
       try {
         final client = await _getClient();
@@ -329,9 +329,9 @@ class _HttpClient {
       throw Exception('This source is Cloudflare-protected and requires Android or iOS to access.');
     }
 
-    // In background isolate, can't spawn WebView — just retry with cookies or throw
+    // In background isolate, can't spawn WebView - just retry with cookies or throw
     if (isBackgroundIsolate) {
-      debugPrint('[HTTP] 403 in isolate for $url — retrying with cached cookies only');
+      debugPrint('[HTTP] 403 in isolate for $url - retrying with cached cookies only');
       final mergedHeaders = await _buildHeaders(url, originalHeaders);
       final client = await _getClient();
       final response = await client.requestText(
@@ -343,16 +343,16 @@ class _HttpClient {
       if (response.statusCode != 403) {
         return _HttpResponse(body: response.body, statusCode: response.statusCode, headers: response.headerMap);
       }
-      throw Exception('Cloudflare 403 in isolate — needs main thread WebView resolution');
+      throw Exception('Cloudflare 403 in isolate - needs main thread WebView resolution');
     }
 
     final cookieStore = CookieStore();
     final domain = Uri.parse(url).host;
 
     // Step 1: If we have fresh cookies (resolved <30 min ago), retry with rhttp only
-    // Don't spawn WebView — just use the cached cookies
+    // Don't spawn WebView - just use the cached cookies
     if (cookieStore.hasFreshCookies(url)) {
-      debugPrint('[HTTP] 403 for $url — retrying with fresh cached cookies (no WebView)');
+      debugPrint('[HTTP] 403 for $url - retrying with fresh cached cookies (no WebView)');
       final mergedHeaders = await _buildHeaders(url, originalHeaders);
       try {
         final client = await _getClient();
@@ -369,12 +369,12 @@ class _HttpClient {
       } catch (e) {
         debugPrint('[HTTP] Cached cookie retry failed: $e');
       }
-      // Cookies are stale despite being "fresh" — clear and fall through to full resolution
-      debugPrint('[HTTP] Fresh cookies rejected — clearing and re-resolving');
+      // Cookies are stale despite being "fresh" - clear and fall through to full resolution
+      debugPrint('[HTTP] Fresh cookies rejected - clearing and re-resolving');
     }
 
-    // Step 2: Need to resolve Cloudflare — but prevent concurrent resolutions
-    debugPrint('[HTTP] 403 for $url — resolving Cloudflare...');
+    // Step 2: Need to resolve Cloudflare - but prevent concurrent resolutions
+    debugPrint('[HTTP] 403 for $url - resolving Cloudflare...');
 
     // Wait if another resolution is already in progress for this domain
     if (_cfLocks.containsKey(domain)) {
@@ -438,9 +438,9 @@ class _HttpClient {
         return _HttpResponse(body: html, statusCode: 200, headers: {});
       }
 
-      // fetchHtml may have extracted fresh cookies even if it returned null —
+      // fetchHtml may have extracted fresh cookies even if it returned null - 
       // do one final rhttp retry before giving up.
-      debugPrint('[HTTP] fetchHtml returned null — final rhttp retry with fresh cookies...');
+      debugPrint('[HTTP] fetchHtml returned null - final rhttp retry with fresh cookies...');
       try {
         final retryHeaders = await _buildHeaders(url, originalHeaders);
         final client = await _getClient();

@@ -8,7 +8,7 @@ import '../../core/services/app_logger.dart';
 import '../../core/services/doh/doh_resolver.dart';
 
 /// Error thrown for a source-reported failure. [message] is the clean, human part
-/// (what to show on screen — e.g. "Open in WebView to set necessary cookies"); [detail]
+/// (what to show on screen - e.g. "Open in WebView to set necessary cookies"); [detail]
 /// is the full host string (exception type + root cause + stack frames) kept for the
 /// Debug log. `toString()` is the clean message, so widgets that render `e.toString()`
 /// (the reader/browse/detail error views, global-search rows) show the actionable line
@@ -28,12 +28,12 @@ class SourceError implements Exception {
 String humanizeSourceError(String raw) {
   final lower = raw.toLowerCase();
   // Known-cryptic source failures → actionable guidance. "Failed to find
-  // buildId" means the extension couldn't read the site's page data — in
+  // buildId" means the extension couldn't read the site's page data - in
   // practice the site has moved, changed its layout, or gone down (e.g. Flame
   // Comics' flamecomics.xyz now redirects to Discord), so no extension version
   // can read it until it's updated/re-pointed.
   if (lower.contains('buildid')) {
-    return "This source couldn't read the site — it may have moved, changed, or "
+    return "This source couldn't read the site - it may have moved, changed, or "
         "gone down. Try updating the source (Browse → Extensions); if that "
         "doesn't help, the site is likely offline and the source can be removed.";
   }
@@ -59,12 +59,18 @@ class FoxJvm {
   // On iOS the embedded Zero VM aborts (os_bsd_zero.cpp ShouldNotCall() via the
   // unimplemented ucontext_get_pc stub, from the JVM crash-signal handler) when
   // a JVM op runs in the unstable window right after the app returns from the
-  // background — the process is still restoring its threads + signal handlers.
+  // background - the process is still restoring its threads + signal handlers.
   // Holding JVM calls briefly after a resume lets that settle first. (The real
   // fix is implementing ucontext_get_pc in the bsd_zero libjvm; this only
   // shrinks the app-side crash window.)
   static const Duration _resumeQuietPeriod = Duration(seconds: 3);
   static DateTime? _resumedAt;
+
+  /// Hard cap on a single JVM round-trip. Without it the MethodChannel future
+  /// never settles when a Kotlin source hangs (a dead site, a stuck OkHttp read)
+  /// and every screen behind the call spins forever. Matches the JS lane's 40s
+  /// cap (core/services/isolate_service.dart).
+  static const Duration _invokeTimeout = Duration(seconds: 40);
 
   /// Call from the app lifecycle observer on resume. Opens a short quiet period
   /// that [_awaitResumeQuiet] holds JVM calls through (iOS only; no-op elsewhere).
@@ -81,7 +87,7 @@ class FoxJvm {
     if (remaining > Duration.zero) {
       await Future<void>.delayed(remaining);
     }
-    _resumedAt = null; // window passed — stop gating until the next resume
+    _resumedAt = null; // window passed - stop gating until the next resume
   }
 
   /// Boots the embedded Zero VM (once) and runs the Suwayomi-hosted MangaDex
@@ -91,7 +97,7 @@ class FoxJvm {
       final result = await _channel.invokeMethod<String>('probe');
       return result ?? '(no report)';
     } on MissingPluginException {
-      return 'JVM channel not available — this build has no embedded JVM.';
+      return 'JVM channel not available - this build has no embedded JVM.';
     } on PlatformException catch (e) {
       return 'JVM probe error: ${e.message ?? e.code}';
     }
@@ -107,7 +113,12 @@ class FoxJvm {
       // Push the current DoH config once the lane is up.
       final doh = jvmDohConfig();
       await setDoh(doh.enabled, doh.url);
-    } catch (_) {}
+    } catch (e) {
+      // Best-effort warm-up (e.g. a non-JVM build has no channel). Debug-level
+      // so it only shows with verbose logging on, not on every Browse open.
+      AppLogger.instance.debug('JVM warmup skipped: $e',
+          category: LogCategory.extension);
+    }
   }
 
   /// Push the DNS-over-HTTPS config to the Kotlin extension lane (Android ART's
@@ -117,7 +128,11 @@ class FoxJvm {
     try {
       await _channel.invokeMethod<String>('invoke',
           jsonEncode({'method': 'setDoh', 'dohEnabled': enabled, 'dohUrl': url}));
-    } catch (_) {}
+    } catch (e) {
+      // Best-effort; debug-level so a channel-less build doesn't spam the log.
+      AppLogger.instance.debug('JVM setDoh failed: $e',
+          category: LogCategory.extension);
+    }
   }
 
   /// M5.2: send a JSON [request] ({method, jar, lang?, page?, query?, url?}) to
@@ -128,12 +143,25 @@ class FoxJvm {
     await _awaitResumeQuiet();
     final String resp;
     try {
-      resp = await _channel.invokeMethod<String>('invoke', jsonEncode(request)) ??
+      resp = await _channel
+              .invokeMethod<String>('invoke', jsonEncode(request))
+              .timeout(_invokeTimeout) ??
           '{"error":"null response"}';
     } on MissingPluginException {
-      throw Exception('JVM channel not available — this build has no embedded JVM.');
+      throw Exception('JVM channel not available - this build has no embedded JVM.');
     } on PlatformException catch (e) {
       throw Exception('JVM invoke error: ${e.message ?? e.code}');
+    } on TimeoutException {
+      // The native side never answered - surface a clean source error in the
+      // same shape callers already expect from an error response, instead of
+      // leaving the Future pending and the screen spinning forever.
+      const msg = 'The source timed out - it may be down or blocking requests. '
+          'Try again, or check the site.';
+      final detail = 'JVM invoke timed out after ${_invokeTimeout.inSeconds}s: '
+          'method=${request['method']} jar=${request['jar']}';
+      AppLogger.instance.error('Source error: $msg',
+          category: LogCategory.extension, detail: detail);
+      throw SourceError(msg, detail);
     }
     final decoded = jsonDecode(resp);
     if (decoded is Map && decoded['error'] != null) {

@@ -50,39 +50,34 @@ List<LibraryManga> applyLibraryQuery(
         .toList();
   }
 
-  // Copy before sorting: the caller's list may be an unmodifiable view of the
-  // Hive box, and sorting in place would reorder the box's own iteration order.
-  final sorted = List<LibraryManga>.from(list);
+  // Decorate-sort-undecorate: lowercasing the title inside the comparator ran
+  // it O(n log n) times (~40k transient strings at n=1000). Compute each title's
+  // sort key ONCE, sort the decorated list, then strip it. Decorating also
+  // copies - the caller's list may be an unmodifiable view of the Hive box, and
+  // sorting it in place would reorder the box's own iteration order.
   final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+  final decorated = [
+    for (final m in list) (m: m, key: m.title.toLowerCase()),
+  ];
 
-  int cmp(LibraryManga a, LibraryManga b) {
-    switch (settings.sort) {
-      case LibrarySort.alphabetical:
-        return a.title.toLowerCase().compareTo(b.title.toLowerCase());
-      case LibrarySort.lastRead:
-        return (a.lastReadAt ?? epoch).compareTo(b.lastReadAt ?? epoch);
-      case LibrarySort.unread:
-        return unreadOf(a).compareTo(unreadOf(b));
-      case LibrarySort.totalChapters:
-        return a.totalChapters.compareTo(b.totalChapters);
-      case LibrarySort.chapterFetchDate:
-        // Never-fetched entries sort as oldest, so ascending puts the entries
-        // that have gone longest without a chapter check at the top.
-        return (a.lastChapterFetchAt ?? epoch)
-            .compareTo(b.lastChapterFetchAt ?? epoch);
-      case LibrarySort.dateAdded:
-        return a.addedAt.compareTo(b.addedAt);
-    }
-  }
-
-  sorted.sort((a, b) {
-    final result = cmp(a, b);
-    // Stable tie-break on title so equal keys don't shuffle between rebuilds.
-    final tie = result != 0
-        ? result
-        : a.title.toLowerCase().compareTo(b.title.toLowerCase());
+  decorated.sort((a, b) {
+    final result = switch (settings.sort) {
+      LibrarySort.alphabetical => a.key.compareTo(b.key),
+      LibrarySort.lastRead =>
+        (a.m.lastReadAt ?? epoch).compareTo(b.m.lastReadAt ?? epoch),
+      LibrarySort.unread => unreadOf(a.m).compareTo(unreadOf(b.m)),
+      LibrarySort.totalChapters =>
+        a.m.totalChapters.compareTo(b.m.totalChapters),
+      // Never-fetched entries sort as oldest, so ascending puts the entries
+      // that have gone longest without a chapter check at the top.
+      LibrarySort.chapterFetchDate =>
+        (a.m.lastChapterFetchAt ?? epoch).compareTo(b.m.lastChapterFetchAt ?? epoch),
+      LibrarySort.dateAdded => a.m.addedAt.compareTo(b.m.addedAt),
+    };
+    // Stable tie-break on the already-lowercased title key.
+    final tie = result != 0 ? result : a.key.compareTo(b.key);
     return settings.sortAscending ? tie : -tie;
   });
 
-  return sorted;
+  return [for (final d in decorated) d.m];
 }

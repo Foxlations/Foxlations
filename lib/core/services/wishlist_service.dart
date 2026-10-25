@@ -1,7 +1,7 @@
 import 'package:hive/hive.dart';
 import '../models/manga_model.dart';
 
-/// Stores "Saved for later" Discover picks — series the user wants but can't yet
+/// Stores "Saved for later" Discover picks - series the user wants but can't yet
 /// read because no installed source carries them. Reuses [LibraryManga] (its
 /// adapter is already registered in main) in a box kept separate from the
 /// library, keyed by [LibraryManga.uniqueKey].
@@ -29,7 +29,7 @@ class WishlistService {
 
   bool contains(String key) => _ready && _box!.containsKey(key);
 
-  /// Title-based membership — the same series has a different id per origin, so
+  /// Title-based membership - the same series has a different id per origin, so
   /// key equality alone would miss a duplicate saved from another source.
   bool containsTitle(String title) {
     if (!_ready) return false;
@@ -38,7 +38,7 @@ class WishlistService {
   }
 
   Future<void> add(LibraryManga entry) async {
-    // Detach if the instance is bound elsewhere — Hive forbids one object in two
+    // Detach if the instance is bound elsewhere - Hive forbids one object in two
     // boxes (same guard the library uses).
     await _box?.put(entry.uniqueKey, entry.isInBox ? entry.clone() : entry);
   }

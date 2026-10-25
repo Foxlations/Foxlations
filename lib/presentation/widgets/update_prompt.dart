@@ -2,7 +2,6 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/update_service.dart';
 import '../../theme/app_theme.dart';
@@ -13,7 +12,7 @@ import '../webview_screen/webview_screen.dart';
 ///
 /// Android gets a download action (a sideloaded APK has nothing else to update
 /// it). iOS gets an informational sheet pointing at AltStore, because iOS
-/// cannot install an IPA fetched from a browser — offering a download there
+/// cannot install an IPA fetched from a browser - offering a download there
 /// would look like an update path and then dead-end.
 class UpdatePrompt {
   /// Checks in the background and shows the prompt if one is due.
@@ -64,7 +63,7 @@ class _UpdateSheet extends StatelessWidget {
     return SafeArea(
       child: ConstrainedBox(
         constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.7),
+            maxHeight: MediaQuery.sizeOf(context).height * 0.7),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,12 +90,12 @@ class _UpdateSheet extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(t.appUpdateAvailable,
-                            style: GoogleFonts.manrope(
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
                                 color: cs.onSurface)),
                         Text(t.appVersionBuild(release.version, release.buildNumber),
-                            style: GoogleFonts.manrope(
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 fontSize: 12.5, color: cs.onSurfaceVariant)),
                       ],
                     ),
@@ -111,8 +110,8 @@ class _UpdateSheet extends StatelessWidget {
                   child: SingleChildScrollView(
                     child: Text(
                       release.notes.trim(),
-                      style: GoogleFonts.manrope(
-                          fontSize: 13, height: 1.45, color: cs.onSurfaceVariant),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.45, color: cs.onSurfaceVariant),
                     ),
                   ),
                 ),
@@ -159,15 +158,16 @@ class _UpdateSheet extends StatelessWidget {
               );
             },
             child: Text(t.appDownloadVersion(release.version),
-                style: GoogleFonts.manrope(
-                    fontSize: 14.5, fontWeight: FontWeight.w700)),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontSize: 14.5, fontWeight: FontWeight.w700, color: cs.onPrimary)),
           ),
         ),
         const SizedBox(height: 6),
         Text(
           t.appApkDownloadHint,
           textAlign: TextAlign.center,
-          style: GoogleFonts.manrope(fontSize: 11.5, color: cs.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: 11.5, color: cs.onSurfaceVariant),
         ),
       ],
     );
@@ -193,7 +193,7 @@ class _UpdateSheet extends StatelessWidget {
               Expanded(
                 child: Text(
                   t.appIosUpdateHint,
-                  style: GoogleFonts.manrope(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontSize: 12.5, height: 1.4, color: cs.onSurface),
                 ),
               ),
@@ -220,8 +220,8 @@ class _UpdateSheet extends StatelessWidget {
               }
             },
             child: Text(t.appCopyAltstoreUrl,
-                style: GoogleFonts.manrope(
-                    fontSize: 14, fontWeight: FontWeight.w700)),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700, color: cs.primary)),
           ),
         ),
       ],

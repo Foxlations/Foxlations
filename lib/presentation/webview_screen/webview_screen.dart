@@ -54,8 +54,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
   }
 
   /// Gate for [InAppWebView.shouldOverrideUrlLoading]: cancel the ad "redirect
-  /// hijack" — a page auto-navigating the main frame to a DIFFERENT site without
-  /// the user tapping anything — plus non-web schemes (intent://, market://, …)
+  /// hijack" - a page auto-navigating the main frame to a DIFFERENT site without
+  /// the user tapping anything - plus non-web schemes (intent://, market://, …)
   /// that yank you into another app. Everything the user actually clicks
   /// (LINK_ACTIVATED / a real gesture), same-site navigation, and the first load
   /// is allowed, so normal clicking-around still works. Off while solving
@@ -126,7 +126,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
       if (mounted && _isLoading) {
         setState(() => _loadError =
             'The page is taking a long time to load. Cloudflare may be '
-            'blocking this request — try Reload, or go back and retry.');
+            'blocking this request - try Reload, or go back and retry.');
         logger.warning('[WebView] load watchdog fired for ${widget.url}',
             category: LogCategory.network);
       }
@@ -199,7 +199,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     // A real browser UA so a Cloudflare challenge renders here
                     // (cf_clearance is UA-bound). On iOS the two flags below are
                     // no-ops (WKWebView has DOM storage on by default and the
-                    // iOS cookie knob is sharedCookiesEnabled), so set that too —
+                    // iOS cookie knob is sharedCookiesEnabled), so set that too - 
                     // the Turnstile iframe needs a consistent cookie store or it
                     // paints blank. domStorage/thirdPartyCookies apply on Android.
                     userAgent: _userAgent,
@@ -207,7 +207,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     thirdPartyCookiesEnabled: true,
                     sharedCookiesEnabled: true,
                     // Ad-junk hardening: no JS-spawned popup windows, no second
-                    // window at all, and media can't autoplay (ad videos) — a
+                    // window at all, and media can't autoplay (ad videos) - a
                     // reader never needs any of these. useShouldOverrideUrlLoading
                     // turns on the navigation guard below (redirect hijacks).
                     javaScriptCanOpenWindowsAutomatically: false,
@@ -220,7 +220,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   ),
                   onWebViewCreated: (controller) => _controller = controller,
                   // A page that tries to spawn a new window/tab (target=_blank,
-                  // window.open) is almost always an ad popup/popunder here — never
+                  // window.open) is almost always an ad popup/popunder here - never
                   // open a second webview; return false to drop it.
                   onCreateWindow: (controller, action) async => false,
                   // Block the redirect hijack: a page auto-navigating you OFF the
@@ -246,7 +246,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     }
                     if (mounted) setState(() => _isLoading = false);
                     // Adblock can strip challenge DOM, so skip it while solving
-                    // Cloudflare — only inject for normal browsing.
+                    // Cloudflare - only inject for normal browsing.
                     if (!widget.cloudflareMode) {
                       await _injectAdBlock(controller);
                     }
@@ -331,7 +331,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   /// Open the page currently shown (which may differ from the initial url after
   /// navigation) in the user's default browser. Forces an external launch rather
   /// than routing through ExternalBrowser, which would re-open the in-app WebView
-  /// when the "external browser" setting is off — here the user asked for it.
+  /// when the "external browser" setting is off - here the user asked for it.
   Future<void> _openInExternalBrowser() async {
     final current = (await _controller?.getUrl())?.toString() ?? widget.url;
     bool ok = false;

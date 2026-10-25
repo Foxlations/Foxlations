@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../../../core/build_config.dart';
 import '../../../core/providers/beta_provider.dart';
 import '../../../core/services/app_logger.dart';
@@ -15,11 +16,13 @@ import '../../../core/services/image_loader.dart';
 import '../../../eval/kotlin/jvm_bridge.dart';
 import '../../../core/services/settings_store.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
+import '../../widgets/ds/ds.dart';
 import '../../../l10n/app_localizations.dart';
 import 'gaze_lab_screen.dart';
 
 /// Advanced preference keys. Switches persist; some have no runtime effect
-/// yet (DNS-over-HTTPS, third-party extensions, external browser) — those
+/// yet (DNS-over-HTTPS, third-party extensions, external browser) - those
 /// will be wired up when their underlying features land.
 class AdvancedPrefs {
   static const verboseLogging = 'adv_verbose_logging';
@@ -112,6 +115,7 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
 
   void _openDnsProviderSheet() {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       backgroundColor: cs.surface,
@@ -126,15 +130,18 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
                   selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
                   color: selected ? cs.primary : cs.outline),
               title: Text(p.label,
-                  style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+                  style: Theme.of(context).textTheme.titleSmall),
               subtitle: Text(p.queryUrl,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(fontSize: 11, color: cs.outline)),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(fontSize: 11, color: cs.outline)),
               trailing: p.isCustom
                   ? IconButton(
                       icon: Icon(Icons.delete_outline_rounded, color: cs.error),
-                      tooltip: 'Delete',
+                      tooltip: t.setxAdvancedDnsDelete,
                       onPressed: () async {
                         await _confirmDeleteCustomDns(p);
                         setSheet(() {});
@@ -153,8 +160,8 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                 child: Row(children: [
-                  Text('DNS provider',
-                      style: GoogleFonts.manrope(
+                  Text(t.setxAdvancedDnsProviderTitle,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700, fontSize: 15)),
                 ]),
               ),
@@ -165,9 +172,11 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
                     ..._customDns.map(row),
                     ListTile(
                       leading: Icon(Icons.add_rounded, color: cs.primary),
-                      title: Text('Add custom DNS',
-                          style: GoogleFonts.manrope(
-                              fontWeight: FontWeight.w600, color: cs.primary)),
+                      title: Text(t.setxAdvancedDnsAddCustom,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(color: cs.primary)),
                       onTap: () async {
                         final added = await _addCustomDnsDialog();
                         if (added) setSheet(() {});
@@ -186,6 +195,7 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
   /// Add-custom dialog (name + https URL). Returns true if one was added.
   Future<bool> _addCustomDnsDialog() async {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final nameCtl = TextEditingController();
     final urlCtl = TextEditingController();
     final added = await showDialog<bool>(
@@ -195,20 +205,21 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
         return StatefulBuilder(
           builder: (ctx, setDlg) => AlertDialog(
             backgroundColor: cs.surface,
-            title: const Text('Add custom DNS'),
+            title: Text(t.setxAdvancedDnsAddCustom),
             content: Column(mainAxisSize: MainAxisSize.min, children: [
               TextField(
                 controller: nameCtl,
-                decoration: const InputDecoration(
-                    labelText: 'Name', hintText: 'My DNS'),
+                decoration: InputDecoration(
+                    labelText: t.setxAdvancedDnsName,
+                    hintText: t.setxAdvancedDnsNameHint),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               TextField(
                 controller: urlCtl,
                 keyboardType: TextInputType.url,
                 autocorrect: false,
                 decoration: InputDecoration(
-                  labelText: 'DoH URL',
+                  labelText: t.setxAdvancedDnsUrlLabel,
                   hintText: 'https://example.com/dns-query',
                   errorText: error,
                 ),
@@ -217,17 +228,17 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Cancel')),
+                  child: Text(t.setxAdvancedCancel)),
               FilledButton(
                 onPressed: () {
                   final url = urlCtl.text.trim();
                   if (!DohProviders.isValidUrl(url)) {
-                    setDlg(() => error = 'Enter a valid https:// URL');
+                    setDlg(() => error = t.setxAdvancedDnsInvalidUrl);
                     return;
                   }
                   Navigator.pop(ctx, true);
                 },
-                child: const Text('Add'),
+                child: Text(t.setxAdvancedDnsAdd),
               ),
             ],
           ),
@@ -250,20 +261,21 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
 
   Future<void> _confirmDeleteCustomDns(DohProvider p) async {
     final cs = Theme.of(context).colorScheme;
+    final t = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cs.surface,
-        title: const Text('Delete custom DNS?'),
-        content: Text('Remove "${p.label}" from your DNS providers?'),
+        title: Text(t.setxAdvancedDnsDeleteTitle),
+        content: Text(t.setxAdvancedDnsDeleteBody(p.label)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(t.setxAdvancedCancel)),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: cs.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: Text(t.setxAdvancedDnsDelete),
           ),
         ],
       ),
@@ -295,24 +307,29 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
         title: Text(t.setxAdvancedClearDbTitle,
-            style: GoogleFonts.manrope(
-                fontSize: 16,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: cs.onSurface)),
         content: Text(
           t.setxAdvancedClearDbBody,
-          style: GoogleFonts.manrope(fontSize: 13, color: cs.onSurfaceVariant),
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: cs.onSurfaceVariant),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(t.setxAdvancedCancel,
-                style: GoogleFonts.manrope(color: cs.outline)),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(color: cs.outline)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(t.setxAdvancedClear,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: AppTheme.error, fontWeight: FontWeight.w700)),
           ),
         ],
@@ -352,23 +369,25 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context)),
         title: Text(t.setxAdvancedTitle,
-            style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
       ),
       body: ListView(
         padding: EdgeInsets.only(
-            top: 8, bottom: 8 + MediaQuery.of(context).viewPadding.bottom),
+            top: AppSpacing.sm,
+            bottom: AppSpacing.sm + MediaQuery.viewPaddingOf(context).bottom),
         children: [
-          _SectionHeader(title: t.setxAdvancedSectionBeta),
-          _SwitchTile(
+          AppSettingsSectionHeader(title: t.setxAdvancedSectionBeta),
+          AppSettingsSwitchTile(
               icon: Icons.science_rounded,
               iconColor: AppTheme.warning,
               title: t.setxAdvancedBeta,
               subtitle: t.setxAdvancedBetaDesc,
               value: context.watch<BetaProvider>().enabled,
               onChanged: (v) => context.read<BetaProvider>().setEnabled(v)),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setxAdvancedSectionLogging),
-          _SwitchTile(icon: Icons.bug_report_rounded, iconColor: cs.outline,
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setxAdvancedSectionLogging),
+          AppSettingsSwitchTile(icon: Icons.bug_report_rounded, iconColor: cs.outline,
               title: t.setxAdvancedVerboseLoggingTitle, subtitle: t.setxAdvancedVerboseLoggingSubtitle,
               value: _verboseLogging, onChanged: (v) {
                 setState(() => _verboseLogging = v);
@@ -378,7 +397,7 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
               title: t.setxAdvancedViewErrorLogsTitle, subtitle: t.setxAdvancedViewErrorLogsSubtitle,
               onTap: () => Navigator.push(context,
                   MaterialPageRoute(builder: (_) => const ErrorLogViewerPage()))),
-          // Dev-only — never ships in public builds (built without FOX_DEV).
+          // Dev-only - never ships in public builds (built without FOX_DEV).
           if (Platform.isIOS && kDevBuild)
             _ActionTile(icon: Icons.center_focus_strong_rounded,
                 iconColor: AppTheme.secondary,
@@ -386,9 +405,9 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
                 subtitle: 'Live eye-tracking tuning + manual calibration',
                 onTap: () => Navigator.push(context,
                     MaterialPageRoute(builder: (_) => const GazeLabScreen()))),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setxAdvancedSectionNetwork),
-          _SwitchTile(icon: Icons.dns_rounded, iconColor: const Color(0xFF06B6D4),
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setxAdvancedSectionNetwork),
+          AppSettingsSwitchTile(icon: Icons.dns_rounded, iconColor: const Color(0xFF06B6D4),
               title: t.setxAdvancedDnsOverHttpsTitle, subtitle: t.setxAdvancedDnsOverHttpsSubtitle,
               value: _dnsOverHttps, onChanged: (v) async {
                 setState(() => _dnsOverHttps = v);
@@ -402,82 +421,39 @@ class _AdvancedSettingsPageState extends State<AdvancedSettingsPage> {
               selectedLabel: _selectedDnsLabel(),
               onTap: _openDnsProviderSheet,
             ),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setxAdvancedSectionExtensions),
-          _SwitchTile(icon: Icons.extension_rounded, iconColor: AppTheme.warning,
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setxAdvancedSectionExtensions),
+          AppSettingsSwitchTile(icon: Icons.extension_rounded, iconColor: AppTheme.warning,
               title: t.setxAdvancedThirdPartyTitle, subtitle: t.setxAdvancedThirdPartySubtitle,
               value: _thirdPartyExtensions, onChanged: (v) {
                 setState(() => _thirdPartyExtensions = v);
                 _setBool(AdvancedPrefs.thirdPartyExtensions, v);
               }),
-          _SwitchTile(icon: Icons.system_update_alt_rounded, iconColor: AppTheme.warning,
+          AppSettingsSwitchTile(icon: Icons.system_update_alt_rounded, iconColor: AppTheme.warning,
               title: t.setxAdvancedExtUpdateTitle, subtitle: t.setxAdvancedExtUpdateSubtitle,
               value: _extensionUpdateNotify, onChanged: (v) {
                 setState(() => _extensionUpdateNotify = v);
                 _setBool(AdvancedPrefs.extensionUpdateNotify, v);
               }),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setxAdvancedSectionBrowser),
-          _SwitchTile(icon: Icons.open_in_browser_rounded, iconColor: AppTheme.secondary,
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setxAdvancedSectionBrowser),
+          AppSettingsSwitchTile(icon: Icons.open_in_browser_rounded, iconColor: AppTheme.secondary,
               title: t.setxAdvancedExternalBrowserTitle, subtitle: t.setxAdvancedExternalBrowserSubtitle,
               value: _externalBrowser, onChanged: (v) {
                 setState(() => _externalBrowser = v);
                 _setBool(AdvancedPrefs.externalBrowser, v);
               }),
-          const SizedBox(height: 8),
-          _SectionHeader(title: t.setxAdvancedSectionData),
+          const SizedBox(height: AppSpacing.sm),
+          AppSettingsSectionHeader(title: t.setxAdvancedSectionData),
           _ActionTile(icon: Icons.cleaning_services_rounded, iconColor: AppTheme.error,
               title: t.setxAdvancedClearCacheTitle, subtitle: t.setxAdvancedClearCacheSubtitle,
               onTap: _clearChapterCache),
           _ActionTile(icon: Icons.delete_sweep_rounded, iconColor: AppTheme.error,
               title: t.setxAdvancedClearDbEntryTitle, subtitle: t.setxAdvancedClearDbEntrySubtitle,
               onTap: _confirmClearDatabase),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  const _SectionHeader({required this.title});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(title.toUpperCase(),
-          style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.0, color: cs.primary)),
-    );
-  }
-}
-
-class _SwitchTile extends StatelessWidget {
-  final IconData icon; final Color iconColor; final String title; final String subtitle;
-  final bool value; final ValueChanged<bool> onChanged;
-  const _SwitchTile({required this.icon, required this.iconColor, required this.title,
-      required this.subtitle, required this.value, required this.onChanged});
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: cs.outlineVariant)),
-      child: Row(children: [
-        Container(width: 36, height: 36,
-            decoration: BoxDecoration(color: iconColor.withAlpha(25), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: iconColor, size: 18)),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
-          Text(subtitle, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
-        ])),
-        Switch(value: value, onChanged: onChanged, activeThumbColor: cs.onPrimary, activeTrackColor: cs.primary),
-      ]),
     );
   }
 }
@@ -500,12 +476,12 @@ class _ActionTile extends StatelessWidget {
             border: Border.all(color: cs.outlineVariant)),
         child: Row(children: [
           Container(width: 36, height: 36,
-              decoration: BoxDecoration(color: iconColor.withAlpha(25), borderRadius: BorderRadius.circular(10)),
+              decoration: oledIconChip(context, color: iconColor, fill: iconColor.withAlpha(25), radius: 10),
               child: Icon(icon, color: iconColor, size: 18)),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface)),
-            Text(subtitle, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+            Text(title, style: Theme.of(context).textTheme.titleSmall),
+            Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline)),
           ])),
           Icon(Icons.chevron_right_rounded, color: cs.outline, size: 20),
         ]),
@@ -526,23 +502,25 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
   LogCategory? _selectedCategory;
   LogLevel? _minLevel;
 
-  static const _categoryLabels = <LogCategory?, String>{
-    null: 'All',
-    LogCategory.repo: 'Repo',
-    LogCategory.extension: 'Extension',
-    LogCategory.network: 'Network',
-    LogCategory.install: 'Install',
-    LogCategory.library: 'Library',
-    LogCategory.general: 'General',
-  };
+  Map<LogCategory?, String> _categoryLabels(AppLocalizations t) =>
+      <LogCategory?, String>{
+        null: t.setxAdvancedLogAll,
+        LogCategory.repo: t.setxAdvancedLogCatRepo,
+        LogCategory.extension: t.setxAdvancedLogCatExtension,
+        LogCategory.network: t.setxAdvancedLogCatNetwork,
+        LogCategory.install: t.setxAdvancedLogCatInstall,
+        LogCategory.library: t.setxAdvancedLogCatLibrary,
+        LogCategory.general: t.setxAdvancedLogCatGeneral,
+      };
 
-  static const _levelLabels = <LogLevel?, String>{
-    null: 'All',
-    LogLevel.debug: 'Debug',
-    LogLevel.info: 'Info',
-    LogLevel.warning: 'Warning',
-    LogLevel.error: 'Error',
-  };
+  Map<LogLevel?, String> _levelLabels(AppLocalizations t) =>
+      <LogLevel?, String>{
+        null: t.setxAdvancedLogAll,
+        LogLevel.debug: t.setxAdvancedLogLvlDebug,
+        LogLevel.info: t.setxAdvancedLogLvlInfo,
+        LogLevel.warning: t.setxAdvancedLogLvlWarning,
+        LogLevel.error: t.setxAdvancedLogLvlError,
+      };
 
   Color _levelColor(LogLevel level, ColorScheme cs) {
     switch (level) {
@@ -565,7 +543,8 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context)),
         title: Text(t.setxAdvancedErrorLogsTitle,
-            style: GoogleFonts.manrope(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface)),
         actions: [
           IconButton(
             icon: Icon(Icons.delete_outline_rounded, color: cs.outline),
@@ -580,11 +559,11 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(children: [
             Expanded(child: _FilterDropdown<LogCategory?>(
-              label: t.setxAdvancedFilterCategory, value: _selectedCategory, items: _categoryLabels,
+              label: t.setxAdvancedFilterCategory, value: _selectedCategory, items: _categoryLabels(t),
               onChanged: (v) => setState(() => _selectedCategory = v), cs: cs)),
             const SizedBox(width: 8),
             Expanded(child: _FilterDropdown<LogLevel?>(
-              label: t.setxAdvancedFilterLevel, value: _minLevel, items: _levelLabels,
+              label: t.setxAdvancedFilterLevel, value: _minLevel, items: _levelLabels(t),
               onChanged: (v) => setState(() => _minLevel = v), cs: cs)),
           ]),
         ),
@@ -600,11 +579,14 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
                 return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.check_circle_outline_rounded, color: cs.outline, size: 48),
                   const SizedBox(height: 12),
-                  Text(t.setxAdvancedNoLogs, style: GoogleFonts.manrope(
+                  Text(t.setxAdvancedNoLogs, style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontSize: 15, color: cs.outline, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(t.setxAdvancedNoLogsSubtitle,
-                      style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: cs.outline)),
                 ]));
               }
               return ListView.builder(
@@ -627,25 +609,28 @@ class _ErrorLogViewerPageState extends State<ErrorLogViewerPage> {
       backgroundColor: cs.surfaceContainerHighest,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: Text(t.setxAdvancedClearLogsTitle,
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: cs.onSurface)),
+          style: TextStyle(fontWeight: FontWeight.w700, color: cs.onSurface)),
       content: Text(t.setxAdvancedClearLogsBody,
-          style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: cs.outline)),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context),
-            child: Text(t.setxAdvancedCancel, style: GoogleFonts.manrope(color: cs.outline))),
+            child: Text(t.setxAdvancedCancel, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: cs.outline))),
         TextButton(
           onPressed: () async {
             Navigator.pop(context);
             await AppLogger.instance.clearLogs();
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(t.setxAdvancedLogsCleared, style: GoogleFonts.manrope(color: Colors.white)),
+                content: Text(t.setxAdvancedLogsCleared, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500, color: Colors.white)),
                 backgroundColor: AppTheme.success,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
             }
           },
-          child: Text(t.setxAdvancedClear, style: GoogleFonts.manrope(
+          child: Text(t.setxAdvancedClear, style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: AppTheme.error, fontWeight: FontWeight.w700))),
       ],
     ));
@@ -669,10 +654,7 @@ class _LogEntryTileState extends State<_LogEntryTile> {
     final entry = widget.entry;
     final cs = widget.cs;
     final t = AppLocalizations.of(context);
-    final timeStr =
-        '${entry.timestamp.hour.toString().padLeft(2, '0')}:'
-        '${entry.timestamp.minute.toString().padLeft(2, '0')}:'
-        '${entry.timestamp.second.toString().padLeft(2, '0')}';
+    final timeStr = DateFormat('HH:mm:ss').format(entry.timestamp);
 
     return GestureDetector(
       onTap: () { if (entry.detail != null) setState(() => _expanded = !_expanded); },
@@ -681,7 +663,7 @@ class _LogEntryTileState extends State<_LogEntryTile> {
           text: '[${entry.levelLabel}][${entry.categoryLabel}] ${entry.message}'
               '${entry.detail != null ? '\n${entry.detail}' : ''}'));
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(t.setxAdvancedCopiedToClipboard, style: GoogleFonts.manrope(color: Colors.white)),
+          content: Text(t.setxAdvancedCopiedToClipboard, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500, color: Colors.white)),
           backgroundColor: cs.primary, behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 1),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))));
@@ -721,7 +703,7 @@ class _LogEntryTileState extends State<_LogEntryTile> {
             ])),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: Text(entry.message, style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurface),
+            child: Text(entry.message, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface),
                 overflow: TextOverflow.ellipsis, maxLines: _expanded ? 10 : 2)),
           if (_expanded && entry.detail != null)
             Container(
@@ -754,11 +736,11 @@ class _FilterDropdown<T> extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
           value: value, isExpanded: true, dropdownColor: cs.surfaceContainerHighest,
-          style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurface),
-          hint: Text(label, style: GoogleFonts.manrope(fontSize: 12, color: cs.outline)),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface),
+          hint: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.outline)),
           items: items.entries.map((e) => DropdownMenuItem<T>(
             value: e.key,
-            child: Text(e.value, style: GoogleFonts.manrope(fontSize: 12, color: cs.onSurface)),
+            child: Text(e.value, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.onSurface)),
           )).toList(),
           onChanged: (v) { if (v != null || null is T) onChanged(v as T); },
         ),
@@ -785,11 +767,11 @@ class _DnsProviderTile extends StatelessWidget {
             border: Border.all(color: cs.outlineVariant)),
         child: Row(children: [
           Container(width: 36, height: 36,
-              decoration: BoxDecoration(color: const Color(0xFF06B6D4).withAlpha(25), borderRadius: BorderRadius.circular(10)),
+              decoration: oledIconChip(context, color: const Color(0xFF06B6D4), fill: const Color(0xFF06B6D4).withAlpha(25), radius: 10),
               child: const Icon(Icons.cloud_rounded, color: Color(0xFF06B6D4), size: 18)),
-          const SizedBox(width: 12),
-          Expanded(child: Text('DNS provider', style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: cs.onSurface))),
-          Text(selectedLabel, style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(child: Text('DNS provider', style: Theme.of(context).textTheme.titleSmall)),
+          Text(selectedLabel, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.outline)),
           const SizedBox(width: 4),
           Icon(Icons.chevron_right_rounded, color: cs.outline, size: 20),
         ]),

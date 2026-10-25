@@ -2,8 +2,6 @@ name: Android build
 
 on:
   workflow_dispatch:
-  push:
-    tags: ['v*']
 
 jobs:
   android:
@@ -11,10 +9,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Vendor the eu.kanade.tachiyomi.* extension runtime. This duplicates
+      # scripts/vendor_ext_runtime.sh (the local build path) ON PURPOSE: /scripts/
+      # is .gitignored and never committed, so `actions/checkout` does NOT fetch it
+      # — a workflow can only run code that lives in the repo. Keep the pinned
+      # APKBRIDGE_SHA below in sync with scripts/vendor_ext_runtime.sh when bumping.
       - name: Vendor the eu.kanade.tachiyomi.* extension runtime (ApkBridge, Apache-2.0)
         run: |
           set -euo pipefail
-          git clone --depth 1 https://github.com/Schnitzel5/ApkBridge "$RUNNER_TEMP/apkbridge"
+          # Pinned ApkBridge revision (supply chain + reproducibility): clone the
+          # exact commit, not whatever its default branch currently points at, so
+          # the vendored runtime can't change silently between builds. Bump
+          # deliberately — `git ls-remote https://github.com/Schnitzel5/ApkBridge HEAD`.
+          APKBRIDGE_SHA="cda8d92053c2a558c71476b8008edb83ce54de5c"
+          git clone https://github.com/Schnitzel5/ApkBridge "$RUNNER_TEMP/apkbridge"
+          git -C "$RUNNER_TEMP/apkbridge" checkout --quiet "$APKBRIDGE_SHA"
           SRC="$RUNNER_TEMP/apkbridge/app/src/main/java"
           DEST="android/app/src/main/ext-runtime"
           rm -rf "$DEST" && mkdir -p "$DEST"
@@ -58,6 +67,11 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+
+      # Design-system guard: fails if inline fonts/colours in lib/presentation/
+      # grow past the post-migration baseline (see the script for details).
+      - name: Design-system token guard
+        run: bash .github/scripts/check_design_tokens.sh
 
       # Consistent RELEASE signing so users get in-place updates instead of having to
       # uninstall/reinstall. Android only lets an installed app update if every build is

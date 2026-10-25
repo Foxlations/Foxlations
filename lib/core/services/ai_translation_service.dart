@@ -12,7 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 
-/// Result of translating a manga page — list of detected text regions with translations.
+/// Result of translating a manga page - list of detected text regions with translations.
 class TranslationResult {
   final List<TranslatedRegion> regions;
   final String provider;
@@ -66,7 +66,7 @@ class TranslatedRegion {
   };
 }
 
-/// A text region detected by ML Kit — pixel-accurate position + raw OCR hint.
+/// A text region detected by ML Kit - pixel-accurate position + raw OCR hint.
 class _DetectedRegion {
   final Rect rect; // normalized 0.0-1.0
   final String text; // ML Kit OCR text (used as hint in LLM prompt)
@@ -304,7 +304,7 @@ class AiTranslationService {
   // ── ML Kit text region detection ──────────────────────────────
 
   /// Map source language code → OCR script. TachiyomiAT uses one script per
-  /// source language instead of running all 4 — this eliminates cross-script noise.
+  /// source language instead of running all 4 - this eliminates cross-script noise.
   TextRecognitionScript _toOcrScript(String langCode) {
     switch (langCode) {
       case 'ja': return TextRecognitionScript.japanese;
@@ -316,7 +316,7 @@ class AiTranslationService {
 
   /// Runs ML Kit and returns the detected regions plus the source language it
   /// settled on. For 'auto' it tries every script and keeps the ONE recogniser
-  /// that read the most text — reading a page with the wrong script produces
+  /// that read the most text - reading a page with the wrong script produces
   /// word-salad, and merging every recogniser's output invents text over the
   /// artwork. The winning script also tells the on-device translator the source
   /// language.
@@ -585,7 +585,7 @@ class AiTranslationService {
   // ── ML Kit On-Device Translation (ported from TachiyomiAT) ────
 
   /// Translates each text block line-by-line using ML Kit on-device translation.
-  /// Ported from TachiyomiAT's MLKitTranslator — translates each \n-separated
+  /// Ported from TachiyomiAT's MLKitTranslator - translates each \n-separated
   /// line individually then rejoins, which gives much cleaner results.
   Future<List<TranslatedRegion>> _translateWithMlKitTranslation(
       String sourceLang, String targetLang, List<_DetectedRegion> mlkitRegions) async {

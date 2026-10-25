@@ -6,7 +6,7 @@ import '../discovery/metadata_discovery.dart';
 import 'tracker.dart';
 import 'tracker_models.dart';
 
-/// AniList (anilist.co) — GraphQL API, OAuth2 **implicit grant** (no client
+/// AniList (anilist.co) - GraphQL API, OAuth2 **implicit grant** (no client
 /// secret). The user authorizes at [authorizeUrl]; the pin page shows an access
 /// token they paste back via [authenticateWithToken]. Token is valid ~1 year.
 ///

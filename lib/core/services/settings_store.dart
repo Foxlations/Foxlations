@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// SharedPreferences / NSUserDefaults keep writes in an in-memory cache that
 /// only flushes to disk periodically, so a force-quit right after a change can
-/// lose it — the bug behind "I toggled a setting, closed the app, and it
+/// lose it - the bug behind "I toggled a setting, closed the app, and it
 /// reverted". This store mirrors everything in a single JSON file that is
 /// fsync'd on every write (`flush: true`), so a value is on disk before the
 /// setter's Future completes.
@@ -41,8 +42,9 @@ class SettingsStore {
       } else {
         await _migrateFromSharedPreferences();
       }
-    } catch (_) {
-      // Unreadable/corrupt or no storage — keep empty defaults.
+    } catch (e) {
+      // Unreadable/corrupt or no storage; keep empty defaults.
+      debugPrint('[SettingsStore] load failed, using defaults: $e');
     }
     _loaded = true;
   }
@@ -56,7 +58,9 @@ class SettingsStore {
         if (v != null) _data[k] = v;
       }
       if (_data.isNotEmpty) await _flush();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[SettingsStore] SharedPreferences migration failed: $e');
+    }
   }
 
   bool? getBool(String key) {
@@ -118,8 +122,9 @@ class SettingsStore {
       try {
         // flush:true fsyncs, so the value is on disk before this returns.
         await _file?.writeAsString(snapshot, flush: true);
-      } catch (_) {
-        // Best-effort — a failed write falls back to the last saved copy.
+      } catch (e) {
+        // Best-effort: a failed write falls back to the last saved copy.
+        debugPrint('[SettingsStore] flush failed: $e');
       }
     });
     return _writeChain;

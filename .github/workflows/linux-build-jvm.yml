@@ -2,8 +2,6 @@ name: Linux build (JVM)
 
 on:
   workflow_dispatch:
-  push:
-    tags: ['v*']
 
 jobs:
   jars:

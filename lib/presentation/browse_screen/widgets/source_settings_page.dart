@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -10,11 +9,12 @@ import '../../../eval/lib.dart';
 import '../../../eval/model/source_preference.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
 
 /// Per-source settings, driven entirely by what the extension itself declares
 /// through `getSourcePreferences()` (e.g. Asura's "Hide premium chapters").
 ///
-/// Values are read and written with the SAME key scheme the JS bridge uses —
+/// Values are read and written with the SAME key scheme the JS bridge uses - 
 /// `source_pref_<MSource.id>_<key>`, where `MSource.id` is `source.id.hashCode`
 /// (see JsPreferences.init). Writing anywhere else would store settings the
 /// extension never reads.
@@ -107,7 +107,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
       await store.setString(k, '$value');
     }
     // Host-backed (Kotlin) sources read prefs from their own runtime store, not
-    // the app's SharedPreferences — push the value there too so the extension
+    // the app's SharedPreferences - push the value there too so the extension
     // actually sees it. No-op for JS/Dart sources.
     try {
       await withExtensionService(
@@ -128,11 +128,16 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
         title: Text(t.browseRemoveSourceConfirm(widget.source.name),
-            style: GoogleFonts.manrope(
-                fontSize: 16, fontWeight: FontWeight.w700)),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700)),
         content: Text(
           t.browseRemoveSourceDesc,
-          style: GoogleFonts.manrope(fontSize: 13.5, color: cs.outline),
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(fontSize: 13.5, color: cs.outline),
         ),
         actions: [
           TextButton(
@@ -142,7 +147,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(t.browseRemove,
-                style: GoogleFonts.manrope(color: AppTheme.error)),
+                style: const TextStyle(color: AppTheme.error)),
           ),
         ],
       ),
@@ -164,8 +169,8 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
         elevation: 0,
         title: Text(
           '${widget.source.name}${lang.isEmpty ? '' : ' ($lang)'}',
-          style: GoogleFonts.manrope(
-              fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700, color: cs.onSurface),
         ),
         actions: [
           // The extension row's button is now "Settings", so uninstalling has
@@ -173,7 +178,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           TextButton(
             onPressed: _confirmRemove,
             child: Text(t.browseRemove,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.error)),
@@ -184,11 +189,11 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: EdgeInsets.only(
-                  bottom: 24 + MediaQuery.of(context).viewPadding.bottom),
+                  bottom: AppSpacing.xl + MediaQuery.viewPaddingOf(context).bottom),
               children: [
                 _sectionLabel(cs, 'FOXLATIONS'),
                 _appSettings(cs),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 _sectionLabel(cs, t.browseProvidedByThisSource),
                 if (_error != null)
                   _message(cs, Icons.error_outline_rounded,
@@ -198,8 +203,10 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                     child: Text(
                       t.browseNoSourceOptions,
-                      style:
-                          GoogleFonts.manrope(fontSize: 13, color: cs.outline),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium
+                          ?.copyWith(color: cs.outline),
                     ),
                   )
                 else
@@ -212,8 +219,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
   Widget _sectionLabel(ColorScheme cs, String text) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
         child: Text(text,
-            style: GoogleFonts.manrope(
-                fontSize: 11,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 letterSpacing: 1.1,
                 fontWeight: FontWeight.w700,
                 color: cs.primary)),
@@ -229,7 +235,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
         ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           title: Text(t.browseBaseUrl,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
@@ -239,7 +245,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
                     ? t.browseUsingSourceDefault
                     : t.browseBaseUrlDefault(widget.source.baseUrl)
                 : o.baseUrlOverride,
-            style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline),
           ),
           trailing: o.baseUrlOverride.isEmpty
               ? null
@@ -261,12 +267,12 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           activeThumbColor: cs.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           title: Text(t.browsePinToTop,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
           subtitle: Text(t.browsePinToTopDesc,
-              style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline)),
         ),
         SwitchListTile(
           value: o.excludeFromGlobalSearch,
@@ -275,12 +281,12 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           activeThumbColor: cs.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           title: Text(t.browseSkipGlobalSearch,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
           subtitle: Text(t.browseSkipGlobalSearchDesc,
-              style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline)),
         ),
         SwitchListTile(
           value: o.excludeFromUpdates,
@@ -288,12 +294,12 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           activeThumbColor: cs.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           title: Text(t.browseSkipLibraryUpdates,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
           subtitle: Text(t.browseSkipLibraryUpdatesDesc,
-              style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline)),
         ),
         SwitchListTile(
           value: o.requestDesktopSite,
@@ -301,13 +307,13 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           activeThumbColor: cs.primary,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
           title: Text(t.browseRequestDesktopSite,
-              style: GoogleFonts.manrope(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: cs.onSurface)),
           subtitle: Text(
               t.browseRequestDesktopSiteDesc,
-              style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline)),
         ),
       ],
     );
@@ -327,13 +333,13 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium)),
         title: Text(t.browseBaseUrl,
-            style:
-                GoogleFonts.manrope(fontSize: 15, fontWeight: FontWeight.w700)),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: 15, fontWeight: FontWeight.w700)),
         content: TextField(
           controller: controller,
           autofocus: true,
           keyboardType: TextInputType.url,
-          style: GoogleFonts.manrope(fontSize: 14),
+          style: Theme.of(context).textTheme.bodyLarge,
           decoration: const InputDecoration(hintText: 'https://example.com'),
         ),
         actions: [
@@ -363,21 +369,24 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
   Widget _message(ColorScheme cs, IconData icon, String title, String body) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 40, color: cs.outline),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Text(title,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: cs.onSurface)),
             const SizedBox(height: 6),
             Text(body,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.manrope(fontSize: 13, color: cs.outline)),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: cs.outline)),
           ],
         ),
       ),
@@ -387,12 +396,12 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
   Widget _tile(ColorScheme cs, SourcePreference p) {
     final t = AppLocalizations.of(context);
     final title = Text(p.title,
-        style: GoogleFonts.manrope(
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontSize: 15, fontWeight: FontWeight.w600, color: cs.onSurface));
     final summary = (p.summary == null || p.summary!.isEmpty)
         ? null
         : Text(p.summary!,
-            style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline));
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline));
 
     switch (p.type) {
       case 'switch':
@@ -414,7 +423,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           title: title,
           subtitle: Text(
             match.isNotEmpty ? match.first.title : (p.summary ?? ''),
-            style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline),
           ),
           onTap: entries.isEmpty
               ? null
@@ -424,8 +433,12 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
                     builder: (_) => SimpleDialog(
                       backgroundColor: cs.surfaceContainerHighest,
                       title: Text(p.title,
-                          style: GoogleFonts.manrope(
-                              fontSize: 15, fontWeight: FontWeight.w700)),
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700)),
                       children: [
                         for (final e in entries)
                           SimpleDialogOption(
@@ -441,11 +454,13 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
                                       ? cs.primary
                                       : cs.outline,
                                 ),
-                                const SizedBox(width: 12),
+                                const SizedBox(width: AppSpacing.md),
                                 Expanded(
                                   child: Text(e.title,
-                                      style: GoogleFonts.manrope(
-                                          fontSize: 14, color: cs.onSurface)),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.copyWith(color: cs.onSurface)),
                                 ),
                               ],
                             ),
@@ -467,7 +482,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           title: title,
           subtitle: Text(
             selected.isEmpty ? (p.summary ?? t.browseNone) : t.browseSelectedCount(selected.length),
-            style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline),
           ),
           children: [
             for (final e in entries)
@@ -476,8 +491,10 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
                 activeColor: cs.primary,
                 contentPadding: const EdgeInsetsDirectional.only(start: 32, end: 20),
                 title: Text(e.title,
-                    style: GoogleFonts.manrope(
-                        fontSize: 14, color: cs.onSurface)),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(color: cs.onSurface)),
                 onChanged: (v) {
                   final next = Set<String>.from(selected);
                   (v ?? false) ? next.add('${e.value}') : next.remove('${e.value}');
@@ -495,7 +512,7 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
           title: title,
           subtitle: Text(
             current.isEmpty ? (p.summary ?? t.browseNotSet) : current,
-            style: GoogleFonts.manrope(fontSize: 12.5, color: cs.outline),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.5, color: cs.outline),
           ),
           onTap: () async {
             final controller = TextEditingController(text: current);
@@ -507,12 +524,12 @@ class _SourceSettingsPageState extends State<SourceSettingsPage> {
                     borderRadius:
                         BorderRadius.circular(AppTheme.radiusMedium)),
                 title: Text(p.title,
-                    style: GoogleFonts.manrope(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontSize: 15, fontWeight: FontWeight.w700)),
                 content: TextField(
                   controller: controller,
                   autofocus: true,
-                  style: GoogleFonts.manrope(fontSize: 14),
+                  style: Theme.of(context).textTheme.bodyLarge,
                   decoration: InputDecoration(hintText: p.summary ?? ''),
                 ),
                 actions: [

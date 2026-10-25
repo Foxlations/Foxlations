@@ -7,7 +7,7 @@ import '../discovery/metadata_discovery.dart';
 import 'tracker.dart';
 import 'tracker_models.dart';
 
-/// MyAnimeList (myanimelist.net) — OAuth2 with **PKCE** (plain), so no client
+/// MyAnimeList (myanimelist.net) - OAuth2 with **PKCE** (plain), so no client
 /// secret is embedded. The WebView captures an authorization `code` from the
 /// `foxlations://auth` redirect, which we exchange for tokens. Search and all
 /// list operations require the bearer token.
@@ -238,7 +238,7 @@ class MalTracker extends Tracker implements MetadataDiscovery {
   bool get supportsGenreFilter => false;
 
   /// MAL's v2 API has no usable manga-recommendations endpoint, so it stays
-  /// trending-only — no "because you read X".
+  /// trending-only - no "because you read X".
   @override
   bool get supportsPersonalization => false;
 

@@ -18,7 +18,7 @@ import 'webview_service.dart';
 /// inject into its cookie jar → retry); our `SourceRunner.enableCloudflareSolver`
 /// turns it on when `-Dfoxlations.flareSolverrUrl` points here. So instead of
 /// bundling FlareSolverr (impossible on iOS) we let the JVM drive the SAME
-/// device WebView the Dart sources already use — one solver, one cookie source.
+/// device WebView the Dart sources already use - one solver, one cookie source.
 ///
 /// The harness proved this exact wiring with a Playwright-backed `/v1` server;
 /// on-device the browser backend is just WKWebView instead of Chromium.
@@ -46,7 +46,7 @@ class CfFlareSolverrServer {
   bool get _supported => Platform.isIOS || Platform.isAndroid || Platform.isMacOS;
 
   /// Bind the loopback server. Safe to call once at startup. A bind failure is
-  /// non-fatal (CF for Kotlin sources stays unavailable), but — unlike before —
+  /// non-fatal (CF for Kotlin sources stays unavailable), but - unlike before - 
   /// it is surfaced to More > Debug logs instead of being silently swallowed,
   /// so "ConnectException 127.0.0.1:52700" has a matching host-side entry.
   Future<void> start() async {
@@ -85,7 +85,7 @@ class CfFlareSolverrServer {
         category: LogCategory.network,
         detail:
             '$e\nKotlin/JVM sources that hit Cloudflare will fail until this '
-            'binds (ConnectException 127.0.0.1:$port). Usually transient — the '
+            'binds (ConnectException 127.0.0.1:$port). Usually transient - the '
             'app retries it on resume.',
       );
     }
@@ -94,7 +94,7 @@ class CfFlareSolverrServer {
   /// Re-bind if the loopback socket is gone. iOS tears down loopback listeners
   /// across a background→foreground cycle, which left the JVM hitting a dead
   /// port (`_server` was still non-null, so the old `start()` early-returned and
-  /// never rebound). Called on app resume. Dart-only — it touches no JVM op, so
+  /// never rebound). Called on app resume. Dart-only - it touches no JVM op, so
   /// it is safe inside the background-transition window that the native
   /// signal-handler restore guards against.
   Future<void> ensureRunning() async {
@@ -158,7 +158,7 @@ class CfFlareSolverrServer {
       final data = jsonDecode(body.isEmpty ? '{}' : body) as Map<String, dynamic>;
       final cmd = (data['cmd'] as String?) ?? 'request.get';
       if (cmd.startsWith('sessions.')) {
-        // FlareSolverr session commands — we don't keep sessions; ack them.
+        // FlareSolverr session commands - we don't keep sessions; ack them.
         out = {'status': 'ok', 'message': '', 'session': data['session'] ?? 'fox', 'sessions': <String>[]};
       } else {
         out = await _solve((data['url'] as String?) ?? '');
@@ -199,7 +199,14 @@ class CfFlareSolverrServer {
     if (!solved) {
       try {
         solved = await solveCloudflareInteractively(targetUrl);
-      } catch (_) {}
+      } catch (e) {
+        AppLogger.instance.warning(
+          'Cloudflare interactive solve threw'
+          '${host.isEmpty ? '' : ' on $host'}',
+          category: LogCategory.network,
+          detail: e.toString(),
+        );
+      }
     }
     if (notify) {
       showGlobalToast(

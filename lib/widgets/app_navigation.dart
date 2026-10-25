@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 import 'library_type_menu.dart' show libraryTypeIcon;
@@ -8,7 +7,7 @@ class AppNavigation extends StatefulWidget {
   /// Tab ids in display order (see NavPrefsProvider.canonical).
   final List<String> tabIds;
 
-  /// The currently-active tab id (always a screen tab — `more` opens Settings).
+  /// The currently-active tab id (always a screen tab - `more` opens Settings).
   final String activeId;
 
   /// Invoked with the tapped tab's id.
@@ -163,7 +162,7 @@ class _AppNavigationState extends State<AppNavigation>
             // Snake indicator
             AnimatedBuilder(
               animation: _snakeAnimation,
-              builder: (_, __) {
+              builder: (_, _) {
                 double xFor(int i) {
                   final visual = isRtl ? (count - 1 - i) : i;
                   return visual * tabWidth + tabWidth / 2 - 32;
@@ -242,7 +241,7 @@ class _AppNavigationState extends State<AppNavigation>
                           const SizedBox(height: 3),
                           Text(
                             m.label,
-                            style: GoogleFonts.manrope(
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontSize: 11,
                               fontWeight:
                                   isActive ? FontWeight.w700 : FontWeight.w500,
@@ -263,15 +262,23 @@ class _AppNavigationState extends State<AppNavigation>
   }
 
   Widget _badge(ColorScheme cs, int n) => Container(
+        constraints: const BoxConstraints(minWidth: 16),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: cs.primary,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(999),
+          // A cutout ring in the bar's own colour separates the badge from the
+          // (same-coloured) active icon behind it, so it doesn't blend in.
+          border: Border.all(color: cs.surface, width: 1.5),
         ),
         child: Text(
           n > 99 ? '99+' : '$n',
-          style: GoogleFonts.manrope(
-              fontSize: 8, fontWeight: FontWeight.w800, color: Colors.white),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              color: cs.onPrimary,
+              height: 1.1),
         ),
       );
 }

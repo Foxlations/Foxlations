@@ -11,7 +11,7 @@ enum GazeDirection { up, down, none }
 class GazeEvent {
   final GazeDirection direction;
 
-  /// 0..1 — how far past threshold the gaze is; scales scroll speed.
+  /// 0..1 - how far past threshold the gaze is; scales scroll speed.
   final double intensity;
 
   const GazeEvent(this.direction, this.intensity);
@@ -49,7 +49,7 @@ class GazeSettings {
       };
 }
 
-/// Hands-free (gaze) scrolling — an iOS-only bridge to the native ARKit engine
+/// Hands-free (gaze) scrolling - an iOS-only bridge to the native ARKit engine
 /// on the `foxlations/gaze` channel. Mirrors [VolumeKeys]' reverse-invoke
 /// streaming pattern (native pushes `onGaze` into this handler).
 ///

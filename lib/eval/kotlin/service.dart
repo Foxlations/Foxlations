@@ -60,7 +60,7 @@ class KotlinExtensionService implements ExtensionService {
       ...extra,
     };
     // Android's ApkBridge host (NetworkHelper) has no CloudflareInterceptor
-    // /FlareSolverr — hand it every clearance the app holds so its OkHttp requests carry
+    // /FlareSolverr - hand it every clearance the app holds so its OkHttp requests carry
     // cf_clearance + the matching User-Agent. iOS/desktop drive CF through the embedded
     // JVM's loopback FlareSolverr instead, so they skip this.
     if (Platform.isAndroid) {

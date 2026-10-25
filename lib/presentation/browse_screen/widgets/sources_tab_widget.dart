@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../widgets/type_toggle.dart';
 import '../../../core/models/installed_source_model.dart';
@@ -8,6 +7,7 @@ import '../../../core/providers/vault_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../routes/app_routes.dart';
 import '../../../theme/app_theme.dart';
+import '../../widgets/ds/ds.dart';
 import 'browse_source_detail_sheet.dart';
 import 'source_icon.dart';
 
@@ -30,7 +30,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
     final cs = Theme.of(context).colorScheme;
 
     return Consumer2<SourceProvider, VaultProvider>(
-      builder: (_, provider, vault, __) {
+      builder: (_, provider, vault, _) {
         var installed = provider.installedSources;
 
         // Filter by type (manga / anime)
@@ -104,7 +104,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         children: [
                           SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.6,
+                            height: MediaQuery.sizeOf(context).height * 0.6,
                             child: _buildEmptyState(cs),
                           ),
                         ],
@@ -130,8 +130,8 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
                                 child: Row(children: [
                                   Icon(Icons.push_pin_rounded, size: 14, color: cs.primary),
                                   const SizedBox(width: 6),
-                                  Text(t.browsePinned, style: GoogleFonts.manrope(
-                                    fontSize: 11, fontWeight: FontWeight.w700,
+                                  Text(t.browsePinned, style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
                                     color: cs.primary, letterSpacing: 1.2)),
                                 ]),
                               ),
@@ -200,7 +200,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemCount: languages.length,
         itemBuilder: (_, i) {
           final lang = languages[i];
@@ -222,8 +222,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
               ),
               child: Text(
                 lang == 'all' ? t.browseAll : _langDisplayName(lang),
-                style: GoogleFonts.manrope(
-                  fontSize: 12,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   color: isSelected ? cs.primary : cs.outline,
                 ),
@@ -244,16 +243,14 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
           Container(
             width: 64,
             height: 64,
-            decoration: BoxDecoration(
-              color: cs.primary.withAlpha(31),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-            ),
+            decoration: oledIconChip(context,
+                color: cs.primary, fill: cs.primary.withAlpha(31)),
             child: Icon(Icons.explore_off_rounded, size: 32, color: cs.primary),
           ),
           const SizedBox(height: 16),
           Text(
             t.browseNoInstalledSources,
-            style: GoogleFonts.manrope(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: cs.onSurface,
@@ -263,8 +260,7 @@ class _SourcesTabWidgetState extends State<SourcesTabWidget> {
           Text(
             t.browseNoInstalledSourcesDesc,
             textAlign: TextAlign.center,
-            style: GoogleFonts.manrope(
-              fontSize: 12,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: cs.outline,
               height: 1.5,
             ),
@@ -344,8 +340,7 @@ class _LanguageHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       child: Text(
         '$emoji  ${lang.toUpperCase()}',
-        style: GoogleFonts.manrope(
-          fontSize: 11,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.w700,
           color: cs.outline,
           letterSpacing: 1.2,
@@ -403,9 +398,7 @@ class _SourceRow extends StatelessWidget {
                       source.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.manrope(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         color: cs.onSurface,
                       ),
                     ),
@@ -416,13 +409,12 @@ class _SourceRow extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           // Where it came from is more useful than how it's
-                          // built — and for anything unrecognised the framework
+                          // built - and for anything unrecognised the framework
                           // is just "custom", which told the user nothing.
                           source.repoName.isNotEmpty
                               ? source.repoName
                               : source.framework,
-                          style: GoogleFonts.manrope(
-                            fontSize: 11,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: cs.outline,
                           ),
                         ),
@@ -475,7 +467,7 @@ class _LangBadge extends StatelessWidget {
       ),
       child: Text(
         lang.toUpperCase(),
-        style: GoogleFonts.manrope(
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           fontSize: 10,
           fontWeight: FontWeight.w600,
           color: isNsfw ? AppTheme.error : cs.outline,

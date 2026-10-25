@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../theme/app_theme.dart';
+import '../../theme/app_tokens.dart';
+import '../widgets/ds/ds.dart';
 import '../../core/providers/beta_provider.dart';
 import './widgets/about_settings_page.dart';
 import './widgets/help_tips_page.dart';
@@ -20,16 +20,21 @@ import './widgets/advanced_settings_page.dart';
 import './widgets/tracking_settings_page.dart';
 import './widgets/ai_settings_page.dart';
 import './widgets/backup_settings_page.dart';
-import '../repoforge_hub_screen/repoforge_hub_screen.dart';
 import '../../l10n/app_localizations.dart';
 
+// First screen migrated onto the design system (P2). Category icon colours are
+// the deliberate per-category palette (kept as seeds); the tile's tinted icon
+// background now derives from that one seed instead of a hardcoded dark/light
+// pair, and all type/surfaces come from the theme + tokens.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  void _push(BuildContext context, Widget page) =>
+      Navigator.push(context, MaterialPageRoute(builder: (_) => page));
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final beta = context.watch<BetaProvider>().enabled;
     final t = AppLocalizations.of(context);
 
@@ -39,259 +44,168 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: cs.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: cs.onSurface,
-            size: 20,
-          ),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              color: cs.onSurface, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          t.settingsTitle,
-          style: GoogleFonts.manrope(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: cs.onSurface,
-          ),
-        ),
+        title: Text(t.settingsTitle),
       ),
       body: ListView(
-        // Pad the bottom by the device's system-bar inset (gesture pill / 3-button
-        // bar / none — reported per-phone by the OS) so the last rows clear the
-        // Android navigation bar instead of scrolling under it.
+        // Pad the bottom by the device's system-bar inset so the last rows clear
+        // the Android navigation bar instead of scrolling under it.
         padding: EdgeInsets.only(
-          top: 12,
-          bottom: 12 + MediaQuery.of(context).viewPadding.bottom,
+          top: AppSpacing.md,
+          bottom: AppSpacing.md + MediaQuery.viewPaddingOf(context).bottom,
         ),
         children: [
           _SettingsSectionHeader(title: t.settingsSectionApp),
           _SettingsNavTile(
             icon: Icons.palette_rounded,
             iconColor: const Color(0xFFFF7A5C),
-            iconBg: isDark
-                ? const Color(0xFF3D1A10)
-                : const Color(0xFFFFEDE8),
             title: t.settingsAppearanceTitle,
             subtitle: t.settingsAppearanceSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AppearanceSettingsPage())),
+            onTap: () => _push(context, const AppearanceSettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.language_rounded,
             iconColor: const Color(0xFF3B82F6),
-            iconBg: isDark
-                ? const Color(0xFF0E1E3D)
-                : const Color(0xFFE8F0FF),
             title: t.settingsLanguageTitle,
             subtitle: t.settingsLanguageEntrySubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const LanguageSettingsPage())),
+            onTap: () => _push(context, const LanguageSettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.notifications_rounded,
             iconColor: const Color(0xFFEF4444),
-            iconBg: isDark
-                ? const Color(0xFF2E0A0A)
-                : const Color(0xFFFFEEEE),
             title: t.settingsNotificationsTitle,
             subtitle: t.settingsNotificationsSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const NotificationsSettingsPage())),
+            onTap: () => _push(context, const NotificationsSettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.storage_rounded,
             iconColor: const Color(0xFF06B6D4),
-            iconBg: isDark
-                ? const Color(0xFF052028)
-                : const Color(0xFFE0F9FF),
             title: t.settingsStorageTitle,
             subtitle: t.settingsStorageSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const DownloadsSettingsPage())),
+            onTap: () => _push(context, const DownloadsSettingsPage()),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _SettingsSectionHeader(title: t.settingsSectionManga),
           _SettingsNavTile(
             icon: Icons.library_books_rounded,
             iconColor: cs.primary,
-            iconBg: cs.primary.withAlpha(25),
             title: t.settingsLibraryTitle,
             subtitle: t.settingsLibrarySubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const LibrarySettingsPage())),
+            onTap: () => _push(context, const LibrarySettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.menu_book_rounded,
             iconColor: const Color(0xFF4CAF82),
-            iconBg: isDark
-                ? const Color(0xFF0D2E1E)
-                : const Color(0xFFE6F7EF),
             title: t.settingsReaderTitle,
             subtitle: t.settingsReaderSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const ReaderSettingsPage())),
+            onTap: () => _push(context, const ReaderSettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.play_circle_outline_rounded,
             iconColor: const Color(0xFFE0554A),
-            iconBg: isDark
-                ? const Color(0xFF3D1A10)
-                : const Color(0xFFFFEDE8),
             title: t.settingsPlayerTitle,
             subtitle: t.settingsPlayerSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const PlayerSettingsPage())),
+            onTap: () => _push(context, const PlayerSettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.download_rounded,
             iconColor: const Color(0xFF7C6FF7),
-            iconBg: isDark
-                ? const Color(0xFF1A1640)
-                : const Color(0xFFEEEDFF),
             title: t.settingsDownloadsTitle,
             subtitle: t.settingsDownloadsSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const DownloadQueuePage())),
+            onTap: () => _push(context, const DownloadQueuePage()),
           ),
           _SettingsNavTile(
             icon: Icons.track_changes_rounded,
             iconColor: const Color(0xFF2E51A2),
-            iconBg: isDark
-                ? const Color(0xFF0A1228)
-                : const Color(0xFFE8EDFF),
             title: t.settingsTrackingTitle,
             subtitle: t.settingsTrackingSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const TrackingSettingsPage())),
+            onTap: () => _push(context, const TrackingSettingsPage()),
           ),
           if (beta)
             _SettingsNavTile(
               icon: Icons.translate_rounded,
               iconColor: const Color(0xFF7C6FF7),
-              iconBg: isDark
-                  ? const Color(0xFF1A1530)
-                  : const Color(0xFFF0EDFF),
               title: t.settingsAiTitle,
               subtitle: t.settingsAiSubtitle,
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const AiSettingsPage())),
+              onTap: () => _push(context, const AiSettingsPage()),
             ),
           _SettingsNavTile(
             icon: Icons.explore_rounded,
             iconColor: const Color(0xFFF59E0B),
-            iconBg: isDark
-                ? const Color(0xFF2E2005)
-                : const Color(0xFFFFF3D6),
             title: t.settingsBrowseTitle,
             subtitle: t.settingsBrowseSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const BrowseSettingsPage())),
+            onTap: () => _push(context, const BrowseSettingsPage()),
           ),
-          if (beta)
-            _SettingsNavTile(
-              icon: Icons.auto_fix_high_rounded,
-              iconColor: const Color(0xFFE0567B),
-              iconBg: isDark
-                  ? const Color(0xFF2E0A16)
-                  : const Color(0xFFFFE4EC),
-              title: t.settingsRepoForgeTitle,
-              subtitle: t.settingsRepoForgeSubtitle,
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const RepoForgeHubScreen())),
-            ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           _SettingsSectionHeader(title: t.settingsSectionSystem),
           _SettingsNavTile(
             icon: Icons.backup_rounded,
             iconColor: const Color(0xFF16A085),
-            iconBg: isDark
-                ? const Color(0xFF06231D)
-                : const Color(0xFFE2F5EF),
             title: t.settingsBackupTitle,
             subtitle: t.settingsBackupSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const BackupSettingsPage())),
+            onTap: () => _push(context, const BackupSettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.security_rounded,
             iconColor: const Color(0xFF5865F2),
-            iconBg: isDark
-                ? const Color(0xFF10143A)
-                : const Color(0xFFEEEFFF),
             title: t.settingsSecurityTitle,
             subtitle: t.settingsSecuritySubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const SecuritySettingsPage())),
+            onTap: () => _push(context, const SecuritySettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.settings_applications_rounded,
-            iconColor: isDark ? cs.outline : const Color(0xFF6B7280),
-            iconBg: isDark
-                ? cs.surfaceContainerHighest
-                : const Color(0xFFF0F0F8),
+            iconColor: cs.onSurfaceVariant,
             title: t.settingsAdvancedTitle,
             subtitle: t.settingsAdvancedSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AdvancedSettingsPage())),
+            onTap: () => _push(context, const AdvancedSettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.info_rounded,
             iconColor: const Color(0xFF4CAF82),
-            iconBg: isDark
-                ? const Color(0xFF0D2E1E)
-                : const Color(0xFFE6F7EF),
             title: t.settingsAboutTitle,
             subtitle: t.settingsAboutSubtitle,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const AboutSettingsPage())),
+            onTap: () => _push(context, const AboutSettingsPage()),
           ),
           _SettingsNavTile(
             icon: Icons.help_outline_rounded,
             iconColor: const Color(0xFF4CAF82),
-            iconBg: isDark
-                ? const Color(0xFF0D2E1E)
-                : const Color(0xFFE6F7EF),
-            title: 'Help & Tips',
-            subtitle: 'Tutorial, Discord & quick tips',
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const HelpTipsPage())),
+            title: t.helpTipsTitle,
+            subtitle: t.settingsHelpSubtitle,
+            onTap: () => _push(context, const HelpTipsPage()),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.xl),
         ],
       ),
     );
   }
-
 }
 
-// ── Section Header ──────────────────────────────────────────
+// ── Section header ──────────────────────────────────────────
 class _SettingsSectionHeader extends StatelessWidget {
   final String title;
   const _SettingsSectionHeader({required this.title});
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: Text(
-        title.toUpperCase(),
-        style: GoogleFonts.manrope(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.2,
-          color: cs.primary,
-        ),
-      ),
+    return AppSectionLabel(
+      title,
+      color: Theme.of(context).colorScheme.primary,
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
     );
   }
 }
 
-// ── Settings Nav Tile ────────────────────────────────────────
+// ── Settings nav tile ────────────────────────────────────────
 class _SettingsNavTile extends StatelessWidget {
   final IconData icon;
+
+  /// The category's seed colour (the deliberate per-category palette). The
+  /// tinted icon background is derived from it, so it adapts to the theme.
   final Color iconColor;
-  final Color iconBg;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
@@ -299,7 +213,6 @@ class _SettingsNavTile extends StatelessWidget {
   const _SettingsNavTile({
     required this.icon,
     required this.iconColor,
-    required this.iconBg,
     required this.title,
     required this.subtitle,
     required this.onTap,
@@ -308,57 +221,44 @@ class _SettingsNavTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: cs.outlineVariant),
-        ),
+    final t = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+      child: AppCard(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
         child: Row(
           children: [
             Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(12.0),
-              ),
+              decoration: oledIconChip(context,
+                  color: iconColor,
+                  fill: iconColor.withValues(alpha: isDark ? 0.22 : 0.14)),
               child: Icon(icon, color: iconColor, size: 22),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.manrope(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
-                    ),
-                  ),
+                  Text(title, style: t.titleSmall),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: GoogleFonts.manrope(
-                      fontSize: 12,
-                      color: cs.outline,
-                    ),
+                    style: t.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: cs.outline, size: 20),
+            Icon(Icons.chevron_right_rounded,
+                color: cs.onSurfaceVariant, size: 20),
           ],
         ),
       ),

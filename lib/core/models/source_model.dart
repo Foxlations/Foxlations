@@ -2,7 +2,7 @@
 ///
 /// Deliberately NOT `String.hashCode`: Dart makes no guarantee that it is
 /// stable across runs or VM versions, and installed sources are persisted by
-/// id — an id that changed between launches would orphan the user's installs.
+/// id - an id that changed between launches would orphan the user's installs.
 String _stableHash(String seed) {
   var hash = 0xcbf29ce484222325;
   for (final unit in seed.codeUnits) {
@@ -97,7 +97,7 @@ class MangaSource {
       return (fv == null || fv.toString().isEmpty) ? def : fv.toString();
     }
 
-    // Same, but tries several spellings — Mangayomi/Foxlations use `lang`/
+    // Same, but tries several spellings - Mangayomi/Foxlations use `lang`/
     // `baseUrl`, while Aniyomi/keiyoushi sources use `language`/`homeUrl`. Read
     // all top-level keys first, then the first sub-source's, so an expanded
     // keiyoushi row (child `language`/`homeUrl` merged up) resolves correctly.
@@ -114,7 +114,7 @@ class MangaSource {
     }
 
     // keiyoushi tags every extension with a 3-value contentWarning enum
-    // (CONTENT_WARNING_{SAFE,MIXED,NSFW}) — 100% of entries carry the field, so
+    // (CONTENT_WARNING_{SAFE,MIXED,NSFW}) - 100% of entries carry the field, so
     // treating any non-empty value as NSFW hid the entire catalogue behind the
     // "show NSFW" toggle. Only NSFW should hide; MIXED (e.g. MangaDex) and SAFE
     // stay visible. A free-text warning from another repo still counts if it
@@ -140,11 +140,11 @@ class MangaSource {
       final pkg = pkgName.toLowerCase();
       if (pkg.contains('animeextension')) return 'anime';
       if (pkg.contains('novelextension')) return 'novel';
-      // Nothing on the row — fall back to the type implied by the index file.
+      // Nothing on the row - fall back to the type implied by the index file.
       return defaultType;
     }
 
-    // Tachiyomi/Aniyomi/keiyoushi rows are compiled Kotlin — they carry an `apk`
+    // Tachiyomi/Aniyomi/keiyoushi rows are compiled Kotlin - they carry an `apk`
     // filename, a `resources.jarUrl`, or an `eu.kanade.tachiyomi.*` package, and
     // run in the embedded JVM (not the JS/Dart interpreters).
     bool looksKotlin() {
@@ -168,7 +168,7 @@ class MangaSource {
       return 'dart';
     }
 
-    // Anime/keiyoushi repos serve the artifact next to the index — an Aniyomi
+    // Anime/keiyoushi repos serve the artifact next to the index - an Aniyomi
     // `apk` at `<repo-dir>/apk/<apk>`, keiyoushi a full `resources.jarUrl`. Stash
     // the download URL + package on config so installSource can fetch + convert.
     Map<String, dynamic> buildConfig() {
@@ -195,7 +195,7 @@ class MangaSource {
       return cfg;
     }
 
-    // Tachiyomi/keiyoushi index entries carry NO top-level `id` — the real id
+    // Tachiyomi/keiyoushi index entries carry NO top-level `id` - the real id
     // lives inside their `sources[]` array. Without a fallback every row parsed
     // to id '', so they all collided and installing one flipped the entire
     // catalogue to "installed". Derive a stable id from whatever identifies the
@@ -215,8 +215,8 @@ class MangaSource {
     // Where to find this source's icon.
     //
     // Mangayomi-style indexes carry `iconUrl` outright. Tachiyomi-style ones
-    // (keiyoushi and its forks) carry none at all — 0 of keiyoushi's 1368
-    // entries have the field — but they publish icons next to the index at
+    // (keiyoushi and its forks) carry none at all - 0 of keiyoushi's 1368
+    // entries have the field - but they publish icons next to the index at
     // `<repo-root>/icon/<pkg>.png`, so derive it from the index URL. Left empty
     // when neither applies: the site's own favicon is an unreliable fallback
     // (sampled hosts returned 403 and 404 as often as an image), and the letter
@@ -285,7 +285,7 @@ class MangaSource {
     );
   }
 
-  /// A friendly repo name derived from a repo URL — git hosts name the repo
+  /// A friendly repo name derived from a repo URL - git hosts name the repo
   /// after its owner (keiyoushi, yuzono, …), which is what users recognise.
   /// Mirrors RepoService so a source can recover its repo name from the stored
   /// URL alone (installed sources persisted before repoName was saved otherwise
@@ -335,7 +335,7 @@ class MangaSource {
       return region == null ? code.group(1)! : '${code.group(1)}-$region';
     }
     // Otherwise it's a native display name (English, Español, 日本語, Bahasa
-    // Indonesia) — map to its base code. Display names carry no region.
+    // Indonesia) - map to its base code. Display names carry no region.
     const byName = {
       'english': 'en',
       'spanish': 'es', 'español': 'es', 'espanol': 'es', 'castellano': 'es',

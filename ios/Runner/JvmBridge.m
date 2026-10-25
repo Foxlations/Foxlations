@@ -92,8 +92,13 @@ static int ensureJvm(JNIEnv **outEnv) {
     // the Suwayomi host, so native FindClass("foxtensions/runner/SourceRunner") resolves and
     // SourceRunner's deps (eu.kanade.*, the eu.kanade.tachiyomi.animesource.* framework,
     // OkHttp, Koin, kotlin-stdlib) live on the SAME (system) classloader.
-    NSString *cp      = [NSString stringWithFormat:@"-Djava.class.path=%@:%@:%@:%@",
+    // Harness/DoH classes come either as a loose `classes/` dir (default build) or,
+    // for the jimage/SideStore-safe build, packed into `jars/classes.jar` (no loose
+    // .class whose 0xCAFEBABE magic CodeSignKit misreads as a fat Mach-O). Both paths
+    // are listed; a non-existent classpath entry is simply ignored by the JVM.
+    NSString *cp      = [NSString stringWithFormat:@"-Djava.class.path=%@:%@:%@:%@:%@",
         bundlePath(@"classes"),
+        bundlePath(@"jars/classes.jar"),
         bundlePath(@"jars/runner.jar"),
         bundlePath(@"jars/animesource.jar"),
         bundlePath(@"jars/suwayomi-server.jar")];

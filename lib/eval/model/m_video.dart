@@ -7,7 +7,7 @@ class MVideo {
   List<MTrack>? audios;
 
   /// Source-provided intro/outro markers (Aniyomi `timestamps`), used for
-  /// Skip Intro / Skip Outro. Usually empty — few sources supply them.
+  /// Skip Intro / Skip Outro. Usually empty - few sources supply them.
   List<MTimeStamp>? timestamps;
 
   MVideo(

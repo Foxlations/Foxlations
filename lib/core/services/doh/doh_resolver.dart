@@ -18,7 +18,7 @@ class _CacheEntry {
 /// The endpoint is queried as `{queryUrl}?name={host}&type=A` (+ AAAA) with
 /// `Accept: application/dns-json`, over a plain system-DNS [HttpClient] so it
 /// never recurses into itself. Results are cached per host honoring the record
-/// TTL (clamped), and ANY failure falls back to the system resolver — so
+/// TTL (clamped), and ANY failure falls back to the system resolver - so
 /// turning DoH on can never hard-break networking.
 class DohResolver {
   DohResolver._();
@@ -34,7 +34,7 @@ class DohResolver {
   HttpClient get _client =>
       _http ??= (HttpClient()..connectionTimeout = _timeout);
 
-  /// Drop cached lookups — call when the provider or toggle changes.
+  /// Drop cached lookups - call when the provider or toggle changes.
   void clearCache() => _cache.clear();
 
   // Bumped whenever the DoH toggle or provider changes. HTTP clients that cache
@@ -58,8 +58,8 @@ class DohResolver {
 
     // Try the user's provider, then non-filtering public resolvers (literal-IP,
     // so they keep working where a DoH hostname can't be resolved). A provider
-    // that FILTERS a source — Quad9 / filtered AdGuard block aggregator domains
-    // like natomanga.com — or a blocked resolver IP then can't break resolution.
+    // that FILTERS a source - Quad9 / filtered AdGuard block aggregator domains
+    // like natomanga.com - or a blocked resolver IP then can't break resolution.
     for (final p in _chain(provider)) {
       try {
         final result = await _queryDoh(host, p).timeout(_timeout);
@@ -104,7 +104,9 @@ class DohResolver {
     try {
       final addrs = await InternetAddress.lookup(host);
       return [for (final a in addrs) a.address];
-    } catch (_) {
+    } catch (e) {
+      logger.warning('System DNS fallback failed for $host',
+          category: LogCategory.network, detail: e.toString());
       return const [];
     }
   }
@@ -166,7 +168,7 @@ DnsSettings? dohDnsSettingsOrNull() {
 /// - **Android**: honours the toggle; [url] is the provider's hostname endpoint
 ///   (Android's system DNS resolves the DoH host fine).
 /// - **iOS**: DoH is MANDATORY (the Zero JVM's native DNS is broken), so it
-///   always uses a DoH endpoint — the chosen provider's LITERAL-IP endpoint when
+///   always uses a DoH endpoint - the chosen provider's LITERAL-IP endpoint when
 ///   DoH is on, else the default Cloudflare IP endpoint. The JVM resolver can't
 ///   resolve a DoH hostname (that's what it IS), so the URL must be IP-based.
 ///   `enabled` is effectively ignored by the iOS resolver.

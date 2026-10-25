@@ -219,7 +219,7 @@ class _GazeLabScreenState extends State<GazeLabScreen> {
               _sourceRow(),
               _projectRow(),
               const SizedBox(height: 8),
-              const Text('Manual calibrate — look, then tap:',
+              const Text('Manual calibrate - look, then tap:',
                   style: TextStyle(color: Colors.white54, fontSize: 12)),
               const SizedBox(height: 6),
               _captureRow(),

@@ -8,12 +8,12 @@ import 'app_logger.dart';
 /// Hardware volume-button page navigation.
 ///
 /// Android: native key capture (MainActivity.dispatchKeyEvent) swallows the buttons and
-/// reports {dir, phase} — 'down' on press, 'up' on release — so the reader can tell a tap
+/// reports {dir, phase} - 'down' on press, 'up' on release - so the reader can tell a tap
 /// from a hold. System volume is never touched.
 ///
 /// iOS: there is NO volume-button event API, so this observes the system volume, hides the
 /// HUD, and infers a press from the delta, resetting to a midpoint each time. It's
-/// EXPERIMENTAL — while active the media volume is pinned to ~50% (the reader warns the
+/// EXPERIMENTAL - while active the media volume is pinned to ~50% (the reader warns the
 /// user before enabling). iOS can't detect hold/release, so every press is a tap.
 class VolumeKeys {
   static const _channel = MethodChannel('foxlations/volume_keys');
@@ -63,7 +63,7 @@ class VolumeKeys {
       FlutterVolumeController.addListener((v) {
         if (_iosResetting || !_iosActive) return;
         final dir = v > _iosLast ? 'up' : 'down';
-        // iOS can't distinguish hold from tap — deliver a tap (down then up).
+        // iOS can't distinguish hold from tap - deliver a tap (down then up).
         onKey(dir, 'down');
         onKey(dir, 'up');
         // Reset to the midpoint for the next press (guard so this doesn't re-trigger).

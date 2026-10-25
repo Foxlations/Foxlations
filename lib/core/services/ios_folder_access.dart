@@ -39,7 +39,7 @@ class IosFolderAccess {
 
   /// Re-acquire access to a previously bookmarked folder. Returns the live path
   /// (and a possibly-refreshed bookmark) or null if access was revoked. Safe to
-  /// call repeatedly — the native side keeps the scope alive for the session.
+  /// call repeatedly - the native side keeps the scope alive for the session.
   Future<PickedFolder?> resolve(String bookmark) async {
     if (!isSupported || bookmark.isEmpty) return null;
     try {

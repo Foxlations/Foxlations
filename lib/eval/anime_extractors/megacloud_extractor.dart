@@ -1,4 +1,4 @@
-// MegaCloud / RapidCloud extractor — the host behind HiAnime (Zorotheme) and
+// MegaCloud / RapidCloud extractor - the host behind HiAnime (Zorotheme) and
 // the FlixHQ family. Ported from yuzono's MegaCloudExtractor (Apache-2.0). See
 // NOTICE.
 //

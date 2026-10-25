@@ -19,7 +19,7 @@ import '../../anime_extractors/voe_extractor.dart';
 import '../../anime_extractors/your_upload_extractor.dart';
 
 /// Registers the anime video-host extractors as top-level functions callable
-/// from interpreted (d4rt) sources — the Mangayomi/m2k3a-format anime sources
+/// from interpreted (d4rt) sources - the Mangayomi/m2k3a-format anime sources
 /// call these by name from their `getVideoList`.
 ///
 /// The extractor implementations under `lib/eval/anime_extractors/` are Dart
@@ -168,7 +168,7 @@ class ExtractorBridge {
       sourceUri: lib,
     );
 
-    // MegaCloud / RapidCloud — HiAnime (Zorotheme) + FlixHQ family.
+    // MegaCloud / RapidCloud - HiAnime (Zorotheme) + FlixHQ family.
     interpreter.registertopLevelFunction(
       'megaCloudExtractor',
       (visitor, positionalArgs, namedArgs, typeArgs) =>

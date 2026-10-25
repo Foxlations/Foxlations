@@ -12,7 +12,7 @@ import 'kotlin/service.dart';
 
 ExtensionService getExtensionService(
     MangaSource source, String sourceCode) {
-  // A user-set base URL wins over the one baked into the source — this is how
+  // A user-set base URL wins over the one baked into the source - this is how
   // a site that changed domain keeps working without waiting for the extension
   // author to publish an update.
   final override = SourceSettings.cached(source.id).baseUrlOverride;
@@ -29,8 +29,8 @@ ExtensionService getExtensionService(
     dateFormat: source.dateFormat.isNotEmpty ? source.dateFormat : null,
     dateFormatLocale:
         source.dateFormatLocale.isNotEmpty ? source.dateFormatLocale : null,
-    // A framework that wants one bare string — Madara's custom post-type slug,
-    // say — reads it as `additionalParams`, so an explicit `additionalParams`
+    // A framework that wants one bare string - Madara's custom post-type slug,
+    // say - reads it as `additionalParams`, so an explicit `additionalParams`
     // key in config is passed through as-is. Without this, the multisrc
     // frameworks only ever saw a stringified map and silently fell back to
     // their default path. Any other config keeps the old whole-map behaviour.
@@ -84,8 +84,14 @@ bool _isJsSource(MangaSource source) {
   return lang == 'js' || lang == 'javascript';
 }
 
-/// Serializes JS extension work on iOS — see [withExtensionService].
+/// Serializes JS extension work on iOS - see [withExtensionService].
 Future<void> _jsQueue = Future<void>.value();
+
+/// Per-op cap for the iOS JS queue. Every JS source is serialized through the
+/// single JSC runtime there, so one stuck source would head-of-line-block every
+/// source queued behind it. Failing just that op (and completing the gate) lets
+/// the rest proceed. Matches the JS lane's existing 40s bound.
+const Duration _jsOpTimeout = Duration(seconds: 40);
 
 Future<T> _runExtensionService<T>(
   MangaSource source,
@@ -129,7 +135,13 @@ Future<T> withExtensionService<T>(
   _jsQueue = gate.future;
   await previous;
   try {
-    return await _runExtensionService(source, sourceCode, action);
+    // Per-op timeout: a stuck source fails just its own op instead of wedging
+    // the single JSC runtime and stalling everything queued behind it.
+    return await _runExtensionService(source, sourceCode, action)
+        .timeout(_jsOpTimeout, onTimeout: () {
+      throw Exception(
+          'This source timed out (no response after ${_jsOpTimeout.inSeconds}s).');
+    });
   } finally {
     // Always completes normally so one failing source can't stall the queue.
     gate.complete();

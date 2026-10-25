@@ -5,7 +5,6 @@ import 'dart:math' show Random, sqrt;
 import 'package:sensors_plus/sensors_plus.dart';
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
@@ -79,12 +78,12 @@ void main() async {
 
   MediaKit.ensureInitialized();
   // Hive storage location. On mobile, initFlutter() uses
-  // getApplicationDocumentsDirectory(), which is an app-private sandbox — the
+  // getApplicationDocumentsDirectory(), which is an app-private sandbox - the
   // right place. On desktop that SAME call resolves to the user's shared
   // Documents folder, so initFlutter() would drop library_*.hive files straight
   // into Documents (visible, un-sandboxed, and shared with any other Hive app
   // using the same box names). Point desktop at the app-private support dir
-  // instead — %APPDATA%\Roaming\<app> on Windows — so the library lives with
+  // instead - %APPDATA%\Roaming\<app> on Windows - so the library lives with
   // the app and a reinstall/uninstall governs it. Mobile keeps initFlutter() so
   // existing installs' data stays exactly where it already is.
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
@@ -109,15 +108,15 @@ void main() async {
     initWebViewEnvironment(),
     SettingsStore.instance.load(),
     // Lock-screen / background media controls for the novel "Listen" TTS
-    // (Android/iOS only; never throws — see initTtsMediaSession).
+    // (Android/iOS only; never throws - see initTtsMediaSession).
     initTtsMediaSession(),
   ]);
-  // Not needed to render or interact with the first frame — kick these off after
+  // Not needed to render or interact with the first frame - kick these off after
   // first paint so they don't add to time-to-interactive:
   //  - CfFlareSolverr: loopback endpoint only used when a Kotlin source hits
   //    Cloudflare (also re-armed on resume via ensureRunning).
   //  - CrashReporter: surfaces a previous native crash into the log (does a
-  //    synchronous dir scan — keep it off the boot path).
+  //    synchronous dir scan - keep it off the boot path).
   //  - Notifications: channel/plugin setup; the permission prompt is already
   //    deferred, so init can be too.
   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -126,7 +125,7 @@ void main() async {
     unawaited(NotificationService.instance.initialize());
   });
   // Background isolate starts lazily on first use
-  // Don't start here — Windows may crash on Isolate.spawn during init
+  // Don't start here - Windows may crash on Isolate.spawn during init
   runApp(const MangaReaderApp());
 }
 
@@ -170,6 +169,24 @@ class MangaReaderApp extends StatelessWidget {
       ],
       child: Consumer2<ThemeProvider, LocaleProvider>(
         builder: (_, themeProvider, localeProvider, _) {
+          // Surfaces follow the palette-flip strength: a preset breed tints the
+          // backgrounds/surfaces toward its hue as the strength rises.
+          final lightS = themeProvider.surfacesFor(Brightness.light);
+          final darkS = themeProvider.surfacesFor(Brightness.dark);
+          final lightThemeData = AppTheme.lightTheme(
+              primaryColor: themeProvider.primaryColor(Brightness.light),
+              background: lightS.background,
+              surface: lightS.surface,
+              surfaceHighest: lightS.surfaceHighest,
+              onSurface: lightS.onSurface);
+          final darkThemeData = AppTheme.darkTheme(
+              primaryColor: themeProvider.primaryColor(Brightness.dark),
+              oled: themeProvider.oledBlack,
+              background: darkS.background,
+              surface: darkS.surface,
+              surfaceHighest: darkS.surfaceHighest,
+              onSurface: darkS.onSurface);
+          final mode = themeProvider.themeMode;
           return MaterialApp(
             title: 'Foxlations',
             locale: localeProvider.locale,
@@ -178,14 +195,11 @@ class MangaReaderApp extends StatelessWidget {
             navigatorKey: rootNavigatorKey,
             scaffoldMessengerKey: rootMessengerKey,
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.lightTheme(
-                primaryColor: themeProvider.primaryColor(Brightness.light)),
-            darkTheme: AppTheme.darkTheme(
-                primaryColor: themeProvider.primaryColor(Brightness.dark),
-                oled: themeProvider.oledBlack),
-            themeMode: themeProvider.themeMode,
+            theme: lightThemeData,
+            darkTheme: darkThemeData,
+            themeMode: mode,
             // Always boot into the shell, even when the OS launches us via a
-            // foxlations:// deep link — its URL would otherwise become the
+            // foxlations:// deep link - its URL would otherwise become the
             // platform's initial route name, bypass `home`, and fall through
             // onGenerateRoute's default to a bare, shell-less screen (no bottom
             // nav). DeepLinkService handles the link on top of the shell.
@@ -221,7 +235,7 @@ class MangaReaderApp extends StatelessWidget {
 }
 
 /// Cold-boot splash: covers the first frame/load with the fox logo + title, then
-/// fades out once the app has settled. Shown once per launch — its State persists
+/// fades out once the app has settled. Shown once per launch - its State persists
 /// across the MaterialApp builder's rebuilds (theme/locale changes).
 class _SplashGate extends StatefulWidget {
   final Widget child;
@@ -523,6 +537,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _libraryTapCount = 0;
   DateTime _lastLibraryTap = DateTime(2000);
   int _updatesBadge = 0;
+  bool _showUpdateCount = true;
 
   // Panic exit: shake the phone to instantly leave the vault (opt-in). The
   // accelerometer is only listened to while the vault is active AND the toggle is on.
@@ -541,6 +556,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _applyStartTab();
     navTabRequest.addListener(_onNavTabRequest);
     // Handle foxlations:// deep links (source-repo auto-install).
     DeepLinkService.initialize();
@@ -548,13 +564,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     // channels are up (FLAG_SECURE on Android / app-switcher blur on iOS).
     SecureScreenService.apply();
     _loadUpdatesBadge();
+    LibraryUpdateService.badge.addListener(_onBadgeTick);
     // Run any due automatic backup once the library boxes have opened, then a
     // due automatic library update (Settings > Library > Update frequency). Both
     // wait for the providers to finish loading from disk.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Ask for notification permission once the UI is up (not pre-first-frame).
       NotificationService.instance.requestPermission();
-      // First-launch tutorial (new installs only — existing users are skipped).
+      // First-launch tutorial (new installs only - existing users are skipped).
       _maybeShowTutorial();
       // Heal any library entries a restore stranded on a source name, and keep
       // healing as sources get installed this session.
@@ -586,7 +603,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         SettingsStore.instance.setBool(tutorialSeenKey, true);
         return;
       }
-      // New install — show it once the splash has cleared.
+      // New install - show it once the splash has cleared.
       Future.delayed(const Duration(milliseconds: 1100), () {
         if (mounted &&
             !(SettingsStore.instance.getBool(tutorialSeenKey) ?? false)) {
@@ -612,7 +629,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   /// Re-link library/vault entries that a Tachiyomi/Mihon restore left pointing
   /// at a source name onto the installed source id. Safe to call repeatedly
-  /// (idempotent) — runs on launch and after each source install.
+  /// (idempotent) - runs on launch and after each source install.
   Future<void> _relinkRestoredSources() async {
     if (!mounted) return;
     try {
@@ -623,7 +640,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       await lib.relinkSources(map);
       await vault.relinkSources(map);
     } catch (_) {
-      // Best-effort maintenance — never let it crash startup or an install.
+      // Best-effort maintenance - never let it crash startup or an install.
     }
   }
 
@@ -644,7 +661,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           notify: true);
       if (mounted) _loadUpdatesBadge();
     } catch (_) {
-      // Swallow — foreground auto-update is a convenience, not a guarantee.
+      // Swallow - foreground auto-update is a convenience, not a guarantee.
     }
   }
 
@@ -680,7 +697,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           title: Row(children: [
             Icon(Icons.shield_rounded, size: 20, color: cs.primary),
             const SizedBox(width: 8),
-            Text(t.appVaultPassword, style: GoogleFonts.manrope(
+            Text(t.appVaultPassword, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontSize: 16, fontWeight: FontWeight.w700, color: cs.onSurface)),
           ]),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -688,10 +705,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               controller: controller,
               obscureText: true,
               autofocus: true,
-              style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14, color: cs.onSurface),
               decoration: InputDecoration(
                 hintText: t.appEnterPassword,
-                hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
+                hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14, color: cs.outline),
                 errorText: error,
                 filled: true,
                 fillColor: cs.surfaceContainerHighest,
@@ -716,7 +733,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(t.appCancel, style: GoogleFonts.manrope(
+              child: Text(t.appCancel, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600, color: cs.outline))),
             FilledButton(
               onPressed: () async {
@@ -732,13 +749,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
                 }
               },
               style: FilledButton.styleFrom(backgroundColor: cs.primary),
-              child: Text(t.appUnlock, style: GoogleFonts.manrope(fontWeight: FontWeight.w700))),
+              child: Text(t.appUnlock, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700))),
             if (vault.biometricEnabled)
               TextButton.icon(
                 onPressed: () => tryBio(ctx),
                 icon: const Icon(Icons.fingerprint_rounded, size: 18),
-                label: Text('Biometrics',
-                    style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+                label: Text(t.appBiometrics,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
               ),
           ],
         ),
@@ -749,17 +766,27 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
 
   Future<void> _loadUpdatesBadge() async {
     // Honour Settings > Library > "Show update count". When off, keep the badge
-    // at 0 so the Updates tab shows no number. Re-read each time (this runs on
-    // every tab change) so toggling the setting takes effect without a restart.
-    final show = SettingsStore.instance.getBool('lib_show_update_count') ?? true;
-    final count = show ? await LibraryUpdateService.getUnreadCount() : 0;
-    if (mounted) setState(() => _updatesBadge = count);
+    // at 0. Seed the live badge notifier from the persisted count; the listener
+    // (_onBadgeTick) then keeps _updatesBadge in sync as the service bumps it
+    // live during a check and zeroes it on "Clear all".
+    _showUpdateCount =
+        SettingsStore.instance.getBool('lib_show_update_count') ?? true;
+    LibraryUpdateService.badge.value =
+        await LibraryUpdateService.getUnreadCount();
+    _onBadgeTick();
+  }
+
+  void _onBadgeTick() {
+    if (!mounted) return;
+    setState(() => _updatesBadge =
+        _showUpdateCount ? LibraryUpdateService.badge.value : 0);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     navTabRequest.removeListener(_onNavTabRequest);
+    LibraryUpdateService.badge.removeListener(_onBadgeTick);
     _shakeSub?.cancel();
     super.dispose();
   }
@@ -826,14 +853,14 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       if (mounted) context.read<AppLockProvider>().onResumed();
       // Open the JVM quiet period FIRST, so any JVM op that fires during the
       // background->foreground transition (a user-triggered source call, warmup)
-      // is held until the process has settled — the window behind the iOS
+      // is held until the process has settled - the window behind the iOS
       // reopen-from-background Zero-VM crash.
       FoxJvm.markResumed();
       // iOS drops the loopback FlareSolverr listener across background cycles,
       // leaving Kotlin/JVM sources with "ConnectException 127.0.0.1:52700" (the
       // Manganato error). Re-bind it. This is Dart-only (no JVM op), so it is
       // safe inside the background-transition window the JVM signal-handler
-      // restore protects — unlike the library auto-update below, which is
+      // restore protects - unlike the library auto-update below, which is
       // deferred for exactly that reason.
       unawaited(CfFlareSolverrServer.instance.ensureRunning());
       Future.delayed(const Duration(seconds: 4), () {
@@ -842,8 +869,29 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
   }
 
+  /// Open the app on the user's chosen launch tab (Settings > Appearance >
+  /// Open to). `more` lands on Library and pushes Settings over it; Discover
+  /// kicks off its feed since the user opted to start there.
+  void _applyStartTab() {
+    final start = context.read<NavPrefsProvider>().startTabId;
+    if (start == 'more') {
+      _activeTabId = 'library';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.pushNamed(context, AppRoutes.settings);
+      });
+      return;
+    }
+    if (!_screenIds.contains(start)) return; // keep the 'library' default
+    _activeTabId = start;
+    if (start == 'discover') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<DiscoverProvider>().ensureLoaded();
+      });
+    }
+  }
+
   void _onTabTapped(String id) {
-    // "More" opens Settings rather than a stack page — it never becomes active.
+    // "More" opens Settings rather than a stack page - it never becomes active.
     if (id == 'more') {
       Navigator.pushNamed(context, AppRoutes.settings);
       return;
@@ -868,9 +916,12 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
       final vault = context.read<VaultProvider>();
       if (vault.vaultEnabled && _libraryTapCount >= 6 && _libraryTapCount < 8) {
         final remaining = 8 - _libraryTapCount;
+        final t = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).clearSnackBars();
         AppTheme.showSnackBar(context,
-            '$remaining more tap${remaining == 1 ? '' : 's'} to ${vault.vaultActive ? 'exit' : 'enter'} vault',
+            vault.vaultActive
+                ? t.appVaultTapsToExit(remaining)
+                : t.appVaultTapsToEnter(remaining),
             duration: const Duration(milliseconds: 800));
       }
       if (_libraryTapCount >= 8 && vault.vaultEnabled) {
@@ -895,7 +946,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   }
 
   /// Switch tabs when a descendant asks via [navTabRequest] (e.g. the Library
-  /// "Add" FAB → Browse) — keeps the bottom nav bar instead of pushing a route
+  /// "Add" FAB → Browse) - keeps the bottom nav bar instead of pushing a route
   /// over it.
   void _onNavTabRequest() {
     final id = navTabRequest.value;

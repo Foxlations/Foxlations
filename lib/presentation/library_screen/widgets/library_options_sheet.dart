@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/models/library_settings.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/app_tokens.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// Bottom sheet with the library's Filter / Sort / Display controls.
@@ -79,7 +79,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
             top: Radius.circular(AppTheme.radiusLarge)),
       ),
       constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.72),
+          maxHeight: MediaQuery.sizeOf(context).height * 0.72),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -98,10 +98,12 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
             unselectedLabelColor: cs.outline,
             indicatorColor: cs.primary,
             indicatorSize: TabBarIndicatorSize.label,
-            labelStyle: GoogleFonts.manrope(
+            labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontSize: 13.5, fontWeight: FontWeight.w700),
-            unselectedLabelStyle: GoogleFonts.manrope(
-                fontSize: 13.5, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: Theme.of(context)
+                .textTheme
+                .labelLarge
+                ?.copyWith(fontSize: 13.5, fontWeight: FontWeight.w600),
             tabs: [
               Tab(text: t.libraryTabFilter),
               Tab(text: t.libraryTabSort),
@@ -128,7 +130,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
   Widget _filterTab(ColorScheme cs) {
     final t = AppLocalizations.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, AppSpacing.lg),
       children: [
         _sectionLabel(cs, t.libraryTabFilter),
         _cellGrid([
@@ -141,7 +143,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
         ]),
         _legend(cs),
         if (widget.sources.isNotEmpty) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           _sectionLabel(cs, t.librarySources),
           _cellGrid([
             for (final src in widget.sources)
@@ -163,14 +165,14 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
   Widget _sortTab(ColorScheme cs) {
     final t = AppLocalizations.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, AppSpacing.lg),
       children: [
-        _sectionLabel(cs, 'Sort by'),
+        _sectionLabel(cs, t.librarySortBy),
         for (final option in LibrarySort.values)
           _sortRow(cs, option),
         const SizedBox(height: 6),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           child: Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton(
@@ -179,8 +181,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
                 _update(const LibrarySettings());
               },
               child: Text(t.libraryResetToDefault,
-                  style: GoogleFonts.manrope(
-                      fontSize: 13,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: cs.outline)),
             ),
@@ -218,7 +219,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
             children: [
               Expanded(
                 child: Text(option.label,
-                    style: GoogleFonts.manrope(
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontSize: 13.5,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                       color: active ? cs.primary : cs.onSurface,
@@ -242,7 +243,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
   Widget _displayTab(ColorScheme cs) {
     final t = AppLocalizations.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 16),
+      padding: const EdgeInsets.fromLTRB(0, 10, 0, AppSpacing.lg),
       children: [
         _sectionLabel(cs, t.libraryDisplayMode),
         _cellGrid([
@@ -252,13 +253,13 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
         ]),
         if (_s.displayMode == LibraryDisplayMode.grid)
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 12, 4),
+            padding: const EdgeInsets.fromLTRB(
+                18, AppSpacing.sm, AppSpacing.md, AppSpacing.xs),
             child: Row(
               children: [
                 Expanded(
                   child: Text(t.libraryItemsPerRow,
-                      style: GoogleFonts.manrope(
-                          fontSize: 14,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: cs.onSurface)),
                 ),
@@ -268,9 +269,9 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
                             _s.copyWith(itemsPerRow: _s.itemsPerRow - 1))
                         : null),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                   child: Text('${_s.itemsPerRow}',
-                      style: GoogleFonts.manrope(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
                           color: cs.onSurface)),
@@ -284,19 +285,19 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
             ),
           ),
         const SizedBox(height: 4),
-        _sectionLabel(cs, 'Cover title'),
+        _sectionLabel(cs, t.libraryCoverTitle),
         _cellGrid([
           for (final o in LibraryCardTitle.values)
             _toggleCell(cs, o.label, _s.cardTitle == o,
                 () => _update(_s.copyWith(cardTitle: o))),
         ]),
-        _sectionLabel(cs, 'Badge placement'),
+        _sectionLabel(cs, t.libraryBadgePlacement),
         _cellGrid([
           for (final o in LibraryCardBadges.values)
             _toggleCell(cs, o.label, _s.cardBadges == o,
                 () => _update(_s.copyWith(cardBadges: o))),
         ]),
-        _sectionLabel(cs, 'Reading progress'),
+        _sectionLabel(cs, t.libraryReadingProgress),
         _cellGrid([
           for (final o in LibraryCardProgress.values)
             _toggleCell(cs, o.label, _s.cardProgress == o,
@@ -309,16 +310,16 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
               () => _update(_s.copyWith(badgeUnread: !_s.badgeUnread))),
           _toggleCell(cs, t.libraryDownloaded, _s.badgeDownloaded,
               () => _update(_s.copyWith(badgeDownloaded: !_s.badgeDownloaded))),
-          _toggleCell(cs, 'Language', _s.badgeLanguage,
+          _toggleCell(cs, t.libraryLanguage, _s.badgeLanguage,
               () => _update(_s.copyWith(badgeLanguage: !_s.badgeLanguage))),
-          _toggleCell(cs, 'Local', _s.badgeLocal,
+          _toggleCell(cs, t.libraryLocal, _s.badgeLocal,
               () => _update(_s.copyWith(badgeLocal: !_s.badgeLocal))),
         ]),
         _badgeLegend(cs),
         const SizedBox(height: 4),
         _sectionLabel(cs, t.libraryTabs),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           child: _toggleCell(cs, t.libraryShowNumberOfItems, _s.showTabCounts,
               () => _update(_s.copyWith(showTabCounts: !_s.showTabCounts)),
               fullWidth: true),
@@ -328,12 +329,13 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
   }
 
   // ── building blocks ─────────────────────────────────────────────────────────
-  /// Key to the cover badges — mirrors the pills drawn on the cards so the
+  /// Key to the cover badges - mirrors the pills drawn on the cards so the
   /// icon-only badges (downloaded, local) are self-explanatory.
   Widget _badgeLegend(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
     const green = Color(0xFF34D399);
     const amber = Color(0xFFF0C850);
-    TextStyle ps(Color c) => GoogleFonts.manrope(
+    TextStyle ps(Color c) => Theme.of(context).textTheme.labelSmall!.copyWith(
         fontSize: 9, fontWeight: FontWeight.w800, color: c, height: 1.1);
     Widget chip(Color bg, Widget child, {Color? border}) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
@@ -351,7 +353,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
             badge,
             const SizedBox(width: 5),
             Text(label,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: cs.outline)),
@@ -363,31 +365,30 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
         spacing: 14,
         runSpacing: 6,
         children: [
-          item(chip(cs.primary, Text('12', style: ps(cs.onPrimary))), 'Unread'),
+          item(chip(cs.primary, Text('12', style: ps(cs.onPrimary))), t.libraryUnread),
           item(
               chip(green.withAlpha(38),
                   const Icon(Icons.download_done_rounded, size: 10, color: green),
                   border: green.withAlpha(90)),
-              'Downloaded'),
+              t.libraryDownloaded),
           item(
               chip(cs.surfaceContainerHighest,
                   Text('EN', style: ps(cs.onSurfaceVariant))),
-              'Language'),
+              t.libraryLanguage),
           item(
               chip(amber.withAlpha(30),
                   const Icon(Icons.folder_rounded, size: 10, color: amber),
                   border: amber.withAlpha(80)),
-              'Local'),
+              t.libraryLocal),
         ],
       ),
     );
   }
 
   Widget _sectionLabel(ColorScheme cs, String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
+        padding: const EdgeInsets.fromLTRB(18, 10, 18, AppSpacing.sm),
         child: Text(text.toUpperCase(),
-            style: GoogleFonts.manrope(
-                fontSize: 11,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.1,
                 color: cs.outline)),
@@ -398,7 +399,7 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
     final rows = <Widget>[];
     for (var i = 0; i < cells.length; i += 2) {
       rows.add(Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, 6),
         // IntrinsicHeight gives the row a definite height (the taller cell) so
         // the two cells match, without the unbounded-height crash that
         // CrossAxisAlignment.stretch causes inside a scrolling ListView.
@@ -460,28 +461,31 @@ class _LibraryOptionsSheetState extends State<LibraryOptionsSheet>
     );
   }
 
-  Widget _legend(ColorScheme cs) => Padding(
-        padding: const EdgeInsets.fromLTRB(18, 2, 18, 4),
+  Widget _legend(ColorScheme cs) {
+    final t = AppLocalizations.of(context);
+    return Padding(
+        padding: const EdgeInsets.fromLTRB(18, 2, 18, AppSpacing.xs),
         child: Row(
           children: [
             Icon(Icons.check_rounded, size: 13, color: cs.primary),
             const SizedBox(width: 3),
-            Text('show only',
-                style: GoogleFonts.manrope(
+            Text(t.libraryFilterShowOnly,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: cs.outline)),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Icon(Icons.close_rounded, size: 13, color: cs.error),
             const SizedBox(width: 3),
-            Text('hide',
-                style: GoogleFonts.manrope(
+            Text(t.libraryFilterHide,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                     color: cs.outline)),
           ],
         ),
       );
+  }
 
   Widget _stepper(ColorScheme cs, IconData icon, VoidCallback? onTap) {
     return InkWell(
@@ -542,12 +546,12 @@ class _CellShell extends StatelessWidget {
               child: Text(label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                       color: labelColor)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.sm),
             mark,
           ],
         ),

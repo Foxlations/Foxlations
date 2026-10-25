@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/models/manga_model.dart';
 import '../../core/models/installed_source_model.dart';
@@ -12,11 +11,12 @@ import '../../core/services/download_service.dart';
 import '../../eval/lib.dart';
 import '../../routes/app_routes.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_tokens.dart';
 import '../widgets/manga_image.dart';
 import 'widgets/migration_options_dialog.dart';
 import '../../l10n/app_localizations.dart';
 
-/// Migration screen — search all sources for the same manga and transfer read progress.
+/// Migration screen - search all sources for the same manga and transfer read progress.
 class MigrateScreen extends StatefulWidget {
   final String sourceId;
   final String mangaUrl;
@@ -57,14 +57,14 @@ class _MigrateScreenState extends State<MigrateScreen> {
   final _searchController = TextEditingController();
   bool _searching = false;
   // Set while a chosen target is being migrated (fetching the new source's
-  // chapters + copying read state) — the work runs on the UI isolate, so
+  // chapters + copying read state) - the work runs on the UI isolate, so
   // without this the screen just sits frozen and reads as a hang.
   bool _migrating = false;
   // sourceId -> list of results
   Map<String, List<_SearchResult>> _results = {};
 
   // Cross-screen cache so a bulk migration doesn't re-run the same all-sources
-  // search when the next entry opens — the previous screen prefetches into it.
+  // search when the next entry opens - the previous screen prefetches into it.
   static final Map<String, Map<String, List<_SearchResult>>> _searchCache = {};
   static String _norm(String q) => q.trim().toLowerCase();
 
@@ -85,7 +85,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
     final query = _searchController.text.trim();
     if (query.isEmpty) return;
 
-    // Prefetched by the previous entry in the queue — show instantly.
+    // Prefetched by the previous entry in the queue - show instantly.
     if (useCache) {
       final cached = _searchCache[_norm(query)];
       if (cached != null && cached.isNotEmpty) {
@@ -131,9 +131,21 @@ class _MigrateScreenState extends State<MigrateScreen> {
   }) async {
     final sourceProvider = context.read<SourceProvider>();
     final vaultProvider = context.read<VaultProvider>();
+    // Scope targets to the entry's own content type: a manga only migrates to
+    // manga sources, anime to anime, novels to novels. Derived from the entry's
+    // source itemType; if that source isn't installed we can't tell the type,
+    // so we leave it unscoped rather than guess.
+    String? entryType;
+    for (final s in sourceProvider.installedSources) {
+      if (s.source.id == excludeSourceId) {
+        entryType = s.source.itemType;
+        break;
+      }
+    }
     final sources = sourceProvider.installedSources
         .where((s) => s.source.id != excludeSourceId) // exclude entry's source
         .where((s) => !vaultProvider.isSourceInVault(s.source.id)) // hide vault sources
+        .where((s) => entryType == null || s.source.itemType == entryType) // same type only
         .toList();
 
     final out = <String, List<_SearchResult>>{};
@@ -155,7 +167,12 @@ class _MigrateScreenState extends State<MigrateScreen> {
         (service) => service.search(query, 1, []),
         // One slow/hanging source shouldn't stall the whole batch.
       ).timeout(const Duration(seconds: 15));
-      final matched = filterSearchResults(result.list, query);
+      // Tolerant cross-source match: the same title is often named slightly
+      // differently on another source (word order, filler words, minor
+      // spelling), so the strict all-words filter dropped every result and
+      // migrate showed nothing. approxFilterSearchResults is the fuzzy,
+      // best-first variant built for exactly this.
+      final matched = approxFilterSearchResults(result.list, query);
       return matched.take(5).map((m) =>
         _SearchResult(
           name: m.name ?? query,
@@ -166,7 +183,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
         ),
       ).toList();
     } catch (e) {
-      // Source search failed or timed out — skip silently.
+      // Source search failed or timed out - skip silently.
       return const [];
     }
   }
@@ -180,7 +197,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
     );
     if (choice == null || !mounted) return;
 
-    // "Show entry" is a look, not a decision — open the candidate so its
+    // "Show entry" is a look, not a decision - open the candidate so its
     // chapter list can be checked, then come back to the results.
     if (choice.action == MigrationAction.showEntry) {
       await Navigator.pushNamed(context, AppRoutes.mangaDetail, arguments: {
@@ -225,7 +242,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
       final oldCachedChapters = (provider as dynamic)
           .getCachedChapters(widget.sourceId, widget.mangaUrl) as List;
       for (final ch in oldCachedChapters) {
-        // Read-state lives in the SAME box as the entry — use the active
+        // Read-state lives in the SAME box as the entry - use the active
         // provider so migrating a vaulted title reads the vault's read flags,
         // not the (empty) library's.
         if ((provider as dynamic)
@@ -243,7 +260,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
           await DownloadService().deleteManga(widget.sourceId, oldManga.title,
               isVault: isVault);
         } catch (_) {
-          // Downloads may not exist — never block the migration on cleanup.
+          // Downloads may not exist - never block the migration on cleanup.
         }
       }
       await (provider as dynamic)
@@ -280,7 +297,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
           await (provider as dynamic).cacheChapters(target.sourceId, target.url,
               detail.chapters!.map((c) => c.toJson()).toList());
 
-          // Mark matching chapters as read — collect then mark in one pass
+          // Mark matching chapters as read - collect then mark in one pass
           // (per-chapter marking recounts the whole chapter box each time).
           final toMark = <String>[];
           for (final ch in detail.chapters!) {
@@ -294,7 +311,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
         }
       }
     } catch (e) {
-      // Chapter matching failed — manga is still migrated, just without read state
+      // Chapter matching failed - manga is still migrated, just without read state
     }
 
     // Carry tracker bindings (MAL / AniList / Kitsu) across to the new entry so
@@ -310,7 +327,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
               removeOld: !isCopy,
             );
       } catch (_) {
-        // Tracking carry-over is best-effort — never block the migration on it.
+        // Tracking carry-over is best-effort - never block the migration on it.
       }
     }
 
@@ -325,7 +342,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
       Navigator.pop(context, true); // pop this MigrateScreen
       // A single migration is launched on top of the manga's detail screen, and
       // a migrate (not copy) leaves that detail screen pointing at a now-removed
-      // entry — so pop it too. In a bulk run MigrateScreen sits directly on the
+      // entry - so pop it too. In a bulk run MigrateScreen sits directly on the
       // library (the queue re-pushes the next one), so that extra pop would tear
       // the library off the stack and black-screen the app.
       final isBulk = widget.queueTotal != null;
@@ -361,16 +378,15 @@ class _MigrateScreenState extends State<MigrateScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(t.detailMigrate,
-                style: GoogleFonts.manrope(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: cs.onSurface)),
             // Bulk migration walks entries one at a time; without this there's
             // no way to tell how far through the queue you are.
             if (widget.queueTotal != null && widget.queueTotal! > 1)
-              Text('${widget.queuePosition} of ${widget.queueTotal}',
-                  style: GoogleFonts.manrope(
-                      fontSize: 12,
+              Text(t.detailQueuePosition(widget.queuePosition ?? 0, widget.queueTotal!),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: cs.outline)),
           ],
@@ -380,20 +396,22 @@ class _MigrateScreenState extends State<MigrateScreen> {
         Column(children: [
         // Search bar
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.md),
           child: TextField(
             controller: _searchController,
-            style: GoogleFonts.manrope(fontSize: 14, color: cs.onSurface),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurface),
             decoration: InputDecoration(
               hintText: t.detailSearchHint,
-              hintStyle: GoogleFonts.manrope(fontSize: 14, color: cs.outline),
+              hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.outline),
               prefixIcon: Icon(Icons.search_rounded, size: 20, color: cs.outline),
               suffixIcon: IconButton(
                 icon: Icon(Icons.send_rounded, size: 18, color: cs.primary),
                 onPressed: _search,
               ),
               isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.md),
               filled: true, fillColor: cs.surfaceContainerHighest,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             ),
@@ -403,19 +421,20 @@ class _MigrateScreenState extends State<MigrateScreen> {
 
         // Info
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           child: Row(children: [
             Icon(Icons.info_outline_rounded, size: 14, color: cs.outline),
             const SizedBox(width: 6),
             Expanded(child: Text(
               t.detailMigrateInfo,
-              style: GoogleFonts.manrope(fontSize: 11, color: cs.outline),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w400, color: cs.outline),
             )),
           ]),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
 
-        // Thin progress line while sources are still being searched — the
+        // Thin progress line while sources are still being searched - the
         // results below fill in as each source returns, so there's no blank
         // full-screen wait.
         if (_searching)
@@ -429,10 +448,10 @@ class _MigrateScreenState extends State<MigrateScreen> {
             child: _results.isEmpty
                 ? Center(child: Text(
                     _searching ? t.detailSearchingSources : t.detailNoResults,
-                    style: GoogleFonts.manrope(fontSize: 14, color: cs.outline)))
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.outline)))
                 : ListView(
                     padding: EdgeInsets.only(
-                        bottom: 32 + MediaQuery.of(context).viewPadding.bottom),
+                        bottom: AppSpacing.xxl + MediaQuery.viewPaddingOf(context).bottom),
                     children: _results.entries.map((e) {
                       final sourceName = context.read<SourceProvider>()
                           .installedSources
@@ -445,15 +464,16 @@ class _MigrateScreenState extends State<MigrateScreen> {
                           Padding(
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
                             child: Text(sourceName.toUpperCase(),
-                                style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w700,
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
                                     color: cs.primary, letterSpacing: 1.0)),
                           ),
                           SizedBox(
                             height: 160,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              separatorBuilder: (_, __) => const SizedBox(width: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                              separatorBuilder: (_, _) => const SizedBox(width: 10),
                               itemCount: e.value.length,
                               itemBuilder: (_, i) => _MigrationCard(
                                 result: e.value[i],
@@ -476,7 +496,7 @@ class _MigrateScreenState extends State<MigrateScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircularProgressIndicator(),
-                    SizedBox(height: 12),
+                    SizedBox(height: AppSpacing.md),
                     Text(t.detailMigrating,
                         style: TextStyle(
                             color: Colors.white, fontWeight: FontWeight.w600)),
@@ -531,9 +551,10 @@ class _MigrationCard extends StatelessWidget {
                       child: Icon(Icons.image_rounded, color: cs.outline)),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(result.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.manrope(fontSize: 11, fontWeight: FontWeight.w600, color: cs.onSurface)),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w600, color: cs.onSurface)),
         ]),
       ),
     );

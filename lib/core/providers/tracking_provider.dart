@@ -54,7 +54,7 @@ class TrackingProvider extends ChangeNotifier {
     return ok;
   }
 
-  /// Finish an OAuth login with the value the WebView captured — an access
+  /// Finish an OAuth login with the value the WebView captured - an access
   /// token (implicit/AniList) or an authorization code (PKCE/MAL).
   Future<bool> completeOAuth(String trackerId, String captured) async {
     final t = _service.tracker(trackerId);
@@ -101,7 +101,7 @@ class TrackingProvider extends ChangeNotifier {
   List<String> _keyFormats(String sourceId, String url) =>
       ['${sourceId}_$url', '$sourceId::$url'];
 
-  /// Move (or copy) a series' tracker bindings from one entry to another —
+  /// Move (or copy) a series' tracker bindings from one entry to another - 
   /// used when migrating a manga to a different source so it keeps syncing.
   /// Writes under both key formats so whichever the rest of the app reads back
   /// will find them. When [removeOld] is true the source entry's bindings are
@@ -182,7 +182,7 @@ class TrackingProvider extends ChangeNotifier {
   }
 
   /// Auto-sync: the user just read chapter [chapterNumber] of [mangaKey]. Bumps
-  /// every connected binding whose progress is behind and pushes it. Silent —
+  /// every connected binding whose progress is behind and pushes it. Silent - 
   /// never throws into the read path.
   Future<void> syncChapterRead(String mangaKey, int chapterNumber) async {
     if (chapterNumber <= 0) return;
@@ -204,7 +204,7 @@ class TrackingProvider extends ChangeNotifier {
         await _service.saveBinding(mangaKey, r);
         changed = true;
       } catch (e, s) {
-        // Non-throwing (never interrupt reading) but no longer silent — a failed
+        // Non-throwing (never interrupt reading) but no longer silent - a failed
         // tracker push now surfaces in the log per the all-errors rule.
         logger.error('Tracker sync failed (${r.trackerId})',
             category: LogCategory.network, detail: '$e\n$s');

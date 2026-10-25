@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/settings_store.dart';
 
-/// Master switch for experimental ("beta") features — hands-free scrolling,
+/// Master switch for experimental ("beta") features - hands-free scrolling,
 /// RepoForge, and other items. Off by default; when off those features are
 /// hidden in the UI AND their runtime is disabled. Persisted to [prefsKey] so
 /// non-provider code (e.g. the reader) can also read it directly.

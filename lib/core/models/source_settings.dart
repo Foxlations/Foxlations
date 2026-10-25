@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// most sources declare none, which left the Settings page empty. These apply
 /// to every source regardless of what its author implemented.
 class SourceSettings {
-  /// Replaces the source's baseUrl — the fix when a site changes domain and
+  /// Replaces the source's baseUrl - the fix when a site changes domain and
   /// the extension hasn't been updated yet.
   final String baseUrlOverride;
 
@@ -23,7 +23,7 @@ class SourceSettings {
   /// Ask the site for its desktop layout instead of its phone one.
   ///
   /// Some sites serve phones a stripped page that builds its content in the
-  /// browser, so a scraper sees an empty shell — webtoons.com is the known
+  /// browser, so a scraper sees an empty shell - webtoons.com is the known
   /// case: its episode list is absent from the phone page but present in the
   /// desktop one. Off by default, because the phone layout is usually lighter
   /// and every other site works fine with it.
@@ -61,7 +61,7 @@ class SourceSettings {
       );
 
   // Namespaced separately from `source_pref_*`, which belongs to the extension
-  // bridge — mixing them would let an app option collide with an extension key.
+  // bridge - mixing them would let an app option collide with an extension key.
   /// Owned by the Sources tab; reused here so pinning stays a single state.
   static const _pinnedKey = 'pinned_source_ids';
 
@@ -84,7 +84,7 @@ class SourceSettings {
   /// Hosts whose requests should carry a desktop User-Agent.
   ///
   /// Kept as a flat host set rather than looked up per source because the HTTP
-  /// layer has no idea which source is driving a request — both the JS and Dart
+  /// layer has no idea which source is driving a request - both the JS and Dart
   /// bridges only ever see a URL. Writing the host here at save time lets that
   /// layer answer the question with what it already has.
   static const _desktopHostsKey = 'desktop_ua_hosts';
