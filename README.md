@@ -2,8 +2,7 @@
 
 A manga, manhwa, light-novel and video reader for Android and iOS with an
 extension-based source system. Add source repositories, sync progress to
-AniList / MyAnimeList / Kitsu, back up and restore your library, and read behind
-Cloudflare-protected sites.
+AniList / MyAnimeList / Kitsu, back up and restore your library.
 
 💬 **Join the community on [Discord](https://discord.gg/qmGB7h7vsn)** for help, requests and updates.
 
@@ -73,7 +72,6 @@ device and never leaves it.
 
 The app only makes network requests you ask it to:
 
-- **Sources you add**: fetched directly from those sites.
 - **Update check**: when you open your library, the app asks
   `lillq.me/foxlations` whether a newer build exists. Like any web request, that
   server sees your IP address; nothing about you or your library is sent.
