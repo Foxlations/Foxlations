@@ -1,7 +1,7 @@
 # Foxlations
 
 A manga, manhwa, light-novel and video reader for Android and iOS with an
-extension-based source system. Add source repositories, sync progress to
+extension-based source system. Add source and/or local repositories, sync progress to
 AniList / MyAnimeList / Kitsu, back up and restore your library.
 
 💬 **Join the community on [Discord](https://discord.gg/qmGB7h7vsn)** for help, requests and updates.
